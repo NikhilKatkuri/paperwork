@@ -1,50 +1,54 @@
 {
-  "compilerOptions": {
-    /* Target & Environment */
-    "target": "ESNext" /* Latest modern JavaScript features */,
-    "module": "NodeNext" /* Standard for modern Node.js ESM/CommonJS integration */,
-    "moduleResolution": "NodeNext" /* Resolves modules using modern Node.js algorithms */,
-    "lib": [
-      "ESNext"
-    ] /* Only include modern JS library APIs (no DOM/Frontend fluff) */,
-    "types": ["node"] /* Explicitly include Node.js global types */,
+    "compilerOptions": {
+        /* Target & Environment */
+        "target": "ESNext" /* Latest modern JavaScript features */,
+        "module": "NodeNext" /* Standard for modern Node.js ESM/CommonJS integration */,
+        "moduleResolution": "NodeNext" /* Resolves modules using modern Node.js algorithms */,
+        "lib": [
+            "ESNext"
+        ] /* Only include modern JS library APIs (no DOM/Frontend fluff) */,
+        "types": [
+            "node"
+        ] /* Explicitly include Node.js and Express global types */,
 
-    /* File Layout & Emit */
-    "rootDir": "./src" /* Where your source code lives */,
-    "outDir": "./dist" /* Where your compiled production JS will go */,
-    "removeComments": true /* Keeps the production build small */,
-    "sourceMap": true /* Generates maps for easy debugging/crash reports in prod */,
-    "declaration": false /* You are building an app, not a library. Keep this false to speed up builds */,
+        /* File Layout & Emit */
+        "rootDir": "./src" /* Where your source code lives */,
+        "outDir": "./dist" /* Where your compiled production JS will go */,
+        "removeComments": true /* Keeps the production build small */,
+        "sourceMap": true /* Generates maps for easy debugging/crash reports in prod */,
+        "declaration": false /* You are building an app, not a library. Keep this false to speed up builds */,
 
-    /* Hyper-Strict Quality Control */
-    "strict": true /* Enables all strict type-checking options */,
-    "noImplicitAny": true /* Raise error on expressions and declarations with an implied 'any' type */,
-    "strictNullChecks": true /* Ensures 'null' and 'undefined' are handled explicitly */,
-    "strictFunctionTypes": true /* Ensures function parameters match perfectly */,
-    "noUnusedLocals": true /* Cleans up abandoned variables */,
-    "noUnusedParameters": true /* Cleans up unused function inputs */,
-    "noImplicitReturns": true /* Ensures functions with return types always return something */,
-    "noFallthroughCasesInSwitch": true /* Prevents bugs caused by missing 'break' in switch blocks */,
-    "noUncheckedIndexedAccess": true /* Crucial for DB queries: marks objects accessed by dynamic keys as 'undefined' */,
-    "exactOptionalPropertyTypes": true /* Keeps optional properties completely strict */,
+        /* Hyper-Strict Quality Control */
+        "strict": true /* Enables all strict type-checking options */,
+        "noImplicitAny": true /* Raise error on expressions and declarations with an implied 'any' type */,
+        "strictNullChecks": true /* Ensures 'null' and 'undefined' are handled explicitly */,
+        "strictFunctionTypes": true /* Ensures function parameters match perfectly */,
+        "noUnusedLocals": true /* Cleans up abandoned variables */,
+        "noUnusedParameters": true /* Cleans up unused function inputs */,
+        "noImplicitReturns": true /* Ensures functions with return types always return something */,
+        "noFallthroughCasesInSwitch": true /* Prevents bugs caused by missing 'break' in switch blocks */,
+        "noUncheckedIndexedAccess": true /* Crucial for DB queries: marks objects accessed by dynamic keys as 'undefined' */,
+        "exactOptionalPropertyTypes": true /* Keeps optional properties completely strict */,
 
-    /* Interop & Optimization */
-    "esModuleInterop": true /* Enables emitting interoperability between CommonJS and ES Modules */,
-    "forceConsistentCasingInFileNames": true /* Prevents OS-specific casing mismatches breaking your CI/CD pipeline */,
-    "skipLibCheck": true /* Speeds up compilation by ignoring type checks inside node_modules */,
-    "verbatimModuleSyntax": true /* Enforces standard, predictable import/export syntax */,
+        /* Interop & Optimization */
+        "esModuleInterop": true /* Enables emitting interoperability between CommonJS and ES Modules */,
+        "forceConsistentCasingInFileNames": true /* Prevents OS-specific casing mismatches breaking your CI/CD pipeline */,
+        "skipLibCheck": true /* Speeds up compilation by ignoring type checks inside node_modules */,
+        // "verbatimModuleSyntax": true /* Enforces standard, predictable import/export syntax */,
 
-    /* Absolute Path Mapping (@/...) */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"] /* Allows 'import user from "@/models/user"' */
-    }
-  },
-  "include": ["src/**/*"] /* Only compile code inside the src folder */,
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.spec.ts",
-    "**/*.test.ts"
-  ] /* Keep testing/build artifacts out of compilation */
+        /* Absolute Path Mapping (@/...) */
+        "paths": {
+            "@/*": ["./src/*"] /* Allows 'import user from "@/models/user"' */
+        }
+    },
+    "include": [
+        "src/**/*",
+        "src/@types/**/*"
+    ] /* Only compile code inside the src folder */,
+    "exclude": [
+        "node_modules",
+        "dist",
+        "**/*.spec.ts",
+        "**/*.test.ts"
+    ] /* Keep testing/build artifacts out of compilation */
 }
