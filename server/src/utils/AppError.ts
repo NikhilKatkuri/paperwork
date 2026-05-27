@@ -28,4 +28,10 @@ export class AppError extends Error {
     static BadRequest(message: string) {
         return new AppError(StatusCodes.BAD_REQUEST, message);
     }
+    static FormCreationFailed(message: string) {
+        return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
+    }
+    static FormNotFound(message: string) {
+        return new AppError(StatusCodes.NOT_FOUND, message);
+    }
 }

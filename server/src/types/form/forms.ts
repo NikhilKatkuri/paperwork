@@ -13,7 +13,7 @@ enum QUESTION_TYPE {
 type QuestionType = (typeof QUESTION_TYPE)[keyof typeof QUESTION_TYPE];
 
 interface DependsOn {
-    key: string;
+    questionId: string;
     value: string;
 }
 
@@ -28,6 +28,13 @@ interface Option {
  *   - LINEAR_SCALE: 1–10
  *   - RATING: 1–5
  */
+
+interface QuestionBase {
+    type: QuestionType;
+    question: string;
+    dependsOn?: DependsOn;
+    options?: Option[];
+}
 
 interface TextBased {
     type:
@@ -72,7 +79,6 @@ interface Section {
     title: string;
     description?: string;
     questions: QuestionEntity[];
-    dependsOn?: DependsOn;
     onAnswer?: SectionDependsOn[];
     defaultAction?: SectionAction;
 }
@@ -81,8 +87,9 @@ interface FormType {
     title: string;
     description: string;
     isPrivate: boolean;
+    isPublished: boolean;
     allowedDomains?: string[];
-    questions: Section[];
+    sectionss: Section[];
 }
 
 export {
@@ -98,4 +105,5 @@ export {
     Section,
     SectionAction,
     SectionDependsOn,
+    QuestionBase,
 };

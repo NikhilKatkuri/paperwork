@@ -1,11 +1,14 @@
 import express from 'express';
 import FormsController from './forms.controller';
+import protect from '@/middleware/protect';
+import validate from '@/middleware/validate';
+import { formSchema, getFormSchema } from './validation/form';
 
 const formsRouter = express.Router();
 
 const controller = new FormsController();
-formsRouter.post('/', controller.create);
-formsRouter.get('/:id', controller.get);
+formsRouter.post('/', protect, validate(formSchema), controller.create);
+formsRouter.get('/:id', protect, validate(getFormSchema), controller.get);
 formsRouter.delete('/:id', controller.delete);
 formsRouter.put('/:id', controller.update);
 
