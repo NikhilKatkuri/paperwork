@@ -14,6 +14,7 @@ const signInController = async (
     next: NextFunction
 ) => {
     try {
+        console.log('Sign-in request body:', req.body);
         const { email, password } = req.body;
         const { accessToken, refreshToken } = await authService.signIn({
             email,
@@ -69,21 +70,29 @@ const signUpController = async (
     }
 };
 
-const signOutController = async (req: Request, res: Response) => {
-    const refreshToken = req.cookies?.refreshToken;
-    if (!refreshToken) {
-        throw AppError.Unauthorized('No refresh token provided');
-    }
-    res.clearCookie('refreshToken', {
-        httpOnly: true,
-        secure: config.env === 'production',
-        sameSite: 'strict',
-    });
+const signOutController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const refreshToken = req.cookies?.refreshToken;
+        if (!refreshToken) {
+            throw AppError.Unauthorized('No refresh token provided');
+        }
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: config.env === 'production',
+            sameSite: 'strict',
+        });
 
-    res.status(StatusCodes.OK).json({
-        success: true,
-        message: 'Logged out successfully',
-    });
+        res.status(StatusCodes.OK).json({
+            success: true,
+            message: 'Logged out successfully',
+        });
+    } catch (error) {
+        next(error);
+    }
 };
 
 const refreshTokenController = async (

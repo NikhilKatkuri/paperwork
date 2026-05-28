@@ -5,7 +5,16 @@ import { StatusCodes } from 'http-status-codes';
 
 class FormsController {
     service = new FormsService();
-
+    constructor() {
+        this.create = this.create.bind(this);
+        this.get = this.get.bind(this);
+        this.delete = this.delete.bind(this);
+        this.update = this.update.bind(this);
+        this.publish = this.publish.bind(this);
+        this.unPublish = this.unPublish.bind(this);
+        this.duplicate = this.duplicate.bind(this);
+        this.getAll = this.getAll.bind(this);
+    }
     async create(req: Request, res: Response, next: NextFunction) {
         try {
             const { id: userId } = req.user!;
@@ -15,7 +24,7 @@ class FormsController {
                 isPrivate,
                 allowedDomains,
                 isPublished,
-            } = req.body;
+            } = req.body.data;
 
             const newForm = await this.service.create({
                 userId,
@@ -26,7 +35,11 @@ class FormsController {
                 allowedDomains,
             });
 
-            res.status(StatusCodes.CREATED).json({ data: newForm });
+            res.status(StatusCodes.CREATED).json({
+                success: true,
+                message: 'Form created successfully',
+                data: { form: newForm },
+            });
         } catch (error) {
             next(error);
         }
@@ -41,7 +54,11 @@ class FormsController {
     async get(req: Request, res: Response) {
         const { userId, formId } = this.readIds(req);
         const form = await this.service.get(formId, userId);
-        res.status(StatusCodes.OK).json({ data: form });
+        res.status(StatusCodes.OK).json({
+            success: true,
+            message: 'Form retrieved successfully',
+            data: { form },
+        });
     }
 
     async delete(req: Request, res: Response) {
@@ -53,7 +70,7 @@ class FormsController {
     async update(req: Request, res: Response) {
         const { userId, formId } = this.readIds(req);
         const { title, description, isPrivate, allowedDomains, isPublished } =
-            req.body;
+            req.body.data;
 
         const updatedForm = await this.service.update(
             {
@@ -67,32 +84,52 @@ class FormsController {
             formId
         );
 
-        res.status(StatusCodes.OK).json({ data: updatedForm });
+        res.status(StatusCodes.OK).json({
+            success: true,
+            message: 'Form updated successfully',
+            data: { form: updatedForm },
+        });
     }
 
     async publish(req: Request, res: Response) {
         const { userId, formId } = this.readIds(req);
         const publishedForm = await this.service.publish(userId, formId);
-        res.status(StatusCodes.OK).json({ data: publishedForm });
+        res.status(StatusCodes.OK).json({
+            success: true,
+            message: 'Form published successfully',
+            data: { form: publishedForm },
+        });
     }
 
     async unPublish(req: Request, res: Response) {
         const { userId, formId } = this.readIds(req);
         const unpublishedForm = await this.service.unPublish(userId, formId);
-        res.status(StatusCodes.OK).json({ data: unpublishedForm });
+        res.status(StatusCodes.OK).json({
+            success: true,
+            message: 'Form unpublished successfully',
+            data: { form: unpublishedForm },
+        });
     }
 
     async duplicate(req: Request, res: Response) {
         const { userId, formId } = this.readIds(req);
         const duplicatedForm = await this.service.duplicate(userId, formId);
-        res.status(StatusCodes.CREATED).json({ data: duplicatedForm });
+        res.status(StatusCodes.CREATED).json({
+            success: true,
+            message: 'Form duplicated successfully',
+            data: { form: duplicatedForm },
+        });
     }
 
     async getAll(req: Request, res: Response, next: NextFunction) {
         try {
             const { id: userId } = req.user!;
             const forms = await this.service.getAll(userId);
-            res.status(StatusCodes.OK).json({ data: forms });
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Forms retrieved successfully',
+                data: { forms },
+            });
         } catch (error) {
             next(error);
         }

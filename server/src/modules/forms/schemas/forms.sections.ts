@@ -47,6 +47,12 @@ const sectionSchema = new Schema<SectionDocument>(
 );
 
 sectionSchema.index({ formId: 1, index: 1 }, { unique: true });
+sectionSchema.set('toObject', {
+    transform: (_, ret) => {
+        Reflect.deleteProperty(ret, '__v');
+        return ret;
+    },
+});
 
 const SectionModel = mongoose.model<SectionDocument>('Section', sectionSchema);
 

@@ -9,7 +9,7 @@ import {
 import protect from '@/middleware/protect';
 import SectionController from './sections.controller';
 
-const sectionRouter = express.Router();
+const sectionRouter = express.Router({ mergeParams: true });
 const controller = new SectionController();
 
 sectionRouter.post(
@@ -17,6 +17,13 @@ sectionRouter.post(
     protect,
     validate(createSectionSchema),
     controller.create
+);
+sectionRouter.get('/', protect, validate(getFormSchema), controller.get);
+sectionRouter.put(
+    '/reorder',
+    protect,
+    validate(orderSectionSchema),
+    controller.reorder
 );
 sectionRouter.put(
     '/:sectionId',
@@ -30,20 +37,11 @@ sectionRouter.delete(
     validate(getSectionSchema),
     controller.delete
 );
-
-sectionRouter.get('/', protect, validate(getFormSchema), controller.get);
 sectionRouter.get(
     '/:sectionId',
     protect,
     validate(getSectionSchema),
     controller.getById
-);
-
-sectionRouter.put(
-    '/reorder',
-    protect,
-    validate(orderSectionSchema),
-    controller.reorder
 );
 
 export default sectionRouter;

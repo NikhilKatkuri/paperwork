@@ -17,7 +17,14 @@ export const profileSchema = new Schema<ProfileDocument>(
         timestamps: true,
     }
 );
-
+profileSchema.set('toObject', {
+    transform: (_, ret) => {
+        Reflect.deleteProperty(ret, '__v');
+        if (!ret.avatarUrl) delete ret.avatarUrl;
+        if (!ret.bio) delete ret.bio;
+        return ret;
+    },
+});
 const ProfileModel = mongoose.model<ProfileDocument>('Profile', profileSchema);
 
 export default ProfileModel;

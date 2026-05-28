@@ -12,6 +12,15 @@ enum QUESTION_TYPE {
 
 type QuestionType = (typeof QUESTION_TYPE)[keyof typeof QUESTION_TYPE];
 
+type RatingIconType = 'STAR' | 'HEART' | 'THUMB_UP';
+
+type RatingScale = 5 | 10;
+
+interface RatingConfig {
+    icon: RatingIconType;
+    scale: RatingScale;
+}
+
 interface DependsOn {
     questionId: string;
     value: string;
@@ -30,13 +39,16 @@ interface Option {
  */
 
 interface QuestionBase {
+    index: number;
     type: QuestionType;
     question: string;
     dependsOn?: DependsOn;
     options?: Option[];
+    ratingConfig?: RatingConfig;
 }
 
 interface TextBased {
+    index: number;
     type:
         | QUESTION_TYPE.TEXT
         | QUESTION_TYPE.PARAGRAPH
@@ -48,6 +60,7 @@ interface TextBased {
 }
 
 interface RadioBased {
+    index: number;
     type: QUESTION_TYPE.CHOICE | QUESTION_TYPE.RADIO | QUESTION_TYPE.DROP_DOWN;
     question: string;
     dependsOn?: DependsOn;
@@ -55,10 +68,12 @@ interface RadioBased {
 }
 
 interface ScaleBased {
+    index: number;
     type: QUESTION_TYPE.LINEAR_SCALE | QUESTION_TYPE.RATING;
     question: string;
     dependsOn?: DependsOn;
     options?: never;
+    ratingConfig: RatingConfig;
 }
 
 type QuestionEntity = TextBased | RadioBased | ScaleBased;

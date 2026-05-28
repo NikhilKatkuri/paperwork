@@ -66,6 +66,7 @@ const config: AppConfig = {
               urls: getEnvArray('DEV_ORIGINS', [
                   'http://localhost:3000',
                   'http://localhost:5173',
+                  'http://localhost:5000',
               ]),
           }
         : { env: 'prod', urls: getEnvArray('PROD_ORIGINS') },

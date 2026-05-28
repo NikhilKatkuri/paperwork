@@ -2,10 +2,10 @@ import { StatusCodes } from 'http-status-codes';
 
 export class AppError extends Error {
     static SectionReorderFailed(arg0: string) {
-          throw new Error('Method not implemented.');
+        throw new Error('Method not implemented.');
     }
     static SectionUpdateFailed(arg0: string) {
-          throw new Error('Method not implemented.');
+        throw new Error('Method not implemented.');
     }
     public readonly statusCode: number;
     public readonly isOperational: boolean;

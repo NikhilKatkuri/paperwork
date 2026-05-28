@@ -8,6 +8,7 @@ const boot = async (): Promise<void> => {
         console.log(
             `[server] running on port ${config.port} in ${config.env} mode`
         );
+        console.log(`[URL] http://localhost:${config.port}`);
     });
 
     const shutdown = async (signal: string): Promise<void> => {

@@ -4,6 +4,7 @@ import protect from '@/middleware/protect';
 import validate from '@/middleware/validate';
 import { formSchema, getFormSchema } from '../validator.form';
 import sectionRouter from '../sections/route';
+import questionsRouter from '../questions/route';
 
 const formsRouter = express.Router();
 
@@ -33,5 +34,6 @@ formsRouter.post(
 );
 formsRouter.get('/', protect, controller.getAll);
 formsRouter.use('/:id/sections', sectionRouter);
+formsRouter.use('/:id/sections/:sectionId/questions', questionsRouter);
 
 export default formsRouter;

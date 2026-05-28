@@ -1,19 +1,34 @@
 import { Section } from '@/types/form/forms';
 import SectionModel from '../schemas/forms.sections';
 import { AppError } from '@/utils/AppError';
+import FormsModel from '../schemas/forms';
 
 class SectionService {
-    async create(formId: string, data: Omit<Section, 'questions'>) {
-        const _section = {
+    async create(
+        userId: string,
+        formId: string,
+        data: Omit<Section, 'questions'>
+    ) {
+        const form = await FormsModel.findById(formId).lean();
+
+        if (!form) {
+            throw AppError.FormNotFound('Form not found');
+        }
+        if (form.userId !== userId) {
+            throw AppError.Unauthorized(
+                'You are not authorized to add sections to this form'
+            );
+        }
+
+        const sectionCount = await SectionModel.countDocuments({ formId });
+
+        const createdSection = await SectionModel.create({
             formId,
             ...data,
-        };
-        const createdSection = await SectionModel.create(_section);
-        if (!createdSection) {
-            throw AppError.SectionCreationFailed('Failed to create section');
-        }
-        const { __v, ...rest } = createdSection.toObject();
-        return rest;
+            index: sectionCount,
+        });
+
+        return createdSection.toObject();
     }
 
     async delete(sectionId: string) {
@@ -69,18 +84,32 @@ class SectionService {
         const sectionMap = new Map(
             sections.map((section) => [section._id.toString(), section])
         );
-        const updatedSections = [];
-        for (const { sectionId, index } of data) {
-            const section = sectionMap.get(sectionId);
-            if (!section) {
+        for (const { sectionId } of data) {
+            if (!sectionMap.has(sectionId)) {
                 throw AppError.SectionNotFound(
-                    `Section with ID ${sectionId} not found`
+                    `Section with ID ${sectionId} not found in this form`
                 );
             }
-            section.index = index;
-            updatedSections.push(section.save());
         }
-        await Promise.all(updatedSections);
+
+        await SectionModel.bulkWrite(
+            data.map(({ sectionId }, i) => ({
+                updateOne: {
+                    filter: { _id: sectionId, formId },
+                    update: { $set: { index: -(i + 1) } },
+                },
+            }))
+        );
+
+        await SectionModel.bulkWrite(
+            data.map(({ sectionId, index }) => ({
+                updateOne: {
+                    filter: { _id: sectionId, formId },
+                    update: { $set: { index } },
+                },
+            }))
+        );
+
         const reorderedSections = await SectionModel.find({ formId }).sort({
             index: 1,
         });

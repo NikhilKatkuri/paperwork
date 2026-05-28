@@ -24,6 +24,13 @@ formsSchema.pre('save', async function () {
 });
 
 formsSchema.index({ userId: 1, createdAt: -1 });
+formsSchema.set('toObject', {
+    transform: (_, ret) => {
+        Reflect.deleteProperty(ret, '__v');
+        return ret;
+    },
+});
+
 const FormsModel = mongoose.model<FormDocument>('Form', formsSchema);
 
 export default FormsModel;

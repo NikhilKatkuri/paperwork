@@ -1,8 +1,8 @@
-import { ZodObject } from 'zod';
+import { z, ZodError } from 'zod';
 import { Request, Response, NextFunction } from 'express';
 
 const validate =
-    (schema: ZodObject) =>
+    (schema: z.ZodObject<any>) =>
     async (req: Request, res: Response, next: NextFunction) => {
         try {
             const parsed = await schema.parseAsync({
@@ -10,18 +10,18 @@ const validate =
                 query: req.query,
                 params: req.params,
             });
-            const { body, query, params } = parsed;
-            req.body = body;
-            req.query = query as any;
-            req.params = params as any;
+            req.body = parsed.body;
 
             next();
-        } catch (error: any) {
-            res.status(400).json({
-                success: false,
-                errors: error.errors,
-            });
-            return;
+        } catch (error) {
+            if (error instanceof ZodError) {
+                res.status(400).json({
+                    success: false,
+                    errors: error.flatten(),
+                });
+                return;
+            }
+            next(error);
         }
     };
 

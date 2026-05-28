@@ -9,4 +9,11 @@ const getFullPath = (path: string) => `${baseName}${path}`;
 
 router.use(getFullPath('/auth'), authRouter);
 router.use(getFullPath('/forms'), formsRouter);
+
+router.use((req: express.Request, res: express.Response) => {
+    res.status(404).json({
+        success: false,
+        message: `Route ${req.method} ${req.originalUrl} not found`,
+    });
+});
 export default router;

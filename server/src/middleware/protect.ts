@@ -4,7 +4,11 @@ import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { CustomAuthRequest as CustomRequest } from '@/types';
 
-const protect = (req: CustomRequest, _res: Response, next: NextFunction) => {
+const protect = async (
+    req: CustomRequest,
+    _res: Response,
+    next: NextFunction
+) => {
     try {
         const authorizationHeader = req.headers.authorization;
         if (
@@ -19,7 +23,7 @@ const protect = (req: CustomRequest, _res: Response, next: NextFunction) => {
             throw AppError.Unauthorized('unauthorized');
         }
 
-        const decodedToken = jwt.verify(token, config.JWT_SECRET) as {
+        const decodedToken = (await jwt.verify(token, config.JWT_SECRET)) as {
             userId: string;
             email: string;
         } | null;

@@ -23,7 +23,7 @@ const limiter: RateLimitRequestHandler = ratelimit({
 const authLimiter: RateLimitRequestHandler = ratelimit({
     ...base,
     windowMs: 15 * 60 * 1000,
-    limit: 10,
+    limit: 100,
     skipSuccessfulRequests: true,
     message: {
         status: status.TOO_MANY_REQUESTS,

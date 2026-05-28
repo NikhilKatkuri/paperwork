@@ -1,7 +1,7 @@
-import UserModel from '@/schemas/user.schema';
+import UserModel from './schemas/user.schema';
 import jwt from 'jsonwebtoken';
 import bycrpt from 'bcryptjs';
-import ProfileModel from '@/schemas/profile.schema';
+import ProfileModel from './schemas/profile.schema';
 import { AppError } from '@/utils/AppError';
 import config from '@/config';
 import { SignInService, SignUpService } from './auth.types';
@@ -103,7 +103,7 @@ class AuthService {
         if (!profile) {
             throw AppError.NotFound('Profile not found');
         }
-        return profile;
+        return profile.toObject();
     };
 }
 

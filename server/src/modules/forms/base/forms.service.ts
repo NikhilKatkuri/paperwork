@@ -9,18 +9,18 @@ class FormsService {
             throw AppError.FormCreationFailed('Failed to create form');
         }
 
-        const { __v, ...cleanForm } = form.toObject();
-
-        return cleanForm;
+        return form.toObject();
     }
 
     async get(formId: string, userId: string) {
-        const form = await FormsModel.findOne({ _id: formId, userId }).lean();
+        const form = await FormsModel.findOne({ _id: formId, userId })
+            .select('-__v')
+            .lean();
         if (!form) {
             throw AppError.FormNotFound('Form not found');
         }
-        const { __v, ...cleanForm } = form.toObject();
-        return cleanForm;
+
+        return form;
     }
 
     async delete(formId: string, userId: string) {
@@ -49,8 +49,7 @@ class FormsService {
         form.set(updateData);
         await form.save();
 
-        const { __v, ...cleanForm } = form.toObject();
-        return cleanForm;
+        return form.toObject();
     }
 
     async publish(userId: string, formId: string) {
@@ -70,8 +69,7 @@ class FormsService {
             throw AppError.FormPublishFailed('Failed to publish form');
         }
 
-        const { __v, ...cleanForm } = form.toObject();
-        return cleanForm;
+        return form.toObject();
     }
 
     async unPublish(userId: string, formId: string) {
@@ -91,8 +89,7 @@ class FormsService {
             throw AppError.FormPublishFailed('Failed to unpublish form');
         }
 
-        const { __v, ...cleanForm } = form.toObject();
-        return cleanForm;
+        return form.toObject();
     }
 
     async duplicate(userId: string, formId: string) {
@@ -101,35 +98,40 @@ class FormsService {
             throw AppError.FormNotFound('Form not found');
         }
 
-        const { __v, _id, ...cleanForm } = form.toObject();
+        const { _id, ...cleanForm } = form.toObject();
 
         cleanForm.isPublished = false;
 
         const duplicatedForm = await FormsModel.create({
             ...cleanForm,
+            _id: undefined,
+            title: `${cleanForm.title} (Copy)`,
+            isPublished: false,
+            createdAt: undefined,
+            updatedAt: undefined,
             userId,
-        });
+        } as any);
 
         if (!duplicatedForm) {
             throw AppError.FormCreationFailed('Failed to duplicate form');
         }
 
-        const { __v: _, ...finalForm } = duplicatedForm.toObject();
+        const { ...finalForm } = duplicatedForm.toObject();
         /** related data must be duplicated as well */
 
         return finalForm;
     }
 
     async getAll(userId: string) {
-        const forms = await FormsModel.find({ userId }).lean();
+        const forms = await FormsModel.find({ userId }).select('-__v').lean();
         if (!forms) {
             throw AppError.FormNotFound('No forms found for this user');
         }
-        const cleanForms = forms.map((form) => {
-            const { __v, ...cleanForm } = form.toObject();
-            return cleanForm;
-        });
-        return cleanForms;
+        if (!forms.length) {
+            throw AppError.FormNotFound('No forms found for this user');
+        }
+
+        return forms;
     }
 }
 

@@ -25,9 +25,9 @@ authRouter.post(
     validate(signUpSchema),
     signUpController
 );
-authRouter.post('/me', protect, authLimiter, getProfileController);
-authRouter.post('/refresh-token', protect, authLimiter, refreshTokenController);
-
 authRouter.post('/sign-out', authLimiter, signOutController);
+
+authRouter.get('/me', protect, getProfileController);
+authRouter.post('/refresh-token', protect, refreshTokenController);
 
 export default authRouter;
