@@ -23,8 +23,8 @@ class FormsController {
     private getRequestData(req: Request) {
         return {
             userId: req.user!.id,
-            formId: req.params.id as string,
-            bodyData: req.body.data,
+            formId: req.params.formId as string,
+            bodyData: req.body?.data,
         };
     }
 

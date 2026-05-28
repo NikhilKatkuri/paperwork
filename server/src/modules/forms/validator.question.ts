@@ -7,14 +7,14 @@ import { zodObjectId } from './validator.sections';
 
 export const getAllQuestionsSchema = z.object({
     params: z.object({
-        id: zodObjectId,
+        formId: zodObjectId,
         sectionId: zodObjectId,
     }),
 });
 
 export const getQuestionSchema = z.object({
     params: z.object({
-        id: zodObjectId,
+        formId: zodObjectId,
         sectionId: zodObjectId,
         questionId: zodObjectId,
     }),
@@ -124,7 +124,7 @@ export const updateQuestionSchema = z.object({
 
 export const reorderQuestionSchema = z.object({
     params: z.object({
-        id: zodObjectId,
+        formId: zodObjectId,
         sectionId: zodObjectId,
     }),
     body: z.object({
@@ -141,6 +141,6 @@ export const reorderQuestionSchema = z.object({
 
 export const fillFormSchema = z.object({
     params: z.object({
-        id: zodObjectId,
+        formId: zodObjectId,
     }),
 });

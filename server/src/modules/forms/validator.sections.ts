@@ -6,7 +6,7 @@ export const zodObjectId = z
 
 export const getSectionSchema = z.object({
     params: z.object({
-        id: zodObjectId,
+        formId: zodObjectId,
         sectionId: zodObjectId,
     }),
 });
@@ -46,7 +46,7 @@ export const createSectionSchema = sectionSchema;
 export const updateSectionSchema = sectionSchema.partial();
 export const orderSectionSchema = z.object({
     params: z.object({
-        id: zodObjectId,
+        formId: zodObjectId,
     }),
     body: z.object({
         data: z.array(

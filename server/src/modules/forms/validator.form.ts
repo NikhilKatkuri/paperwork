@@ -53,20 +53,20 @@ export const formSchema = z.object({
 
 export const putRequestFormSchema = z.object({
     params: z.object({
-        id: zodObjectId,
+        formId: zodObjectId,
     }),
     body: formSchema.shape.body,
 });
 
 export const patchRequestFormSchema = z.object({
     params: z.object({
-        id: zodObjectId,
+        formId: zodObjectId,
     }),
     body: formSchema.shape.body.partial(),
 });
 
 export const getFormSchema = z.object({
     params: z.object({
-        id: zodObjectId,
+        formId: zodObjectId,
     }),
 });
