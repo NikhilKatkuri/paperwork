@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { SectionDocument } from '@/types/form/Document';
 
-const sectionActionEnum = [
+export const sectionActionEnum = [
     'NEXT_SECTION',
     'GO_TO_SECTION',
     'SUBMIT_FORM',

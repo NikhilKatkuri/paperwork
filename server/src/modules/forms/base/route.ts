@@ -2,7 +2,8 @@ import express from 'express';
 import FormsController from './forms.controller';
 import protect from '@/middleware/protect';
 import validate from '@/middleware/validate';
-import { formSchema, getFormSchema } from './validation/form';
+import { formSchema, getFormSchema } from '../validator.form';
+import sectionRouter from '../sections/route';
 
 const formsRouter = express.Router();
 
@@ -31,6 +32,6 @@ formsRouter.post(
     controller.duplicate
 );
 formsRouter.get('/', protect, controller.getAll);
-formsRouter.get('/public/:id', validate(getFormSchema), controller.publicGet);
+formsRouter.use('/:id/sections', sectionRouter);
 
 export default formsRouter;

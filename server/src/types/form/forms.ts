@@ -89,7 +89,7 @@ interface FormType {
     isPrivate: boolean;
     isPublished: boolean;
     allowedDomains?: string[];
-    sectionss: Section[];
+    sections: Section[];
 }
 
 export {

@@ -1,10 +1,6 @@
-import { FormType } from '@/types/form/forms';
-import FormsModel from './schemas/forms';
 import { AppError } from '@/utils/AppError';
-
-interface IformData extends Omit<FormType, 'sectionss'> {
-    userId: string;
-}
+import FormsModel from '../schemas/forms';
+import { IformData } from '../types';
 
 class FormsService {
     async create(data: IformData) {
@@ -134,15 +130,6 @@ class FormsService {
             return cleanForm;
         });
         return cleanForms;
-    }
-
-    async publicGet(formId: string) {
-        const form = await FormsModel.findById(formId).lean();
-        if (!form) {
-            throw AppError.FormNotFound('Form not found');
-        }
-        const { __v, ...cleanForm } = form.toObject();
-        return cleanForm;
     }
 }
 

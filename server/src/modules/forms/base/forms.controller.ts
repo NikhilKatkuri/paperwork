@@ -97,16 +97,6 @@ class FormsController {
             next(error);
         }
     }
-
-    async publicGet(req: Request, res: Response, next: NextFunction) {
-        const { id: formId } = req.params as { id: string };
-        try {
-            const form = await this.service.publicGet(formId);
-            res.status(StatusCodes.OK).json({ data: form });
-        } catch (error) {
-            next(error);
-        }
-    }
 }
 
 export default FormsController;

@@ -10,7 +10,7 @@ interface SectionDocument extends Omit<Section, 'questions'>, Document {
     formId: string;
 }
 
-interface FormDocument extends Omit<FormType, 'questions'>, Document {
+interface FormDocument extends Omit<FormType, 'sections'>, Document {
     userId: string;
 }
 

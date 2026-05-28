@@ -1,6 +1,12 @@
 import { StatusCodes } from 'http-status-codes';
 
 export class AppError extends Error {
+    static SectionReorderFailed(arg0: string) {
+          throw new Error('Method not implemented.');
+    }
+    static SectionUpdateFailed(arg0: string) {
+          throw new Error('Method not implemented.');
+    }
     public readonly statusCode: number;
     public readonly isOperational: boolean;
 
@@ -32,6 +38,24 @@ export class AppError extends Error {
         return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
     }
     static FormNotFound(message: string) {
+        return new AppError(StatusCodes.NOT_FOUND, message);
+    }
+    static FormPublishFailed(message: string) {
+        return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
+    }
+    static SectionCreationFailed(message: string) {
+        return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
+    }
+    static SectionDeletionFailed(message: string) {
+        return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
+    }
+    static SectionNotFound(message: string) {
+        return new AppError(StatusCodes.NOT_FOUND, message);
+    }
+    static QuestionCreationFailed(message: string) {
+        return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
+    }
+    static QuestionNotFound(message: string) {
         return new AppError(StatusCodes.NOT_FOUND, message);
     }
 }
