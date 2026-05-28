@@ -1,5 +1,5 @@
-import { FormType } from '@/types/form/forms';
+import { FormCore } from '@/types/form/forms';
 
-export interface IformData extends Omit<FormType, 'sections'> {
+export interface IformData extends FormCore {
     userId: string;
 }

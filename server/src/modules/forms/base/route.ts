@@ -2,38 +2,66 @@ import express from 'express';
 import FormsController from './forms.controller';
 import protect from '@/middleware/protect';
 import validate from '@/middleware/validate';
-import { formSchema, getFormSchema } from '../validator.form';
+import {
+    formSchema,
+    getFormSchema,
+    patchRequestFormSchema,
+    putRequestFormSchema,
+} from '../validator.form';
 import sectionRouter from '../sections/route';
 import questionsRouter from '../questions/route';
+import FillController from '../fill/fill.controller';
+import { fillFormSchema } from '../validator.question';
 
-const formsRouter = express.Router();
+const formsRouter = express.Router({ mergeParams: true });
 
 const controller = new FormsController();
+const fillController = new FillController();
+
+formsRouter.get('/', protect, controller.getAll);
 formsRouter.post('/', protect, validate(formSchema), controller.create);
-formsRouter.get('/:id', protect, validate(getFormSchema), controller.get);
-formsRouter.delete('/:id', protect, validate(getFormSchema), controller.delete);
-formsRouter.put('/:id', protect, validate(formSchema), controller.update);
+formsRouter.put(
+    '/:formId',
+    protect,
+    validate(putRequestFormSchema),
+    controller.put
+);
+
+formsRouter.patch(
+    '/:formId',
+    protect,
+    validate(patchRequestFormSchema),
+    controller.patch
+);
+
+formsRouter.get('/:formId', protect, validate(getFormSchema), controller.get);
+formsRouter.delete(
+    '/:formId',
+    protect,
+    validate(getFormSchema),
+    controller.delete
+);
 
 formsRouter.post(
-    '/:id/publish',
+    '/:formId/publish',
     protect,
     validate(getFormSchema),
     controller.publish
 );
 formsRouter.post(
-    '/:id/unpublish',
+    '/:formId/unpublish',
     protect,
     validate(getFormSchema),
     controller.unPublish
 );
 formsRouter.post(
-    '/:id/duplicate',
+    '/:formId/duplicate',
     protect,
     validate(getFormSchema),
     controller.duplicate
 );
-formsRouter.get('/', protect, controller.getAll);
-formsRouter.use('/:id/sections', sectionRouter);
-formsRouter.use('/:id/sections/:sectionId/questions', questionsRouter);
 
+formsRouter.use('/:formId/sections', sectionRouter);
+formsRouter.use('/:formId/sections/:sectionId/questions', questionsRouter);
+formsRouter.use('/:formId/fill', validate(fillFormSchema), fillController.fill);
 export default formsRouter;

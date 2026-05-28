@@ -1,12 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 
 export class AppError extends Error {
-    static SectionReorderFailed(arg0: string) {
-        throw new Error('Method not implemented.');
-    }
-    static SectionUpdateFailed(arg0: string) {
-        throw new Error('Method not implemented.');
-    }
     public readonly statusCode: number;
     public readonly isOperational: boolean;
 
@@ -63,5 +57,14 @@ export class AppError extends Error {
     }
     static FormDeletionFailed(message: string) {
         return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
+    }
+    static SectionReorderFailed(message: string) {
+        return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
+    }
+    static SectionUpdateFailed(message: string) {
+        return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
+    }
+    static NotImplemented(message: string) {
+        return new AppError(StatusCodes.NOT_IMPLEMENTED, message);
     }
 }

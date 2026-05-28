@@ -1,12 +1,9 @@
-import { QuestionDocument } from '@/types/form/Document';
 import QuestionsModel from '../schemas/forms.questions';
 import { AppError } from '@/utils/AppError';
 import FormsModel from '../schemas/forms';
 import SectionModel from '../schemas/forms.sections';
-
-interface T extends QuestionDocument {
-    userId: string;
-}
+import { QuestionCore } from '@/types/form/forms';
+import mongoose from 'mongoose';
 
 interface I {
     userId: string;
@@ -16,31 +13,34 @@ interface I {
 }
 
 class questionService {
-    async validateOwnership(formId: string, userId: string) {
-        const form = await FormsModel.findById(formId).lean();
-        if (!form) {
-            throw AppError.FormNotFound('Form not found');
-        }
-        if (form.userId !== userId) {
-            throw AppError.Unauthorized(
-                'You are not authorized to add questions to this form'
-            );
-        }
-    }
-    async validateSection(formId: string, sectionId: string) {
-        const section = await SectionModel.findOne({
-            _id: sectionId,
-            formId,
-        }).lean();
-        if (!section) {
-            throw AppError.NotFound('Section not found');
-        }
-    }
-    async create(data: T) {
-        const { formId, sectionId, userId, ...questionData } = data;
+    private async authorizeAccess(
+        ids: Omit<I, 'questionId'>,
+        session?: mongoose.ClientSession
+    ) {
+        const { formId, sectionId, userId } = ids;
 
-        await this.validateOwnership(formId, userId);
-        await this.validateSection(formId, sectionId);
+        const form = await FormsModel.findOne({ _id: formId, userId })
+            .session(session || null)
+            .lean();
+        if (!form) throw AppError.Unauthorized('Form access denied');
+
+        const section = await SectionModel.findOne({ _id: sectionId, formId })
+            .session(session || null)
+            .lean();
+        if (!section) throw AppError.NotFound('Section not found in this form');
+
+        return { form, section };
+    }
+
+    async create(params: {
+        userId: string;
+        formId: string;
+        sectionId: string;
+        data: QuestionCore;
+    }) {
+        const { formId, sectionId, userId, data: questionData } = params;
+
+        await this.authorizeAccess({ formId, sectionId, userId });
 
         const questionCount = await QuestionsModel.countDocuments({
             sectionId,
@@ -58,49 +58,52 @@ class questionService {
 
     async delete(ids: I) {
         const { formId, sectionId, questionId, userId } = ids;
-        await this.validateOwnership(formId, userId);
-        await this.validateSection(formId, sectionId);
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-        const question = await QuestionsModel.findOneAndDelete({
-            _id: questionId,
-            formId,
-            sectionId,
-        }).lean();
+        try {
+            await this.authorizeAccess({ formId, sectionId, userId }, session);
 
-        if (!question) {
-            throw AppError.NotFound('Question not found');
+            const question = await QuestionsModel.findOneAndDelete(
+                { _id: questionId, formId, sectionId },
+                { session }
+            ).lean();
+
+            if (!question) throw AppError.NotFound('Question not found');
+
+            await QuestionsModel.updateMany(
+                { sectionId, index: { $gt: question.index } },
+                { $inc: { index: -1 } },
+                { session }
+            );
+
+            await session.commitTransaction();
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
         }
-
-        await QuestionsModel.updateMany(
-            { sectionId, index: { $gt: question.index } },
-            { $inc: { index: -1 } }
-        );
     }
 
-    async update(ids: I, data: Partial<T>) {
+    async update(ids: I, data: Partial<QuestionCore>) {
         const { formId, sectionId, questionId, userId } = ids;
-        await this.validateOwnership(formId, userId);
-        await this.validateSection(formId, sectionId);
+        await this.authorizeAccess({ formId, sectionId, userId });
 
         const updatedQuestion = await QuestionsModel.findOneAndUpdate(
             { _id: questionId, formId, sectionId },
             { $set: data },
-            { new: true }
+            { new: true, runValidators: true }
         )
             .select('-__v')
             .lean();
 
-        if (!updatedQuestion) {
-            throw AppError.NotFound('Question not found');
-        }
-
+        if (!updatedQuestion) throw AppError.NotFound('Question not found');
         return updatedQuestion;
     }
     async get(ids: Omit<I, 'questionId'>) {
         const { formId, sectionId, userId } = ids;
-        await this.validateOwnership(formId, userId);
-        await this.validateSection(formId, sectionId);
-
+        await this.authorizeAccess({ formId, sectionId, userId });
         const questions = await QuestionsModel.find({
             formId,
             sectionId,
@@ -116,9 +119,7 @@ class questionService {
 
     async getById(ids: I) {
         const { formId, sectionId, userId, questionId } = ids;
-        await this.validateOwnership(formId, userId);
-        await this.validateSection(formId, sectionId);
-
+        await this.authorizeAccess({ formId, sectionId, userId });
         const question = await QuestionsModel.findOne({
             _id: questionId,
             formId,
@@ -134,48 +135,40 @@ class questionService {
 
     async reorder(ids: Omit<I, 'questionId'>, order: string[]) {
         const { formId, sectionId, userId } = ids;
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-        await this.validateOwnership(formId, userId);
-        await this.validateSection(formId, sectionId);
+        try {
+            await this.authorizeAccess({ formId, sectionId, userId }, session);
 
-        const questions = await QuestionsModel.find({ formId, sectionId })
-            .select('_id')
-            .lean();
+            const operations = [
+                ...order.map((id, i) => ({
+                    updateOne: {
+                        filter: { _id: id, sectionId },
+                        update: { $set: { index: -(i + 1) } },
+                    },
+                })),
+                ...order.map((id, index) => ({
+                    updateOne: {
+                        filter: { _id: id, sectionId },
+                        update: { $set: { index } },
+                    },
+                })),
+            ];
 
-        const existingIds = questions.map((q) => q._id.toString());
+            await QuestionsModel.bulkWrite(operations, { session });
+            await session.commitTransaction();
 
-        const isValid =
-            order.length === existingIds.length &&
-            order.every((id) => existingIds.includes(id));
-
-        if (!isValid) {
-            throw AppError.BadRequest(
-                'Invalid question order — ids do not match'
-            );
+            return await QuestionsModel.find({ sectionId })
+                .sort({ index: 1 })
+                .select('-__v')
+                .lean();
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
         }
-
-        await QuestionsModel.bulkWrite(
-            order.map((questionId, i) => ({
-                updateOne: {
-                    filter: { _id: questionId, formId, sectionId },
-                    update: { $set: { index: -(i + 1) } },
-                },
-            }))
-        );
-
-        await QuestionsModel.bulkWrite(
-            order.map((questionId, index) => ({
-                updateOne: {
-                    filter: { _id: questionId, formId, sectionId },
-                    update: { $set: { index } },
-                },
-            }))
-        );
-
-        return QuestionsModel.find({ formId, sectionId })
-            .sort({ index: 1 })
-            .select('-__v')
-            .lean();
     }
 }
 

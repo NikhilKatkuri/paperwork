@@ -1,17 +1,24 @@
 import { Document } from 'mongoose';
-import { FormType, QuestionBase, Section } from './forms';
+import { FormCore, QuestionCore, ResponseCore, SectionCore } from './forms';
 
-interface QuestionDocument extends QuestionBase, Document {
+interface FormResponseDocument extends ResponseCore, Document {}
+
+interface QuestionDocument extends QuestionCore, Document {
     formId: string;
     sectionId: string;
 }
 
-interface SectionDocument extends Omit<Section, 'questions'>, Document {
+interface SectionDocument extends SectionCore, Document {
     formId: string;
 }
 
-interface FormDocument extends Omit<FormType, 'sections'>, Document {
+interface FormDocument extends FormCore, Document {
     userId: string;
 }
 
-export { FormDocument, SectionDocument, QuestionDocument };
+export {
+    FormDocument,
+    SectionDocument,
+    QuestionDocument,
+    FormResponseDocument,
+};

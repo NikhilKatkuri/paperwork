@@ -7,7 +7,7 @@ import {
     getQuestionSchema,
     reorderQuestionSchema,
     updateQuestionSchema,
-} from '../validator.form';
+} from '../validator.question';
 import questionsController from './questions.controller';
 
 const questionsRouter = express.Router({ mergeParams: true });

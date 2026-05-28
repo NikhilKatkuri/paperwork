@@ -1,8 +1,9 @@
-import { Section } from '@/types/form/forms';
+import { SectionCore } from '@/types/form/forms';
 import SectionModel from '../schemas/forms.sections';
 import { AppError } from '@/utils/AppError';
 import FormsModel from '../schemas/forms';
 import QuestionsModel from '../schemas/forms.questions';
+import mongoose from 'mongoose';
 
 interface I {
     userId: string;
@@ -11,43 +12,22 @@ interface I {
 }
 
 class SectionService {
-    async validateOwnership(formId: string, userId: string) {
-        const form = await FormsModel.findById(formId).lean();
-        if (!form) {
-            throw AppError.FormNotFound('Form not found');
-        }
-        if (form.userId !== userId) {
-            throw AppError.Unauthorized(
-                'You are not authorized to add questions to this form'
-            );
-        }
-    }
-    async validateSection(formId: string, sectionId: string) {
-        const section = await SectionModel.findOne({
-            _id: sectionId,
-            formId,
-        }).lean();
-        if (!section) {
-            throw AppError.NotFound('Section not found');
-        }
-    }
-
-    async create(
-        userId: string,
+    private async authorizeForm(
         formId: string,
-        data: Omit<Section, 'questions'>
+        userId: string,
+        session?: mongoose.ClientSession
     ) {
-        const form = await FormsModel.findById(formId).lean();
-
+        const form = await FormsModel.findOne({ _id: formId, userId })
+            .session(session || null)
+            .lean();
         if (!form) {
-            throw AppError.FormNotFound('Form not found');
+            throw AppError.Unauthorized('Form not found or access denied');
         }
-        if (form.userId !== userId) {
-            throw AppError.Unauthorized(
-                'You are not authorized to add sections to this form'
-            );
-        }
+        return form;
+    }
 
+    async create(userId: string, formId: string, data: SectionCore) {
+        await this.authorizeForm(formId, userId);
         const sectionCount = await SectionModel.countDocuments({ formId });
 
         const createdSection = await SectionModel.create({
@@ -61,66 +41,78 @@ class SectionService {
 
     async delete(ids: I) {
         const { formId, sectionId, userId } = ids;
-        await this.validateOwnership(formId, userId);
-        await this.validateSection(formId, sectionId);
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-        const deletedSection = await SectionModel.findOneAndDelete({
-            _id: sectionId,
-            formId,
-        });
-        if (!deletedSection) {
-            throw AppError.SectionDeletionFailed('Section not found');
+        try {
+            await this.authorizeForm(formId, userId, session);
+
+            const deletedSection = await SectionModel.findOneAndDelete(
+                { _id: sectionId, formId },
+                { session }
+            );
+
+            if (!deletedSection)
+                throw AppError.SectionNotFound('Section not found');
+
+            await Promise.all([
+                QuestionsModel.deleteMany({ sectionId }, { session }),
+                SectionModel.updateMany(
+                    { formId, index: { $gt: deletedSection.index } },
+                    { $inc: { index: -1 } },
+                    { session }
+                ),
+            ]);
+
+            await session.commitTransaction();
+            return deletedSection.toObject();
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
         }
-
-        await Promise.all([
-            QuestionsModel.deleteMany({ sectionId }),
-            SectionModel.updateMany(
-                { formId, index: { $gt: deletedSection.index } },
-                { $inc: { index: -1 } }
-            ),
-        ]);
-        return deletedSection.toObject();
     }
 
-    async update(ids: I, data: Partial<Section>) {
+    async update(ids: I, data: Partial<SectionCore>) {
         const { sectionId, formId, userId } = ids;
-        await this.validateOwnership(formId, userId);
-        await this.validateSection(formId, sectionId);
+        await this.authorizeForm(formId, userId);
 
         const updatedSection = await SectionModel.findByIdAndUpdate(
             sectionId,
             data,
-            { new: true }
-        );
+            { new: true, runValidators: true }
+        )
+            .select('-__v')
+            .lean();
         if (!updatedSection) {
             throw AppError.SectionNotFound('Section not found');
         }
-        const { __v, ...rest } = updatedSection.toObject();
-        return rest;
+        return updatedSection;
     }
 
-    async get(formId: string) {
-        const sections = await SectionModel.find({ formId });
-        if (!sections) {
-            throw AppError.SectionNotFound('No sections found for this form');
-        }
-        return sections.map((section) => {
-            const { __v, ...rest } = section.toObject();
-            return rest;
+    async get(formId: string, userId: string) {
+        await this.authorizeForm(formId, userId);
+        return await SectionModel.find({ formId }).select('-__v').sort({
+            index: 1,
         });
     }
 
     async getById(ids: I) {
         const { sectionId, formId, userId } = ids;
-        await this.validateOwnership(formId, userId);
-        await this.validateSection(formId, sectionId);
+        await this.authorizeForm(formId, userId);
 
-        const section = await SectionModel.findById(sectionId);
+        const section = await SectionModel.findOne({
+            _id: sectionId,
+            formId,
+        })
+            .select('-__v')
+            .lean();
         if (!section) {
             throw AppError.SectionNotFound('Section not found');
         }
-        const { __v, ...rest } = section.toObject();
-        return rest;
+
+        return section;
     }
 
     async reorder(
@@ -128,49 +120,39 @@ class SectionService {
         data: { sectionId: string; index: number }[]
     ) {
         const { formId, userId } = ids;
-        await this.validateOwnership(formId, userId);
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-        const sections = await SectionModel.find({ formId });
-        if (!sections) {
-            throw AppError.SectionNotFound('No sections found for this form');
+        try {
+            await this.authorizeForm(formId, userId, session);
+
+            const operations = [
+                ...data.map(({ sectionId, index }) => ({
+                    updateOne: {
+                        filter: { _id: sectionId, formId },
+                        update: { $set: { index: -(index + 1) } },
+                    },
+                })),
+                ...data.map(({ sectionId, index }) => ({
+                    updateOne: {
+                        filter: { _id: sectionId, formId },
+                        update: { $set: { index } },
+                    },
+                })),
+            ];
+
+            await SectionModel.bulkWrite(operations, { session });
+            await session.commitTransaction();
+
+            return await SectionModel.find({ formId })
+                .sort({ index: 1 })
+                .lean();
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
         }
-        const sectionMap = new Map(
-            sections.map((section) => [section._id.toString(), section])
-        );
-        for (const { sectionId } of data) {
-            if (!sectionMap.has(sectionId)) {
-                throw AppError.SectionNotFound(
-                    `Section with ID ${sectionId} not found in this form`
-                );
-            }
-        }
-
-        await SectionModel.bulkWrite(
-            data.map(({ sectionId }, i) => ({
-                updateOne: {
-                    filter: { _id: sectionId, formId },
-                    update: { $set: { index: -(i + 1) } },
-                },
-            }))
-        );
-
-        await SectionModel.bulkWrite(
-            data.map(({ sectionId, index }) => ({
-                updateOne: {
-                    filter: { _id: sectionId, formId },
-                    update: { $set: { index } },
-                },
-            }))
-        );
-
-        const reorderedSections = await SectionModel.find({ formId }).sort({
-            index: 1,
-        });
-
-        return reorderedSections.map((section) => {
-            const { __v, ...rest } = section.toObject();
-            return rest;
-        });
     }
 }
 
