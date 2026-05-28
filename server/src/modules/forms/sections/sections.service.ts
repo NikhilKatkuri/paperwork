@@ -2,8 +2,36 @@ import { Section } from '@/types/form/forms';
 import SectionModel from '../schemas/forms.sections';
 import { AppError } from '@/utils/AppError';
 import FormsModel from '../schemas/forms';
+import QuestionsModel from '../schemas/forms.questions';
+
+interface I {
+    userId: string;
+    formId: string;
+    sectionId: string;
+}
 
 class SectionService {
+    async validateOwnership(formId: string, userId: string) {
+        const form = await FormsModel.findById(formId).lean();
+        if (!form) {
+            throw AppError.FormNotFound('Form not found');
+        }
+        if (form.userId !== userId) {
+            throw AppError.Unauthorized(
+                'You are not authorized to add questions to this form'
+            );
+        }
+    }
+    async validateSection(formId: string, sectionId: string) {
+        const section = await SectionModel.findOne({
+            _id: sectionId,
+            formId,
+        }).lean();
+        if (!section) {
+            throw AppError.NotFound('Section not found');
+        }
+    }
+
     async create(
         userId: string,
         formId: string,
@@ -31,16 +59,34 @@ class SectionService {
         return createdSection.toObject();
     }
 
-    async delete(sectionId: string) {
-        const deletedSection = await SectionModel.findByIdAndDelete(sectionId);
+    async delete(ids: I) {
+        const { formId, sectionId, userId } = ids;
+        await this.validateOwnership(formId, userId);
+        await this.validateSection(formId, sectionId);
+
+        const deletedSection = await SectionModel.findOneAndDelete({
+            _id: sectionId,
+            formId,
+        });
         if (!deletedSection) {
-            throw AppError.SectionDeletionFailed('Failed to delete section');
+            throw AppError.SectionDeletionFailed('Section not found');
         }
-        /** need to delete questions associated with this section */
-        return deletedSection;
+
+        await Promise.all([
+            QuestionsModel.deleteMany({ sectionId }),
+            SectionModel.updateMany(
+                { formId, index: { $gt: deletedSection.index } },
+                { $inc: { index: -1 } }
+            ),
+        ]);
+        return deletedSection.toObject();
     }
 
-    async update(sectionId: string, data: Partial<Section>) {
+    async update(ids: I, data: Partial<Section>) {
+        const { sectionId, formId, userId } = ids;
+        await this.validateOwnership(formId, userId);
+        await this.validateSection(formId, sectionId);
+
         const updatedSection = await SectionModel.findByIdAndUpdate(
             sectionId,
             data,
@@ -64,7 +110,11 @@ class SectionService {
         });
     }
 
-    async getById(sectionId: string) {
+    async getById(ids: I) {
+        const { sectionId, formId, userId } = ids;
+        await this.validateOwnership(formId, userId);
+        await this.validateSection(formId, sectionId);
+
         const section = await SectionModel.findById(sectionId);
         if (!section) {
             throw AppError.SectionNotFound('Section not found');
@@ -74,9 +124,12 @@ class SectionService {
     }
 
     async reorder(
-        formId: string,
+        ids: Omit<I, 'sectionId'>,
         data: { sectionId: string; index: number }[]
     ) {
+        const { formId, userId } = ids;
+        await this.validateOwnership(formId, userId);
+
         const sections = await SectionModel.find({ formId });
         if (!sections) {
             throw AppError.SectionNotFound('No sections found for this form');

@@ -45,16 +45,16 @@ class SectionController {
     }
 
     async delete(_req: Request, res: Response, _next: NextFunction) {
-        const { sectionId } = this.readAllIds(_req);
+        const { sectionId, formId, userId } = this.readAllIds(_req);
         if (!sectionId) {
             throw AppError.SectionNotFound('No section ID provided');
         }
-        await this.service.delete(sectionId);
+        await this.service.delete({ sectionId, formId, userId });
         res.status(204).send();
     }
 
     async update(req: Request, res: Response, _next: NextFunction) {
-        const { sectionId } = this.readAllIds(req);
+        const { sectionId, ...rest } = this.readAllIds(req);
         const data = req.body.data;
         if (!data) {
             throw AppError.SectionUpdateFailed('No data provided');
@@ -62,7 +62,12 @@ class SectionController {
         if (!sectionId) {
             throw AppError.SectionNotFound('No section ID provided');
         }
-        const updatedSection = await this.service.update(sectionId, data);
+
+        const updatedSection = await this.service.update(
+            { sectionId, ...rest },
+            data
+        );
+
         res.status(StatusCodes.OK).json({
             success: true,
             message: 'Section updated successfully',
@@ -84,11 +89,12 @@ class SectionController {
     }
 
     async getById(req: Request, res: Response, _next: NextFunction) {
-        const { sectionId } = this.readAllIds(req);
+        const { sectionId, ...rest } = this.readAllIds(req);
         if (!sectionId) {
             throw AppError.SectionNotFound('No section ID provided');
         }
-        const section = await this.service.getById(sectionId);
+
+        const section = await this.service.getById({ sectionId, ...rest });
         res.status(StatusCodes.OK).json({
             success: true,
             message: 'Section retrieved successfully',
@@ -97,12 +103,14 @@ class SectionController {
     }
 
     async reorder(req: Request, res: Response, _next: NextFunction) {
-        const { formId } = this.readIds(req);
         const { data } = req.body;
         if (!data) {
             throw AppError.SectionReorderFailed('No data provided');
         }
-        const reorderedSections = await this.service.reorder(formId, data);
+        const reorderedSections = await this.service.reorder(
+            this.readIds(req),
+            data
+        );
         res.status(StatusCodes.OK).json({
             success: true,
             message: 'Sections reordered successfully',

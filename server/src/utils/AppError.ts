@@ -58,4 +58,10 @@ export class AppError extends Error {
     static QuestionNotFound(message: string) {
         return new AppError(StatusCodes.NOT_FOUND, message);
     }
+    static QuestionUpdateFailed(message: string) {
+        return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
+    }
+    static FormDeletionFailed(message: string) {
+        return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
+    }
 }

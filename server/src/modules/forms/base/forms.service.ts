@@ -1,6 +1,8 @@
 import { AppError } from '@/utils/AppError';
 import FormsModel from '../schemas/forms';
 import { IformData } from '../types';
+import SectionModel from '../schemas/forms.sections';
+import QuestionsModel from '../schemas/forms.questions';
 
 class FormsService {
     async create(data: IformData) {
@@ -24,11 +26,22 @@ class FormsService {
     }
 
     async delete(formId: string, userId: string) {
-        const form = await FormsModel.findOneAndDelete({ _id: formId, userId });
-        if (!form) {
-            throw AppError.FormNotFound('Form not found');
+        try {
+            const form = await FormsModel.findOneAndDelete({
+                _id: formId,
+                userId,
+            });
+            if (!form) {
+                throw AppError.FormNotFound('Form not found');
+            }
+
+            await Promise.all([
+                SectionModel.deleteMany({ formId }),
+                QuestionsModel.deleteMany({ formId }),
+            ]);
+        } catch (error) {
+            throw AppError.FormDeletionFailed('Failed to delete form');
         }
-        /** need to delete associated sections and questionss */
     }
 
     async update(data: IformData, formId: string) {
@@ -100,8 +113,6 @@ class FormsService {
 
         const { _id, ...cleanForm } = form.toObject();
 
-        cleanForm.isPublished = false;
-
         const duplicatedForm = await FormsModel.create({
             ...cleanForm,
             _id: undefined,
@@ -116,10 +127,47 @@ class FormsService {
             throw AppError.FormCreationFailed('Failed to duplicate form');
         }
 
-        const { ...finalForm } = duplicatedForm.toObject();
-        /** related data must be duplicated as well */
+        const newFormId = duplicatedForm.toObject()._id.toString();
 
-        return finalForm;
+        const [sections, questions] = await Promise.all([
+            SectionModel.find({ formId }).lean(),
+            QuestionsModel.find({ formId }).lean(),
+        ]);
+
+        const sectionIdMap = new Map<string, string>();
+        if (sections.length) {
+            const newSections = await SectionModel.insertMany(
+                sections.map(({ _id, ...section }) => ({
+                    ...section,
+                    formId: newFormId,
+                    createdAt: undefined,
+                    updatedAt: undefined,
+                }))
+            );
+
+            newSections.forEach((newSection, i) => {
+                if (sections[i]) {
+                    sectionIdMap.set(
+                        sections[i]._id.toString(),
+                        newSection._id.toString()
+                    );
+                }
+            });
+        }
+
+        if (questions.length) {
+            await QuestionsModel.insertMany(
+                questions.map(({ _id, ...question }) => ({
+                    ...question,
+                    formId: newFormId,
+                    sectionId: sectionIdMap.get(question.sectionId.toString()),
+                    createdAt: undefined,
+                    updatedAt: undefined,
+                }))
+            );
+        }
+
+        return duplicatedForm.toObject();
     }
 
     async getAll(userId: string) {

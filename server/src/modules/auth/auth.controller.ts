@@ -14,7 +14,6 @@ const signInController = async (
     next: NextFunction
 ) => {
     try {
-        console.log('Sign-in request body:', req.body);
         const { email, password } = req.body;
         const { accessToken, refreshToken } = await authService.signIn({
             email,
