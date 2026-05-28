@@ -4,11 +4,71 @@ import SectionModel from '../schemas/forms.sections';
 import QuestionsModel from '../schemas/forms.questions';
 import { ResponseCore } from '@/types/form/forms';
 import FormResponseModel from '../schemas/forms.responses';
+import { FormDocument } from '@/types/form/Document';
+import mongoose from 'mongoose';
 
 class FillService {
-    async get(formId: string) {
-        const form = await FormsModel.findById(formId).select('-__v').lean();
-        if (!form) throw AppError.FormNotFound('Form not found');
+    private validateEmailDomain(
+        email: string,
+        allowedDomains: string[]
+    ): boolean {
+        if (!allowedDomains || allowedDomains.length === 0) return true;
+
+        const domain = email.split('@')[1]?.toLowerCase();
+
+        if (
+            !domain ||
+            !allowedDomains.map((d) => d.toLowerCase()).includes(domain)
+        ) {
+            throw AppError.Forbidden(
+                `Access restricted. Authorized domains: ${allowedDomains.join(', ')}`
+            );
+        }
+        return true;
+    }
+
+    async verifier(form: FormDocument, userId: string, email?: string) {
+        if (!form || form.isPrivate)
+            throw AppError.FormNotFound('Form not found');
+        if (!form.isPublished)
+            throw AppError.FormNotPublished('Form is not published');
+
+        if (form.allowedDomains && form.allowedDomains.length > 0) {
+            const target = email || userId;
+            this.validateEmailDomain(target, form.allowedDomains);
+        }
+
+        const now = new Date();
+        if (form.settings?.startDate && now < form.settings.startDate) {
+            throw AppError.FormNotOpen('Form is not yet open');
+        }
+        if (form.settings?.closeDate && now > form.settings.closeDate) {
+            throw AppError.FormClosed('Form is closed');
+        }
+
+        if (form.settings?.maxResponses && form.responseCount !== undefined) {
+            if (form.responseCount >= form.settings.maxResponses) {
+                throw AppError.FormClosed('Maximum response limit reached');
+            }
+        }
+
+        if (form.settings?.maxResponsesPerUser && userId) {
+            const userCount = await FormResponseModel.countDocuments({
+                formId: form._id.toString(),
+                userId,
+            });
+            if (userCount >= form.settings.maxResponsesPerUser) {
+                throw AppError.FormClosed('User submission limit reached');
+            }
+        }
+    }
+
+    async get(formId: string, userId: string, email?: string) {
+        const form = (await FormsModel.findById(formId)
+            .select('-__v')
+            .lean()) as FormDocument;
+
+        await this.verifier(form, userId, email);
 
         const [sections, allQuestions] = await Promise.all([
             SectionModel.find({ formId })
@@ -22,7 +82,7 @@ class FillService {
         ]);
 
         if (!sections.length)
-            throw AppError.SectionNotFound('This form has no content yet');
+            throw AppError.SectionNotFound('Form has no content');
 
         const questionsBySection = allQuestions.reduce(
             (acc, q) => {
@@ -47,31 +107,68 @@ class FillService {
 
     async post(data: ResponseCore) {
         const { formId, userId, email, answers } = data;
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-        const form = await FormsModel.findById(formId).lean();
-        if (!form) throw AppError.FormNotFound('Form not found');
+        try {
+            const updatedForm = await FormsModel.findOneAndUpdate(
+                {
+                    _id: formId,
+                    $or: [
+                        { 'settings.maxResponses': { $exists: false } },
+                        {
+                            $expr: {
+                                $lt: [
+                                    '$responseCount',
+                                    '$settings.maxResponses',
+                                ],
+                            },
+                        },
+                    ],
+                },
+                { $inc: { responseCount: 1 } },
+                { session, new: true }
+            ).lean();
 
-        const validQuestionIds = await QuestionsModel.find({ formId }).distinct(
-            '_id'
-        );
-        const validIdStrings = validQuestionIds.map((id) => id.toString());
+            if (!updatedForm) {
+                throw AppError.BadRequest(
+                    'Response limit reached or form unavailable'
+                );
+            }
 
-        const isDataValid = answers.every((ans) =>
-            validIdStrings.includes(ans.questionId.toString())
-        );
+            await this.verifier(updatedForm as FormDocument, userId, email);
 
-        if (!isDataValid) {
-            throw AppError.BadRequest(
-                'Submission contains invalid question references'
+            const validQuestionIds = await QuestionsModel.find({ formId })
+                .distinct('_id')
+                .session(session);
+
+            const validIdStrings = validQuestionIds.map((id) => id.toString());
+            const isDataValid = answers.every((ans) =>
+                validIdStrings.includes(ans.questionId.toString())
             );
-        }
 
-        return await FormResponseModel.create({
-            formId,
-            userId,
-            email,
-            answers,
-        });
+            if (!isDataValid) throw AppError.BadRequest('Invalid questions');
+
+            const response = await FormResponseModel.create(
+                [
+                    {
+                        formId,
+                        userId,
+                        email,
+                        answers,
+                    },
+                ],
+                { session }
+            );
+
+            await session.commitTransaction();
+            return response[0];
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
+        }
     }
 }
 

@@ -1,6 +1,9 @@
 import { StatusCodes } from 'http-status-codes';
 
 export class AppError extends Error {
+    static FormNotOpen(arg0: string) {
+        throw new Error('Method not implemented.');
+    }
     public readonly statusCode: number;
     public readonly isOperational: boolean;
 
@@ -37,6 +40,12 @@ export class AppError extends Error {
     static FormPublishFailed(message: string) {
         return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
     }
+    static FormNotPublished(message: string) {
+        return new AppError(StatusCodes.BAD_REQUEST, message);
+    }
+    static FormClosed(message: string) {
+        return new AppError(StatusCodes.BAD_REQUEST, message);
+    }
     static SectionCreationFailed(message: string) {
         return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
     }
@@ -67,4 +76,8 @@ export class AppError extends Error {
     static NotImplemented(message: string) {
         return new AppError(StatusCodes.NOT_IMPLEMENTED, message);
     }
+    static Forbidden(message: string) {
+        return new AppError(StatusCodes.FORBIDDEN, message);
+    }
+    s;
 }

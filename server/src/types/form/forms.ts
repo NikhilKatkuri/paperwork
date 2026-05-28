@@ -144,6 +144,7 @@ interface FormCore {
     isPublished: boolean;
     allowedDomains?: string[];
     settings?: FormSettings;
+    responseCount?: number;
 }
 
 interface AnswerEntry {

@@ -1,4 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
+import { CustomAuthRequest as Request } from '@/types';
 import FillService from './fill.service';
 import { StatusCodes } from 'http-status-codes';
 import { AppError } from '@/utils/AppError';
@@ -10,12 +11,17 @@ class FillController {
     }
     async fill(req: Request, res: Response, next: NextFunction) {
         try {
+            const { id: userId } = req.user!;
+            if (!userId) {
+                throw AppError.Unauthorized('User not authenticated');
+            }
+
             const { formId } = req.params as { formId: string };
             if (!formId) {
                 throw AppError.BadRequest('Form ID is required');
             }
 
-            const formData = await this.service.get(formId);
+            const formData = await this.service.get(formId, userId);
             res.status(StatusCodes.OK).json({
                 success: true,
                 message: 'Form retrieved successfully',
