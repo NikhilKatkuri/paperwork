@@ -7,7 +7,17 @@ import { AppError } from '@/utils/AppError';
 class FillController {
     service = new FillService();
     constructor() {
-        this.fill = this.fill.bind(this);
+        const methods = Object.getOwnPropertyNames(
+            FillController.prototype
+        ).filter(
+            (prop) =>
+                prop !== 'constructor' &&
+                typeof (this as any)[prop] === 'function'
+        );
+
+        for (const method of methods) {
+            (this as any)[method] = (this as any)[method].bind(this);
+        }
     }
     async fill(req: Request, res: Response, next: NextFunction) {
         try {
@@ -31,11 +41,27 @@ class FillController {
             next(error);
         }
     }
-    async submit(_req: Request, _res: Response, next: NextFunction) {
+    async submit(req: Request, res: Response, next: NextFunction) {
         try {
-            throw AppError.NotImplemented(
-                'Form submission not yet implemented'
-            );
+            const { id: userId, email } = req.user!;
+            if (!userId || !email) {
+                throw AppError.Unauthorized('User not authenticated');
+            }
+            const { formId } = req.params as { formId: string };
+            if (!formId) {
+                throw AppError.BadRequest('Form ID is required');
+            }
+
+            await this.service.post({
+                formId,
+                userId,
+                email,
+                answers: req.body.data,
+            });
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Form submitted successfully',
+            });
         } catch (error) {
             next(error);
         }

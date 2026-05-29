@@ -144,3 +144,19 @@ export const fillFormSchema = z.object({
         formId: zodObjectId,
     }),
 });
+
+export const postFormSchema = z.object({
+    params: z.object({
+        formId: zodObjectId,
+    }),
+    body: z.object({
+        data: z.array(
+            z.object({
+                questionId: zodObjectId,
+                values: z
+                    .array(z.string())
+                    .min(1, 'At least one value is required'),
+            })
+        ),
+    }),
+});

@@ -62,7 +62,24 @@ export const patchRequestFormSchema = z.object({
     params: z.object({
         formId: zodObjectId,
     }),
-    body: formSchema.shape.body.partial(),
+    body: z.object({
+        data: z.object({
+            title: z
+                .string()
+                .min(1, 'Title is required')
+                .max(255, 'Title cannot exceed 255 characters')
+                .optional(),
+            description: z
+                .string()
+                .min(1, 'Description is required')
+                .max(2000, 'Description cannot exceed 2000 characters')
+                .optional(),
+            isPrivate: z.boolean().optional(),
+            isPublished: z.boolean().optional(),
+            allowedDomains: z.array(z.string()).optional(),
+            settings: formSettingsSchema.optional(),
+        }),
+    }),
 });
 
 export const getFormSchema = z.object({

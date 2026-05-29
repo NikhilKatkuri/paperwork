@@ -22,8 +22,8 @@ const FormResponseSchema = new Schema<FormResponseDocument>({
                     ref: 'Question',
                     required: true,
                 },
-                answer: {
-                    type: Schema.Types.Mixed,
+                values: {
+                    type: [String],
                     required: true,
                 },
             },

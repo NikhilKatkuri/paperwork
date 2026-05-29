@@ -118,9 +118,14 @@ class questionsController {
 
     async reorder(req: Request, res: Response, next: NextFunction) {
         try {
-            const { data: order, ...rest } = this.getContent(req);
+            const { data: orderData, ...rest } = this.getContent(req);
 
-            const result = await this.service.reorder(rest, order);
+            // Extract just the question IDs from the reorder data
+            const questionIds = orderData.map(
+                (item: { questionId: string; index: number }) => item.questionId
+            );
+
+            const result = await this.service.reorder(rest, questionIds);
 
             res.status(StatusCodes.OK).json({
                 success: true,

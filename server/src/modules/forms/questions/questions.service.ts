@@ -93,7 +93,7 @@ class questionService {
         const updatedQuestion = await QuestionsModel.findOneAndUpdate(
             { _id: questionId, formId, sectionId },
             { $set: data },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         )
             .select('-__v')
             .lean();
@@ -142,15 +142,15 @@ class questionService {
             await this.authorizeAccess({ formId, sectionId, userId }, session);
 
             const operations = [
-                ...order.map((id, i) => ({
+                ...order.map((questionId, i) => ({
                     updateOne: {
-                        filter: { _id: id, sectionId },
+                        filter: { _id: questionId, sectionId },
                         update: { $set: { index: -(i + 1) } },
                     },
                 })),
-                ...order.map((id, index) => ({
+                ...order.map((questionId, index) => ({
                     updateOne: {
-                        filter: { _id: id, sectionId },
+                        filter: { _id: questionId, sectionId },
                         update: { $set: { index } },
                     },
                 })),

@@ -10,13 +10,12 @@ import {
 } from '../validator.form';
 import sectionRouter from '../sections/route';
 import questionsRouter from '../questions/route';
-import FillController from '../fill/fill.controller';
-import { fillFormSchema } from '../validator.question';
+
+import fillRouter from '../fill/fill.router';
 
 const formsRouter = express.Router({ mergeParams: true });
 
 const controller = new FormsController();
-const fillController = new FillController();
 
 formsRouter.get('/', protect, controller.getAll);
 formsRouter.post('/', protect, validate(formSchema), controller.create);
@@ -63,5 +62,5 @@ formsRouter.post(
 
 formsRouter.use('/:formId/sections', sectionRouter);
 formsRouter.use('/:formId/sections/:sectionId/questions', questionsRouter);
-formsRouter.use('/:formId/fill', validate(fillFormSchema), fillController.fill);
+formsRouter.use('/:formId/fill', protect, fillRouter);
 export default formsRouter;

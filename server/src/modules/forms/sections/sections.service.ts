@@ -81,7 +81,7 @@ class SectionService {
         const updatedSection = await SectionModel.findByIdAndUpdate(
             sectionId,
             data,
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         )
             .select('-__v')
             .lean();
