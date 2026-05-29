@@ -145,3 +145,142 @@ This document provides an overview of the authentication API endpoints available
     "message": "Unauthorized"
 }
 ```
+
+## send verification for email
+
+- **Endpoint**: `POST /auth/send-verification`
+- **Authentication**: Requires a valid access token in the `Authorization` header (e.g., `Bearer <access_token>`).
+- **Description**: Sends a verification email to the user's registered email address.
+- **Response**:
+
+```
+{
+    "success": true,
+    "message": "Verification email sent successfully"
+}
+```
+
+- **Error Response**:
+
+```
+{
+    "success": false,
+    "message": "Failed to send verification email"
+}
+```
+
+## verify email
+
+- **Endpoint**: `POST /auth/verify-email`
+- **Authentication**: Requires a valid access token in the `Authorization` header (e.g., `Bearer <access_token>`).
+- **Description**: Verifies the user's email address using a verification token.
+- **Request Body**:
+
+```
+{
+    "otp": "verification_token_received_in_email"
+}
+```
+
+- **Response**:
+
+```
+{
+    "success": true,
+    "message": "Email verified successfully"
+}
+```
+
+- **Error Response**:
+
+```
+{
+    "success": false,
+    "message": "Invalid or expired verification token"
+}
+```
+
+## change password
+
+- **Endpoint**: `POST /auth/change-password`
+- **Authentication**: Requires a valid access token in the `Authorization` header (e.g
+  as `Bearer <access_token>`).
+- **Description**: Changes the user's password.
+- **Request Body**:
+
+```
+{
+    "currentPassword": "current_password",
+    "newPassword": "new_secure_password123"
+}
+```
+
+- **Response**:
+
+```
+{
+    "success": true,
+    "message": "Password changed successfully"
+}
+```
+
+- **Error Response**:
+
+```
+{
+    "success": false,
+    "message": "Current password is incorrect"
+}
+```
+
+## forgot password
+
+- **Endpoint**: `POST /auth/forgot-password`
+- **Description**: Initiates the forgot password process by sending a password reset email to the user's registered email address.
+- **Request Body**:
+
+```
+{
+    "email": "user@example.com"
+}
+```
+
+- **Response**:
+
+```
+{
+    "success": true,
+    "message": "Password reset email sent successfully"
+}
+```
+
+## reset password
+
+- **Endpoint**: `POST /auth/reset-password/:token`
+- **Description**: Resets the user's password using a password reset token.
+
+- **Request Body**:
+
+```
+{
+    "newPassword": "new_secure_password123"
+}
+```
+
+- **Response**:
+
+```
+{
+    "success": true,
+    "message": "Password reset successfully"
+}
+```
+
+- **Error Response**:
+
+```
+{
+    "success": false,
+    "message": "Invalid or expired password reset token"
+}
+```

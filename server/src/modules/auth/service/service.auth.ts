@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import bycrpt from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 import { AppError } from '@/utils/AppError';
 import config from '@/config';
 import UserModel from '@/modules/auth/schemas/schema.user';
@@ -7,6 +7,7 @@ import ProfileModel from '@/modules/auth/schemas/schema.profile';
 import { SignInService, SignUpService } from '@/modules/auth/types/types.auth';
 import OTP from '@/utils/otp';
 import MailService from '@/utils/mail/index';
+import crypto from 'crypto';
 
 const genAccessToken = (payload: any) => {
     const token = jwt.sign(payload, config.JWT_SECRET, { expiresIn: '60m' });
@@ -34,7 +35,10 @@ class AuthService {
             throw AppError.Conflict('Email already in use');
         }
 
-        const hashedPassword = bycrpt.hashSync(password, config.SALT_ROUNDS);
+        const hashedPassword = await bcrypt.hash(
+            password,
+            Number(config.SALT_ROUNDS)
+        );
         const newUser = new UserModel({
             email,
             passwordHash: hashedPassword,
@@ -70,7 +74,10 @@ class AuthService {
             throw AppError.Unauthorized('Invalid email or password');
         }
 
-        const isPasswordValid = bycrpt.compareSync(password, user.passwordHash);
+        const isPasswordValid = await bcrypt.compare(
+            password,
+            user.passwordHash
+        );
         if (!isPasswordValid) {
             throw AppError.Unauthorized('Invalid email or password');
         }
@@ -101,11 +108,20 @@ class AuthService {
     };
 
     getProfileService = async (userId: string) => {
-        const profile = await ProfileModel.findOne({ userId });
-        if (!profile) {
-            throw AppError.NotFound('Profile not found');
+        try {
+            const profile = await ProfileModel.findOne({ userId });
+            if (!profile) {
+                throw AppError.NotFound('Profile not found');
+            }
+            return profile.toObject();
+        } catch (error) {
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw AppError.Internal(
+                'Failed to retrieve profile. Please try again.'
+            );
         }
-        return profile.toObject();
     };
 
     sendVerificationService = async (
@@ -113,11 +129,11 @@ class AuthService {
         email: string
     ): Promise<number> => {
         try {
-            const usr = await UserModel.findById(userId.toString());
-            if (!usr) {
+            const user = await UserModel.findById(userId.toString());
+            if (!user) {
                 throw AppError.NotFound('User not found');
             }
-            if (usr.isVerified) {
+            if (user.isVerified) {
                 throw AppError.BadRequest('Email is already verified');
             }
 
@@ -157,6 +173,116 @@ class AuthService {
                 throw error;
             }
             throw AppError.Internal('Failed to verify OTP. Please try again.');
+        }
+    };
+
+    changePasswordService = async (
+        userId: string,
+        currentPassword: string,
+        newPassword: string
+    ) => {
+        try {
+            const user = await UserModel.findById(userId);
+            if (user) {
+                const isMatch = await bcrypt.compare(
+                    currentPassword,
+                    user.passwordHash
+                );
+
+                if (!isMatch) throw AppError.Unauthorized('Incorrect password');
+
+                const isSameAsOld = await bcrypt.compare(
+                    newPassword,
+                    user.passwordHash
+                );
+
+                if (isSameAsOld)
+                    throw AppError.BadRequest(
+                        'New password must be different from the current password'
+                    );
+
+                const newHash = await bcrypt.hash(
+                    newPassword,
+                    Number(config.SALT_ROUNDS)
+                );
+
+                user.passwordHash = newHash;
+                await user.save();
+                return 'password has been changed successfully.';
+            }
+
+            return 'if the user exists, the password has been changed successfully.';
+        } catch (error) {
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw AppError.Internal(
+                'Failed to change password. Please try again.'
+            );
+        }
+    };
+
+    forgotPasswordService = async (email: string) => {
+        try {
+            const user = await UserModel.findOne({ email });
+            if (user) {
+                const token = crypto.randomBytes(32).toString('hex');
+                const hashedToken = crypto
+                    .createHash('sha256')
+                    .update(token)
+                    .digest('hex');
+
+                user.resetToken = hashedToken;
+                user.resetExpires = new Date(Date.now() + 15 * 60 * 1000);
+                await user.save();
+
+                const resetLink = `http://localhost:5000/api/v1/auth/reset-password/${token}`;
+
+                await new MailService().sendForgotPasswordEmail(
+                    email,
+                    resetLink
+                );
+            }
+            return 'If an account with that email exists, a password reset link has been sent.';
+        } catch (error) {
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw AppError.Internal(
+                'Failed to send password reset email. Please check email configuration.'
+            );
+        }
+    };
+
+    resetPasswordService = async (token: string, newPassword: string) => {
+        try {
+            const hashedToken = crypto
+                .createHash('sha256')
+                .update(token)
+                .digest('hex');
+            const user = await UserModel.findOne({
+                resetToken: hashedToken,
+                resetExpires: { $gt: new Date() },
+            });
+
+            if (user) {
+                const hashedPassword = await bcrypt.hash(
+                    newPassword,
+                    Number(config.SALT_ROUNDS)
+                );
+                user.passwordHash = hashedPassword;
+                user.resetToken = undefined;
+                user.resetExpires = undefined;
+                await user.save();
+            }
+            return 'If the token is valid, your password has been reset successfully.';
+        } catch (error) {
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw AppError.Internal(
+                'Failed to reset password. Please try again.'
+            );
         }
     };
 }

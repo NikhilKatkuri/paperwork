@@ -8,7 +8,7 @@ class OTP {
     constructor() {
         this.secret = config.otp.SECRET;
         this.expirationTime =
-            parseInt(config.otp.EXPIRATION, 10) || 5 * 60 * 1000;
+            parseInt(config.otp.EXPIRATION.toString(), 10) || 5 * 60 * 1000;
     }
 
     public generateOTP(

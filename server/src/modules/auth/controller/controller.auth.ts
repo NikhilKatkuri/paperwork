@@ -202,7 +202,7 @@ class AuthController {
     ) => {
         try {
             const { userId, email } = this.getContext(req);
-            
+
             const r = await this.authService.sendVerificationService(
                 userId,
                 email
@@ -266,6 +266,73 @@ class AuthController {
             res.status(StatusCodes.OK).json({
                 success: true,
                 message: 'Email verified successfully',
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    changePasswordController = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { userId } = this.getContext(req);
+            const { currentPassword, newPassword } = req.body;
+
+            await this.authService.changePasswordService(
+                userId,
+                currentPassword,
+                newPassword
+            );
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Password changed successfully',
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    forgotPasswordController = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { email } = this.getContext(req);
+            await this.authService.forgotPasswordService(email);
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Password reset instructions sent to your email',
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    resetPasswordController = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { token } = req.params as { token: string };
+            if (!token) {
+                throw AppError.BadRequest('Invalid or missing token');
+            }
+
+            const { newPassword } = req.body;
+
+            const message = await this.authService.resetPasswordService(
+                token,
+                newPassword
+            );
+
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message,
             });
         } catch (error) {
             next(error);
