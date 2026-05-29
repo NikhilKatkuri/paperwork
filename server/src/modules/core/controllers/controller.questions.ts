@@ -120,7 +120,6 @@ class questionsController {
         try {
             const { data: orderData, ...rest } = this.getContent(req);
 
-            // Extract just the question IDs from the reorder data
             const questionIds = orderData.map(
                 (item: { questionId: string; index: number }) => item.questionId
             );
@@ -132,6 +131,22 @@ class questionsController {
                 message: 'Questions reordered successfully',
                 data: {
                     questions: result,
+                },
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async bulkCreate(req: Request, res: Response, next: NextFunction) {
+        try {
+            const params = this.getContent(req);
+            const createdQuestions = await this.service.bulkCreate(params);
+            res.status(StatusCodes.CREATED).json({
+                success: true,
+                message: 'Questions created successfully',
+                data: {
+                    questions: createdQuestions,
                 },
             });
         } catch (error) {

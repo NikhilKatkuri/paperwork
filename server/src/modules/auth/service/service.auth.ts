@@ -7,7 +7,7 @@ import ProfileModel from '@/modules/auth/schemas/schema.profile';
 import { SignInService, SignUpService } from '@/modules/auth/types/types.auth';
 
 const genAccessToken = (payload: any) => {
-    const token = jwt.sign(payload, config.JWT_SECRET, { expiresIn: '15m' });
+    const token = jwt.sign(payload, config.JWT_SECRET, { expiresIn: '60m' });
     return token;
 };
 

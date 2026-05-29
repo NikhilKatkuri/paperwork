@@ -38,6 +38,13 @@ export const fieldValidationRuleEnum = [
     'NUMBER_LESS_THAN',
     'REGEX_MATCH',
     'MAX_CHAR_COUNT',
+    'NUMBER_EQUAL_TO',
+    'NUMBER_BETWEEN',
+    'MIN_CHAR_COUNT',
+    'DATE_IS_BEFORE',
+    'DATE_IS_AFTER',
+    'CHECKBOX_MIN_SELECT',
+    'CHECKBOX_MAX_SELECT',
 ] as const;
 
 const ratingConfigSchema = new Schema(
@@ -68,6 +75,9 @@ const fieldValidationRuleSchema = new Schema(
             required: true,
         },
         value: { type: Schema.Types.Mixed, required: false },
+        min: { type: Number, required: false },
+        max: { type: Number, required: false },
+        pattern: { type: String, required: false, maxlength: 200 },
         customErrorMessage: { type: String, required: false, maxlength: 200 },
     },
     { _id: false }
@@ -77,8 +87,8 @@ const questionsSchema = new Schema<QuestionDocument>(
     {
         formId: { type: String, required: true, index: true },
         sectionId: { type: String, required: true, index: true },
-
         index: { type: Number, required: true, default: 0 },
+
         type: { type: String, enum: questionEnum, required: true },
         question: { type: String, required: true },
 

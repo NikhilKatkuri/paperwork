@@ -1,53 +1,360 @@
-# Questions form
+# Questions API Documentation
 
-This form is used to create and edit questions. It contains the following fields:
+Guide for creating and managing form questions. Questions are the individual fields within sections.  
+See [SCHEMA.README.MD](SCHEMA.README.MD) for detailed question schema and validation rules.
 
-## CREATE question
+---
 
-- endpoint: `/forms/{formId}/sections/{sectionId}/questions`
-- method: `POST`
-- Request body:
+## Create Question
 
-```JSON
+**Endpoint**: `POST /api/forms/:formId/sections/:sectionId/questions`  
+**Authentication**: Required  
+**Description**: Creates a new question within a section
+
+### Text Question Example
+
+**Request Body**:
+
+```json
 {
-  "data": {
-    "type": "TEXT",
-    "question": "What is your full name?",
-    "helpText": "Please provide your legal name as per ID.",
-    "isRequired": true,
-    "placeholder": "e.g. John Doe"
-  }
+    "data": {
+        "type": "TEXT",
+        "question": "What is your full name?",
+        "helpText": "Please provide your legal name",
+        "placeholder": "e.g., John Doe",
+        "isRequired": true
+    }
 }
 ```
 
-- Response body:
+**Response** (201 Created):
 
-```JSON
+```json
 {
-    "success": true,
-    "message": "Question created successfully",
     "data": {
         "question": {
-            "formId": "6a18d0f3b1fd67d49b00ce6b",
-            "sectionId": "6a18d215b1fd67d49b00ce6c",
+            "_id": "q_123",
+            "formId": "form456",
+            "sectionId": "section789",
             "index": 0,
             "type": "TEXT",
             "question": "What is your full name?",
-            "helpText": "Please provide your legal name as per ID.",
-            "placeholder": "e.g. John Doe",
+            "helpText": "Please provide your legal name",
+            "placeholder": "e.g., John Doe",
             "isRequired": true,
-            "_id": "6a18d369b1fd67d49b00ce6d",
-            "createdAt": "2026-05-28T23:44:41.164Z",
-            "updatedAt": "2026-05-28T23:44:41.164Z"
+            "createdAt": "2026-05-29T10:00:00Z",
+            "updatedAt": "2026-05-29T10:00:00Z"
+        }
+    },
+    "message": "Question created successfully"
+}
+```
+
+---
+
+## Question Type Examples
+
+### Radio/Single Choice
+
+```json
+{
+    "data": {
+        "type": "RADIO",
+        "question": "What is your experience level?",
+        "isRequired": true,
+        "options": [
+            { "index": 0, "value": "beginner", "label": "Beginner" },
+            { "index": 1, "value": "intermediate", "label": "Intermediate" },
+            { "index": 2, "value": "expert", "label": "Expert" }
+        ]
+    }
+}
+```
+
+### Checkbox/Multiple Choice
+
+```json
+{
+    "data": {
+        "type": "CHOICE",
+        "question": "Which platforms do you use?",
+        "isRequired": true,
+        "options": [
+            { "index": 0, "value": "web", "label": "Web" },
+            { "index": 1, "value": "mobile", "label": "Mobile App" },
+            { "index": 2, "value": "desktop", "label": "Desktop App" }
+        ],
+        "validationRule": {
+            "ruleType": "CHECKBOX_MIN_SELECT",
+            "min": 1,
+            "customErrorMessage": "Please select at least one platform"
         }
     }
 }
 ```
 
-## Retrieve questions
+### Dropdown
 
-- endpoint: `/forms/{formId}/sections/{sectionId}/questions`
-- method: `GET`
+```json
+{
+    "data": {
+        "type": "DROP_DOWN",
+        "question": "Select your country",
+        "isRequired": true,
+        "options": [
+            { "index": 0, "value": "us", "label": "United States" },
+            { "index": 1, "value": "ca", "label": "Canada" },
+            { "index": 2, "value": "mx", "label": "Mexico" }
+        ]
+    }
+}
+```
+
+### Rating Scale
+
+```json
+{
+    "data": {
+        "type": "RATING",
+        "question": "How satisfied are you with our service?",
+        "isRequired": true,
+        "ratingConfig": {
+            "icon": "STAR",
+            "scale": 5,
+            "lowLabel": "Very Unsatisfied",
+            "highLabel": "Very Satisfied"
+        }
+    }
+}
+```
+
+### Linear Scale
+
+```json
+{
+    "data": {
+        "type": "LINEAR_SCALE",
+        "question": "To what extent do you agree?",
+        "isRequired": true,
+        "ratingConfig": {
+            "icon": "THUMB_UP",
+            "scale": 10,
+            "lowLabel": "Strongly Disagree",
+            "highLabel": "Strongly Agree"
+        }
+    }
+}
+```
+
+### Date
+
+```json
+{
+    "data": {
+        "type": "DATE",
+        "question": "When did you start?",
+        "isRequired": true,
+        "validationRule": {
+            "ruleType": "DATE_IS_AFTER",
+            "value": "2020-01-01",
+            "customErrorMessage": "Must be after January 1, 2020"
+        }
+    }
+}
+```
+
+### Time
+
+```json
+{
+    "data": {
+        "type": "TIME",
+        "question": "What time do you prefer?",
+        "isRequired": false
+    }
+}
+```
+
+### Paragraph/Long Text
+
+```json
+{
+    "data": {
+        "type": "PARAGRAPH",
+        "question": "Please share your feedback",
+        "helpText": "Be as detailed as possible",
+        "placeholder": "Your feedback here...",
+        "isRequired": false,
+        "validationRule": {
+            "ruleType": "MAX_CHAR_COUNT",
+            "max": 500,
+            "customErrorMessage": "Feedback must be 500 characters or less"
+        }
+    }
+}
+```
+
+---
+
+## Conditional Questions
+
+Display a question only if a previous question has a specific answer:
+
+```json
+{
+    "data": {
+        "type": "TEXT",
+        "question": "Please specify your other experience",
+        "dependsOn": {
+            "questionId": "q_experience123",
+            "value": "other"
+        }
+    }
+}
+```
+
+---
+
+## Validation Rules
+
+### Email Validation
+
+```json
+{
+    "validationRule": {
+        "ruleType": "EMAIL",
+        "customErrorMessage": "Please enter a valid email address"
+    }
+}
+```
+
+### Character Count
+
+```json
+{
+    "validationRule": {
+        "ruleType": "MIN_CHAR_COUNT",
+        "min": 10,
+        "customErrorMessage": "Minimum 10 characters required"
+    }
+}
+```
+
+### Number Range
+
+```json
+{
+    "validationRule": {
+        "ruleType": "NUMBER_BETWEEN",
+        "min": 1,
+        "max": 100,
+        "customErrorMessage": "Must be between 1 and 100"
+    }
+}
+```
+
+### Regex Pattern
+
+```json
+{
+    "validationRule": {
+        "ruleType": "REGEX_MATCH",
+        "pattern": "^[A-Z0-9]{4,6}$",
+        "customErrorMessage": "Must be 4-6 uppercase letters or numbers"
+    }
+}
+```
+
+### URL Validation
+
+```json
+{
+    "validationRule": {
+        "ruleType": "URL",
+        "customErrorMessage": "Please enter a valid URL"
+    }
+}
+```
+
+---
+
+## Retrieve Questions
+
+**Endpoint**: `GET /api/forms/:formId/sections/:sectionId/questions`  
+**Authentication**: Required
+
+**Response** (200 OK):
+
+```json
+{
+    "data": [
+        {
+            "_id": "q_123",
+            "type": "TEXT",
+            "question": "What is your full name?",
+            "isRequired": true
+        }
+    ],
+    "message": "Questions retrieved successfully"
+}
+```
+
+---
+
+## Update Question
+
+**Endpoint**: `PATCH /api/forms/:formId/questions/:questionId`  
+**Authentication**: Required
+
+**Request Body**: Send any fields to update
+
+```json
+{
+    "data": {
+        "question": "Updated question text",
+        "isRequired": false,
+        "helpText": "Updated help text"
+    }
+}
+```
+
+---
+
+## Delete Question
+
+**Endpoint**: `DELETE /api/forms/:formId/questions/:questionId`  
+**Authentication**: Required
+
+**Response** (200 OK):
+
+```json
+{
+    "message": "Question deleted successfully"
+}
+```
+
+---
+
+## Question Type Reference
+
+| Type         | Input Format       | Config                       | Best For                       |
+| ------------ | ------------------ | ---------------------------- | ------------------------------ |
+| TEXT         | Single line text   | placeholder                  | Names, emails, short answers   |
+| PARAGRAPH    | Multi-line text    | placeholder, validation      | Feedback, essays, descriptions |
+| RADIO        | Single selection   | options                      | Yes/No, preference             |
+| CHOICE       | Multiple selection | options, validation          | Interests, skills              |
+| DROP_DOWN    | Dropdown list      | options                      | Countries, categories          |
+| RATING       | Star/icon rating   | ratingConfig (5 or 10 stars) | Satisfaction, quality          |
+| LINEAR_SCALE | Numeric scale      | ratingConfig (1-10)          | Agreement, importance          |
+| DATE         | Date picker        | validation                   | Birthdate, events              |
+| TIME         | Time picker        | validation                   | Preferences, schedules         |
+
+---
+
+## Next Steps
+
+- [Submit Form Responses](FORM.FIll.MD)
+- [Back to Forms](FORMS.README.MD)
 - Authentication: Required
 - Response body:
 

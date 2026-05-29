@@ -170,6 +170,29 @@ class questionService {
             session.endSession();
         }
     }
+
+    async bulkCreate(params: {
+        userId: string;
+        formId: string;
+        sectionId: string;
+        data: QuestionCore[];
+    }) {
+        const { formId, sectionId, userId, data: questionsData } = params;
+        await this.authorizeAccess({ formId, sectionId, userId });
+
+        const questionCount = await QuestionsModel.countDocuments({
+            sectionId,
+        });
+        const questionsToCreate = questionsData.map((questionData, index) => ({
+            formId,
+            sectionId,
+            ...questionData,
+            index: questionCount + index,
+        }));
+        const createdQuestions =
+            await QuestionsModel.insertMany(questionsToCreate);
+        return createdQuestions.map((q) => q.toObject());
+    }
 }
 
 export default questionService;

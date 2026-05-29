@@ -2,6 +2,7 @@ import protect from '@/middleware/protect';
 import validate from '@/middleware/validate';
 import express from 'express';
 import {
+    bulkCreateQuestionSchema,
     createQuestionSchema,
     getAllQuestionsSchema,
     getQuestionSchema,
@@ -17,6 +18,12 @@ questionsRouter.post(
     protect,
     validate(createQuestionSchema),
     controller.create
+);
+questionsRouter.post(
+    '/bulk',
+    protect,
+    validate(bulkCreateQuestionSchema),
+    controller.bulkCreate
 );
 questionsRouter.get(
     '/',

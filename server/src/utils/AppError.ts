@@ -79,4 +79,13 @@ export class AppError extends Error {
     static FormNotOpen(message: string) {
         return new AppError(StatusCodes.BAD_REQUEST, message);
     }
+    static MaxResponseLimitReached(message: string) {
+        return new AppError(StatusCodes.BAD_REQUEST, message);
+    }
+    static ResponseNotFound(message: string) {
+        return new AppError(StatusCodes.NOT_FOUND, message);
+    }
+    static Internal(message: string) {
+        return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
+    }
 }

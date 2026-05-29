@@ -3,9 +3,10 @@ import { AppError } from '@/utils/AppError';
 import FormsModel from '@/modules/core/schemas/schemas.forms';
 import SectionModel from '@/modules/core/schemas/schemas.sections';
 import QuestionsModel from '@/modules/core/schemas/schemas.questions';
-import FormResponseModel from '@/modules/core/schemas/schemas.responses';
+import FormResponseModel from '@/modules/core/schemas/schemas.fill';
 import { ResponseCore } from '@/types/form/forms';
-import { FormDocument } from '@/types/form/Document';
+import { FormDocument, QuestionDocument } from '@/types/form/Document';
+import FileService from '@/modules/core/service/service.internal.file';
 
 class FillService {
     private validateEmailDomain(
@@ -168,6 +169,101 @@ class FillService {
             throw error;
         } finally {
             session.endSession();
+        }
+    }
+
+    async responses(formId: string, page: number = 1, limit: number = 20) {
+        const form = await FormsModel.findById(formId).lean();
+        if (!form) throw AppError.FormNotFound('Form not found');
+
+        const skip = (page - 1) * limit;
+        const result = await FormResponseModel.aggregate([
+            { $match: { formId: formId.toString() } },
+            {
+                $facet: {
+                    data: [
+                        { $sort: { createdAt: -1 } },
+                        { $skip: skip },
+                        { $limit: limit },
+                        { $project: { __v: 0, updatedAt: 0 } },
+                    ],
+                    totalCount: [{ $count: 'count' }],
+                },
+            },
+        ]);
+
+        const responses = result[0].data;
+        const total = result[0].totalCount[0]?.count || 0;
+
+        return {
+            responses,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(total / limit),
+                total,
+                limit,
+            },
+        };
+    }
+
+    async getResponse(formId: string, responseId: string) {
+        const form = await FormsModel.findById(formId).lean();
+        if (!form) throw AppError.FormNotFound('Form not found');
+
+        const response = await FormResponseModel.find({
+            _id: responseId,
+            formId,
+        })
+            .select('-__v -updatedAt')
+            .lean();
+        if (!response) throw AppError.ResponseNotFound('Response not found');
+
+        return response;
+    }
+
+    async exportResponses(formId: string, exportType: string) {
+        try {
+            const form = await FormsModel.findById(formId).lean();
+            if (!form) throw AppError.FormNotFound('Form not found');
+            const questions = (await QuestionsModel.find({
+                formId,
+            })) as QuestionDocument[];
+            if (!questions.length)
+                throw AppError.QuestionNotFound(
+                    'No questions found for this form'
+                );
+            const responses = await FormResponseModel.find({ formId })
+                .sort({ createdAt: -1 })
+                .select('-__v -updatedAt')
+                .lean();
+
+            if (responses.length === 0) {
+                throw AppError.BadRequest('No responses to export');
+            }
+
+            const fileService = new FileService();
+            const questionIdMap = new Map<string, string>();
+            questions.forEach((q) =>
+                questionIdMap.set(q._id.toString(), q.question)
+            );
+
+            const headers = questions.map((q) => q.question);
+            let i = '';
+
+            switch (exportType.toLowerCase()) {
+                case 'csv':
+                    i = await fileService.CSVExport(
+                        headers,
+                        questionIdMap,
+                        responses
+                    );
+                    break;
+                default:
+                    throw AppError.BadRequest('Unsupported export type');
+            }
+            return i;
+        } catch (error) {
+            throw AppError.Internal('Export failed');
         }
     }
 }

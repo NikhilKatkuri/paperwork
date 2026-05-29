@@ -116,6 +116,14 @@ export const createQuestionSchema = z.object({
     }),
 });
 
+export const bulkCreateQuestionSchema = z.object({
+    body: z.object({
+        data: z
+            .array(questionSchema)
+            .min(1, 'At least one question is required'),
+    }),
+});
+
 export const updateQuestionSchema = z.object({
     body: z.object({
         data: questionSchema,

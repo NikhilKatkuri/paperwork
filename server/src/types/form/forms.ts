@@ -34,16 +34,29 @@ interface Option {
     value: string;
 }
 
-interface FieldValidationRule {
-    ruleType:
-        | 'EMAIL'
-        | 'URL'
-        | 'NUMBER_GREATER_THAN'
-        | 'NUMBER_LESS_THAN'
-        | 'REGEX_MATCH'
-        | 'MAX_CHAR_COUNT';
-    value?: string | number;
-    customErrorMessage?: string;
+type BaseRule = { customErrorMessage?: string };
+
+type ValidationRule =
+    | (BaseRule & { ruleType: 'EMAIL' | 'URL' })
+    | (BaseRule & {
+          ruleType:
+              | 'NUMBER_GREATER_THAN'
+              | 'NUMBER_LESS_THAN'
+              | 'MAX_CHAR_COUNT'
+              | 'MIN_CHAR_COUNT'
+              | 'CHECKBOX_MIN_SELECT'
+              | 'CHECKBOX_MAX_SELECT';
+          value: number;
+      })
+    | (BaseRule & { ruleType: 'NUMBER_BETWEEN'; min: number; max: number })
+    | (BaseRule & { ruleType: 'REGEX_MATCH'; pattern: string });
+
+interface FieldValidationRule extends BaseRule {
+    ruleType: ValidationRule['ruleType'];
+    value?: number;
+    min?: number;
+    max?: number;
+    pattern?: string;
 }
 
 interface QuestionCore {
@@ -157,6 +170,10 @@ interface ResponseCore {
     userId: string;
     email: string;
     answers: AnswerEntry[];
+    metadata: {
+        userAgent: string;
+        ipAddress: string;
+    };
 }
 
 export {
