@@ -5,6 +5,7 @@ export const userSchema = new Schema<UserDocument>(
     {
         email: { type: String, required: true, unique: true },
         passwordHash: { type: String, required: true },
+        isVerified: { type: Boolean, default: false },
     },
     {
         timestamps: true,

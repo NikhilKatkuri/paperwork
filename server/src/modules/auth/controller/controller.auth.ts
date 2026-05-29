@@ -1,171 +1,276 @@
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 import statusCodes, { StatusCodes } from 'http-status-codes';
 import AuthService from '@/modules/auth/service/service.auth';
 import config from '@/config';
 import { AppError } from '@/utils/AppError';
 import jwt from 'jsonwebtoken';
-import { CustomAuthRequest } from '@/types';
+import { CustomAuthRequest as Request } from '@/types';
 
-const authService = new AuthService();
+class AuthController {
+    authService = new AuthService();
 
-const signInController = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-) => {
-    try {
-        const { email, password } = req.body;
-        const { accessToken, refreshToken } = await authService.signIn({
-            email,
-            password,
-        });
+    constructor() {
+        const methods = Object.getOwnPropertyNames(
+            AuthController.prototype
+        ).filter(
+            (prop) =>
+                prop !== 'constructor' &&
+                typeof (this as any)[prop] === 'function'
+        );
 
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
-
-        res.status(statusCodes.OK).json({
-            success: true,
-            message: 'User signed in successfully',
-            accessToken,
-        });
-    } catch (error) {
-        next(error);
+        for (const method of methods) {
+            (this as any)[method] = (this as any)[method].bind(this);
+        }
     }
-};
 
-const signUpController = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-) => {
-    const { email, password, fullName, avatarUrl = null, bio = '' } = req.body;
-    try {
-        const { accessToken, refreshToken } = await authService.signUp({
+    private getContext(req: Request) {
+        const { id: userId, email } = req.user || {};
+        if (!userId || !email) {
+            throw AppError.Unauthorized('User not authenticated');
+        }
+        return { userId, email };
+    }
+
+    signInController = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { email, password } = req.body;
+            const { accessToken, refreshToken } = await this.authService.signIn(
+                {
+                    email,
+                    password,
+                }
+            );
+
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+            });
+
+            res.status(statusCodes.OK).json({
+                success: true,
+                message: 'User signed in successfully',
+                accessToken,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    signUpController = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        const {
             email,
             password,
             fullName,
-            avatarUrl,
-            bio,
-        });
-
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
-
-        res.status(statusCodes.CREATED).json({
-            success: true,
-            message: 'User registered successfully',
-            accessToken,
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-const signOutController = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-) => {
-    try {
-        const refreshToken = req.cookies?.refreshToken;
-        if (!refreshToken) {
-            throw AppError.Unauthorized('No refresh token provided');
-        }
-        res.clearCookie('refreshToken', {
-            httpOnly: true,
-            secure: config.env === 'production',
-            sameSite: 'strict',
-        });
-
-        res.status(StatusCodes.OK).json({
-            success: true,
-            message: 'Logged out successfully',
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-const refreshTokenController = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-) => {
-    try {
-        const refreshToken = req.cookies?.refreshToken;
-        if (!refreshToken) {
-            throw AppError.Unauthorized('No refresh token provided');
-        }
-        let decode;
+            avatarUrl = null,
+            bio = '',
+        } = req.body;
         try {
-            decode = jwt.verify(refreshToken, config.JWT_REFRESH_SECRET) as {
-                userId: string;
-                email: string;
-            };
-        } catch (jwterror) {
-            throw AppError.Unauthorized('Invalid or expired refresh token');
-        }
+            const { accessToken, refreshToken } = await this.authService.signUp(
+                {
+                    email,
+                    password,
+                    fullName,
+                    avatarUrl,
+                    bio,
+                }
+            );
 
-        if (!decode || !decode.userId || !decode.email) {
-            throw AppError.Unauthorized('Invalid refresh token');
-        }
-
-        const { newAccessToken, newRefreshToken } =
-            await authService.refreshTokenService({
-                userId: decode.userId,
-                email: decode.email,
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000,
             });
 
-        res.cookie('refreshToken', newRefreshToken, {
-            httpOnly: true,
-            secure: config.env === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
-
-        res.status(StatusCodes.OK).json({
-            success: true,
-            message: 'Token refreshed successfully',
-            accessToken: newAccessToken,
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-const getProfileController = async (
-    req: CustomAuthRequest,
-    res: Response,
-    next: NextFunction
-) => {
-    try {
-        const userId = req.user?.id;
-        if (!userId) {
-            throw AppError.Unauthorized('User not authenticated');
+            res.status(statusCodes.CREATED).json({
+                success: true,
+                message: 'User registered successfully',
+                accessToken,
+            });
+        } catch (error) {
+            next(error);
         }
-        const profile = await authService.getProfileService(userId);
-        res.status(StatusCodes.OK).json({
-            success: true,
-            message: 'Profile retrieved successfully',
-            data: { profile },
-        });
-    } catch (error) {
-        next(error);
-    }
-};
+    };
 
-export {
-    signInController,
-    signUpController,
-    refreshTokenController,
-    signOutController,
-    getProfileController,
-};
+    signOutController = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const refreshToken = req.cookies?.refreshToken;
+            if (!refreshToken) {
+                throw AppError.Unauthorized('No refresh token provided');
+            }
+            res.clearCookie('refreshToken', {
+                httpOnly: true,
+                secure: config.env === 'production',
+                sameSite: 'strict',
+            });
+
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Logged out successfully',
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    refreshTokenController = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const refreshToken = req.cookies?.refreshToken;
+            if (!refreshToken) {
+                throw AppError.Unauthorized('No refresh token provided');
+            }
+            let decode;
+            try {
+                decode = jwt.verify(
+                    refreshToken,
+                    config.JWT_REFRESH_SECRET
+                ) as {
+                    userId: string;
+                    email: string;
+                };
+            } catch (jwterror) {
+                throw AppError.Unauthorized('Invalid or expired refresh token');
+            }
+
+            if (!decode || !decode.userId || !decode.email) {
+                throw AppError.Unauthorized('Invalid refresh token');
+            }
+
+            const { newAccessToken, newRefreshToken } =
+                await this.authService.refreshTokenService({
+                    userId: decode.userId,
+                    email: decode.email,
+                });
+
+            res.cookie('refreshToken', newRefreshToken, {
+                httpOnly: true,
+                secure: config.env === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+            });
+
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Token refreshed successfully',
+                accessToken: newAccessToken,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    getProfileController = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { userId } = this.getContext(req);
+            const profile = await this.authService.getProfileService(userId);
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Profile retrieved successfully',
+                data: { profile },
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    sendVerificationController = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { userId, email } = this.getContext(req);
+            
+            const r = await this.authService.sendVerificationService(
+                userId,
+                email
+            );
+
+            res.cookie(
+                'emailVerification',
+                JSON.stringify({
+                    expiresAt: r,
+                }),
+                {
+                    httpOnly: true,
+                    secure: config.env === 'production',
+                    sameSite: 'strict',
+                    maxAge: 5 * 60 * 1000,
+                }
+            );
+
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: `Verification OTP sent to ${email}`,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    verifyEmailController = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { userId, email } = this.getContext(req);
+            const { otp } = req.body;
+
+            const emailVerificationCookie = req.cookies?.emailVerification;
+            if (!emailVerificationCookie) {
+                throw AppError.BadRequest(
+                    'No OTP found. Please request a new one.'
+                );
+            }
+
+            let verificationData;
+            try {
+                verificationData = JSON.parse(emailVerificationCookie);
+            } catch {
+                throw AppError.BadRequest(
+                    'Invalid OTP data. Please request a new one.'
+                );
+            }
+
+            await this.authService.verifyEmailService(
+                userId,
+                email,
+                otp,
+                verificationData.expiresAt
+            );
+
+            res.clearCookie('emailVerification');
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Email verified successfully',
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+}
+
+export default AuthController;

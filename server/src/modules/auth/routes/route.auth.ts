@@ -1,11 +1,5 @@
 import express from 'express';
-import {
-    getProfileController,
-    refreshTokenController,
-    signInController,
-    signOutController,
-    signUpController,
-} from '@/modules/auth/controller/controller.auth';
+import AuthController from '@/modules/auth/controller/controller.auth';
 import { authLimiter } from '@/middleware/limiter';
 import validate from '@/middleware/validate';
 import {
@@ -15,22 +9,27 @@ import {
 import protect from '@/middleware/protect';
 
 const authRouter: express.Router = express.Router();
-
+const controller = new AuthController();
 authRouter.post(
     '/sign-in',
     authLimiter,
     validate(signInSchema),
-    signInController
+    controller.signInController
 );
 authRouter.post(
     '/sign-up',
     authLimiter,
     validate(signUpSchema),
-    signUpController
+    controller.signUpController
 );
-authRouter.post('/sign-out', authLimiter, signOutController);
+authRouter.post('/sign-out', authLimiter, controller.signOutController);
 
-authRouter.get('/me', protect, getProfileController);
-authRouter.post('/refresh-token', protect, refreshTokenController);
-
+authRouter.get('/me', protect, controller.getProfileController);
+authRouter.post('/refresh-token', protect, controller.refreshTokenController);
+authRouter.post(
+    '/send-verification',
+    protect,
+    controller.sendVerificationController
+);
+authRouter.post('/verify-email', protect, controller.verifyEmailController);
 export default authRouter;

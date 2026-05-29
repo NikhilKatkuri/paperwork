@@ -554,3 +554,92 @@ Display a question only if a previous question has a specific answer:
     }
 }
 ```
+
+## Bulk Question Creation
+
+- endpoint: `/forms/{formId}/sections/{sectionId}/questions/bulk`
+- method: `POST`
+- Authentication: Required
+- Request body:
+
+```JSON
+{
+    "data": [
+        {
+            "type": "TEXT",
+            "question": "What is your full name?",
+            "helpText": "Please provide your legal name as per ID.",
+            "placeholder": "e.g. John Doe",
+            "isRequired": true
+        },
+        {
+            "type": "RATING",
+            "question": "How satisfied are you with our service?",
+            "helpText": "",
+            "ratingConfig": {
+                "icon": "STAR",
+                "scale": 5,
+                "lowLabel": "Very Dissatisfied",
+                "highLabel": "Extremely Satisfied"
+            },
+            "validationRule": {
+                "ruleType": "NUMBER_GREATER_THAN",
+                "value": 1,
+                "customErrorMessage": "Please select a rating of at least 1 star."
+            },
+            "placeholder": "",
+            "isRequired": true
+        }
+    ]
+}
+```
+
+- Response body:
+
+```JSON
+{
+    "success": true,
+    "data": [
+        {
+            "_id": "q_123",
+            "formId": "form456",
+            "sectionId": "section789",
+            "index": 0,
+            "type": "TEXT",
+            "question": "What is your full name?",
+            "helpText": "Please provide your legal name as per ID.",
+            "placeholder": "e.g. John Doe",
+            "isRequired": true,
+            "createdAt": "2026-05-29T10:00:00Z",
+            "updatedAt": "2026-05-29T10:00:00Z"
+        },
+        {
+            "_id": "q_124",
+            "formId": "form456",
+            "sectionId": "section789",
+            "index": 1,
+            "type": "RATING",
+            "question": "How satisfied are you with our service?",
+            "helpText": "",
+            "ratingConfig": {
+                "icon": "STAR",
+                "scale": 5,
+                "lowLabel": "Very Dissatisfied",
+                "highLabel": "Extremely Satisfied"
+            },
+            "validationRule": {
+                "ruleType": "NUMBER_GREATER_THAN",
+                "value": 1,
+                "customErrorMessage": "Please select a rating of at least 1 star."
+            },
+            "placeholder": "",
+            "isRequired": true,
+            "createdAt": "2026-05-29T10:00:00Z",
+            "updatedAt": "2026-05-29T10:00:00Z"
+        }
+    ],
+    "message": "Questions created successfully"
+
+}
+
+```

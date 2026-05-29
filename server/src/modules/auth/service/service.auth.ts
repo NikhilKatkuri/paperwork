@@ -5,6 +5,8 @@ import config from '@/config';
 import UserModel from '@/modules/auth/schemas/schema.user';
 import ProfileModel from '@/modules/auth/schemas/schema.profile';
 import { SignInService, SignUpService } from '@/modules/auth/types/types.auth';
+import OTP from '@/utils/otp';
+import MailService from '@/utils/mail/index';
 
 const genAccessToken = (payload: any) => {
     const token = jwt.sign(payload, config.JWT_SECRET, { expiresIn: '60m' });
@@ -49,7 +51,7 @@ class AuthService {
 
         const profile = new ProfileModel(profileData);
         await profile.save();
-
+        new MailService().sendWelcomeEmail(email, fullName);
         return {
             accessToken: genAccessToken({
                 userId: newUser._id,
@@ -104,6 +106,58 @@ class AuthService {
             throw AppError.NotFound('Profile not found');
         }
         return profile.toObject();
+    };
+
+    sendVerificationService = async (
+        userId: string,
+        email: string
+    ): Promise<number> => {
+        try {
+            const usr = await UserModel.findById(userId.toString());
+            if (!usr) {
+                throw AppError.NotFound('User not found');
+            }
+            if (usr.isVerified) {
+                throw AppError.BadRequest('Email is already verified');
+            }
+
+            const { otp, expiresAt } = new OTP().generateOTP(userId, email);
+            await new MailService().sendOTPEmail(email, parseInt(otp, 10));
+            return expiresAt;
+        } catch (error) {
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw AppError.Internal(
+                'Failed to send verification OTP. Please check email configuration.'
+            );
+        }
+    };
+
+    verifyEmailService = async (
+        userId: string,
+        email: string,
+        otp: string,
+        expiresAt: number
+    ) => {
+        try {
+            const isValid = new OTP().verifyOTP(userId, email, otp, expiresAt);
+
+            if (!isValid) {
+                throw AppError.BadRequest(
+                    'Invalid or expired OTP. Please request a new one.'
+                );
+            }
+
+            await UserModel.findByIdAndUpdate(userId, {
+                isVerified: true,
+            });
+        } catch (error) {
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw AppError.Internal('Failed to verify OTP. Please try again.');
+        }
     };
 }
 

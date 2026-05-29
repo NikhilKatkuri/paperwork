@@ -49,6 +49,17 @@ interface AppConfig {
     SALT_ROUNDS: number;
     JWT_SECRET: string;
     JWT_REFRESH_SECRET: string;
+    mail: {
+        host: string;
+        port: string;
+        secure: string;
+        hostUser: string;
+        hostPass: string;
+    };
+    otp: {
+        SECRET: string;
+        EXPIRATION: string;
+    };
 }
 
 const isDev = getEnvVar('NODE_ENV', 'development') === 'development';
@@ -73,6 +84,17 @@ const config: AppConfig = {
     SALT_ROUNDS: getEnvVar('SALT_ROUNDS', 10),
     JWT_SECRET: getEnvVar('JWT_SECRET') as string,
     JWT_REFRESH_SECRET: getEnvVar('JWT_REFRESH_SECRET') as string,
+    mail: {
+        host: getEnvVar('MAIL_HOST') as string,
+        port: getEnvVar('MAIL_PORT') as string,
+        secure: getEnvVar('MAIL_SECURE') as string,
+        hostUser: getEnvVar('MAIL_HOST_USER') as string,
+        hostPass: getEnvVar('MAIL_HOST_PASS') as string,
+    },
+    otp: {
+        SECRET: getEnvVar('OTP_SECRET') as string,
+        EXPIRATION: getEnvVar('OTP_EXPIRATION', 300000), // 5 minutes in milliseconds
+    },
 };
 
 export default config;
