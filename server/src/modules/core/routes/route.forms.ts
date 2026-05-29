@@ -1,5 +1,5 @@
 import express from 'express';
-import FormsController from './forms.controller';
+import FormsController from '@/modules/core/controllers/controller.forms';
 import protect from '@/middleware/protect';
 import validate from '@/middleware/validate';
 import {
@@ -7,11 +7,11 @@ import {
     getFormSchema,
     patchRequestFormSchema,
     putRequestFormSchema,
-} from '../validator.form';
-import sectionRouter from '../sections/route';
-import questionsRouter from '../questions/route';
+} from '@/modules/core/validators/validator.form';
+import sectionRouter from '@/modules/core/routes/route.sections';
+import questionsRouter from './route.questions';
 
-import fillRouter from '../fill/fill.router';
+import fillRouter from './route.fill';
 
 const formsRouter = express.Router({ mergeParams: true });
 

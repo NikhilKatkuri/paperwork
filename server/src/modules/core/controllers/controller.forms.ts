@@ -1,7 +1,7 @@
 import { NextFunction, Response } from 'express';
-import { CustomAuthRequest as Request } from '@/types';
-import FormsService from './forms.service';
 import { StatusCodes } from 'http-status-codes';
+import { CustomAuthRequest as Request } from '@/types';
+import FormsService from '@/modules/core/service/service.forms';
 
 class FormsController {
     service = new FormsService();
@@ -32,10 +32,12 @@ class FormsController {
         try {
             const { userId, bodyData } = this.getRequestData(req);
 
-            const newForm = await this.service.create({
-                ...bodyData,
-                userId,
-            });
+            const newForm = await this.service.create(
+                {
+                    ...bodyData,
+                },
+                userId
+            );
 
             res.status(StatusCodes.CREATED).json({
                 success: true,

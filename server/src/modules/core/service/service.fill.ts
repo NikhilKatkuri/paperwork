@@ -1,11 +1,11 @@
-import FormsModel from '../schemas/forms';
-import { AppError } from '@/utils/AppError';
-import SectionModel from '../schemas/forms.sections';
-import QuestionsModel from '../schemas/forms.questions';
-import { ResponseCore } from '@/types/form/forms';
-import FormResponseModel from '../schemas/forms.responses';
-import { FormDocument } from '@/types/form/Document';
 import mongoose from 'mongoose';
+import { AppError } from '@/utils/AppError';
+import FormsModel from '@/modules/core/schemas/schemas.forms';
+import SectionModel from '@/modules/core/schemas/schemas.sections';
+import QuestionsModel from '@/modules/core/schemas/schemas.questions';
+import FormResponseModel from '@/modules/core/schemas/schemas.responses';
+import { ResponseCore } from '@/types/form/forms';
+import { FormDocument } from '@/types/form/Document';
 
 class FillService {
     private validateEmailDomain(

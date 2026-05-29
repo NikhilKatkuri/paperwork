@@ -1,10 +1,9 @@
-import { AppError } from '@/utils/AppError';
-import FormsModel from '../schemas/forms';
-import { IformData } from '../types';
-import SectionModel from '../schemas/forms.sections';
-import QuestionsModel from '../schemas/forms.questions';
-import { FormCore } from '@/types/form/forms';
 import mongoose from 'mongoose';
+import { AppError } from '@/utils/AppError';
+import FormsModel from '@/modules/core/schemas/schemas.forms';
+import SectionModel from '@/modules/core/schemas/schemas.sections';
+import QuestionsModel from '@/modules/core/schemas/schemas.questions';
+import { FormCore } from '@/types/form/forms';
 
 class FormsService {
     private allowedSettingsFields = [
@@ -77,12 +76,13 @@ class FormsService {
         return filtered;
     }
 
-    async create(data: IformData) {
+    async create(data: FormCore, userId: string) {
         const { settings, ...rest } = data;
         const safeSettings = settings ?? {};
         const form = await FormsModel.create({
             ...rest,
             settings: safeSettings,
+            userId,
         });
         if (!form) {
             throw AppError.FormCreationFailed('Failed to create form');

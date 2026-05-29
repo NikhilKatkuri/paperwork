@@ -1,9 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 
 export class AppError extends Error {
-    static FormNotOpen(arg0: string) {
-        throw new Error('Method not implemented.');
-    }
     public readonly statusCode: number;
     public readonly isOperational: boolean;
 
@@ -79,5 +76,7 @@ export class AppError extends Error {
     static Forbidden(message: string) {
         return new AppError(StatusCodes.FORBIDDEN, message);
     }
-    s;
+    static FormNotOpen(message: string) {
+        return new AppError(StatusCodes.BAD_REQUEST, message);
+    }
 }

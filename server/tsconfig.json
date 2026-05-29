@@ -38,13 +38,16 @@
 
         /* Absolute Path Mapping (@/...) */
         "paths": {
+            "@/modules/*": [
+                "./src/modules/*"
+            ] /* Allows 'import user from "@/models/user"' */,
             "@/*": ["./src/*"] /* Allows 'import user from "@/models/user"' */
         }
     },
     "include": [
         "src/**/*",
         "src/@types/**/*"
-    ] /* Only compile code inside the src folder */,
+, "src/modules/auth/schemas/schema.user.ts"    ] /* Only compile code inside the src folder */,
     "exclude": [
         "node_modules",
         "dist",

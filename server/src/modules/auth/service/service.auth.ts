@@ -1,10 +1,10 @@
-import UserModel from './schemas/user.schema';
 import jwt from 'jsonwebtoken';
 import bycrpt from 'bcryptjs';
-import ProfileModel from './schemas/profile.schema';
 import { AppError } from '@/utils/AppError';
 import config from '@/config';
-import { SignInService, SignUpService } from './auth.types';
+import UserModel from '@/modules/auth/schemas/schema.user';
+import ProfileModel from '@/modules/auth/schemas/schema.profile';
+import { SignInService, SignUpService } from '@/modules/auth/types/types.auth';
 
 const genAccessToken = (payload: any) => {
     const token = jwt.sign(payload, config.JWT_SECRET, { expiresIn: '15m' });

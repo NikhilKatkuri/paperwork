@@ -5,10 +5,13 @@ import {
     signInController,
     signOutController,
     signUpController,
-} from './auth.controller';
+} from '@/modules/auth/controller/controller.auth';
 import { authLimiter } from '@/middleware/limiter';
 import validate from '@/middleware/validate';
-import { signInSchema, signUpSchema } from './auth.validation';
+import {
+    signInSchema,
+    signUpSchema,
+} from '@/modules/auth/validation/validation.auth';
 import protect from '@/middleware/protect';
 
 const authRouter: express.Router = express.Router();

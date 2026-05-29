@@ -1,7 +1,8 @@
 import { Response, NextFunction } from 'express';
-import { CustomAuthRequest as Request } from '@/types';
-import FillService from './fill.service';
 import { StatusCodes } from 'http-status-codes';
+
+import { CustomAuthRequest as Request } from '@/types';
+import FillService from '@/modules/core/service/service.fill';
 import { AppError } from '@/utils/AppError';
 
 class FillController {

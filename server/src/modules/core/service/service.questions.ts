@@ -1,9 +1,9 @@
-import QuestionsModel from '../schemas/forms.questions';
-import { AppError } from '@/utils/AppError';
-import FormsModel from '../schemas/forms';
-import SectionModel from '../schemas/forms.sections';
-import { QuestionCore } from '@/types/form/forms';
 import mongoose from 'mongoose';
+import { AppError } from '@/utils/AppError';
+import QuestionsModel from '@/modules/core/schemas/schemas.questions';
+import FormsModel from '@/modules/core/schemas/schemas.forms';
+import SectionModel from '@/modules/core/schemas/schemas.sections';
+import { QuestionCore } from '@/types/form/forms';
 
 interface I {
     userId: string;

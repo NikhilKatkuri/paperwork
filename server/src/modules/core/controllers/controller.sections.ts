@@ -1,8 +1,8 @@
 import { NextFunction, Response } from 'express';
-import { CustomAuthRequest as Request } from '@/types';
-import SectionService from './sections.service';
-import { AppError } from '@/utils/AppError';
 import { StatusCodes } from 'http-status-codes';
+import { CustomAuthRequest as Request } from '@/types';
+import SectionService from '@/modules/core/service/service.sections';
+import { AppError } from '@/utils/AppError';
 
 class SectionController {
     service = new SectionService();
