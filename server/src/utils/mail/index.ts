@@ -8,6 +8,7 @@ import {
     forgotPasswordTemplate,
     passwordResetSuccessTemplate,
     loginAlertTemplate,
+    passwordChangeAlertTemplate,
 } from './templates';
 
 interface MailPayload {
@@ -47,12 +48,12 @@ class MailService {
         });
     }
 
-    async sendOTPEmail(email: string, otp: number) {
+    async sendOTPEmail(email: string, otp: string) {
         return this.send({
             to: email,
             subject: 'Your verification code',
             text: `Your OTP is ${otp}`,
-            html: otpTemplate(String(otp)),
+            html: otpTemplate(otp),
         });
     }
 
@@ -105,14 +106,17 @@ class MailService {
         return this.send({
             to: email,
             subject: 'New login detected',
-            text: `
-New login detected.
-
-Device: ${device}
-Location: ${location}
-Time: ${time}
-            `,
+            text: `We noticed a new login to your account from ${device} in ${location} at ${time}. If this was you, you can safely ignore this email. If not, please secure your account immediately.`,
             html: loginAlertTemplate(device, location, time),
+        });
+    }
+
+    async sendPasswordChangeAlertEmail(email: string, time: string) {
+        return this.send({
+            to: email,
+            subject: 'Password Change Alert',
+            text: `Your password was changed at ${time}. If this was you, you can safely ignore this email. If not, please secure your account immediately.`,
+            html: passwordChangeAlertTemplate(time),
         });
     }
 }

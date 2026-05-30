@@ -4,6 +4,7 @@ import FormsModel from '@/modules/core/schemas/schemas.forms';
 import SectionModel from '@/modules/core/schemas/schemas.sections';
 import QuestionsModel from '@/modules/core/schemas/schemas.questions';
 import { FormCore } from '@/types/form/forms';
+import { emailQueue } from '@/queues';
 
 class FormsService {
     private allowedSettingsFields = [
@@ -88,6 +89,19 @@ class FormsService {
             throw AppError.FormCreationFailed('Failed to create form');
         }
 
+        await emailQueue.add(
+            'sendFormCreatedEmail',
+            {
+                formId: form._id.toString(),
+                formName: form.title,
+                email: form.userId.toString(),
+            },
+            {
+                attempts: 10,
+                backoff: { type: 'exponential', delay: 60 * 1000 },
+            }
+        );
+        
         return form.toObject();
     }
 

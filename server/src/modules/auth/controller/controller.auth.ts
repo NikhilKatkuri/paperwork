@@ -5,6 +5,8 @@ import config from '@/config';
 import { AppError } from '@/utils/AppError';
 import jwt from 'jsonwebtoken';
 import { CustomAuthRequest as Request } from '@/types';
+import geoip from 'geoip-lite';
+import useragent from 'useragent';
 
 class AuthController {
     authService = new AuthService();
@@ -21,6 +23,22 @@ class AuthController {
         for (const method of methods) {
             (this as any)[method] = (this as any)[method].bind(this);
         }
+    }
+
+    private geoByIp(req: Request) {
+        if (!req.ip) {
+            return 'unkown ip';
+        }
+
+        const geo = geoip.lookup(req.ip);
+        return geo
+            ? `city: ${geo.city}, country: ${geo.country}, region: ${geo.region}`
+            : 'Unknown Location';
+    }
+
+    private deviceByUserAgent(req: Request) {
+        const ua = useragent.parse(req.headers['user-agent']).toJSON();
+        return `family: ${ua.family}, version: ${ua.major}.${ua.minor}.${ua.patch} device: ${ua.device}`;
     }
 
     private getContext(req: Request) {
@@ -40,8 +58,9 @@ class AuthController {
             const { email, password } = req.body;
             const { accessToken, refreshToken } = await this.authService.signIn(
                 {
-                    email,
-                    password,
+                    payload: { email, password },
+                    geo: this.geoByIp(req),
+                    device: this.deviceByUserAgent(req),
                 }
             );
 

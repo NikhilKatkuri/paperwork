@@ -153,8 +153,8 @@ export const loginAlertTemplate = (
       </p>
 
       <div style="background:#f9fafb;border:1px solid #eee;border-radius:14px;padding:20px;margin:24px 0;">
-        <p style="margin:0 0 10px;color:#111827;"><strong>Device:</strong> ${device}</p>
-        <p style="margin:0 0 10px;color:#111827;"><strong>Location:</strong> ${location}</p>
+        <p style="margin:0 0 10px;color:#111827;"><strong>${device}</p>
+        <p style="margin:0 0 10px;color:#111827;"><strong>${location}</p>
         <p style="margin:0;color:#111827;"><strong>Time:</strong> ${time}</p>
       </div>
 
@@ -327,6 +327,45 @@ export const passwordResetSuccessTemplate = () => `
 
       <p style="color:#4b5563;font-size:16px;line-height:1.7;">
         Your account is now secured with your new password.
+      </p>
+    </div>
+
+    <div style="padding:24px 40px;border-top:1px solid #f1f1f1;text-align:center;">
+      <p style="margin:0;color:#9ca3af;font-size:13px;">
+        © 2026 Paperwork
+      </p>
+    </div>
+  </div>
+</div>
+`;
+
+export const passwordChangeAlertTemplate = (time: string) => `
+<div style="background:#f5f7fb;padding:40px 20px;font-family:Inter,Arial,sans-serif;">
+  <div style="max-width:600px;margin:auto;background:#fff;border-radius:20px;border:1px solid #eaeaea;overflow:hidden;">
+
+    <div style="padding:32px 40px;border-bottom:1px solid #f1f1f1;">
+      <h1 style="margin:0;font-size:24px;color:#111827;">Paperwork</h1>
+    </div>
+
+    <div style="padding:40px;">
+      <div style="display:inline-block;background:#fef2f2;color:#dc2626;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;margin-bottom:20px;">
+        Security Alert
+      </div>
+
+      <h2 style="margin:0 0 16px;font-size:28px;color:#111827;">
+        Password changed
+      </h2>
+
+      <p style="color:#4b5563;font-size:16px;line-height:1.7;">
+        The password for your Paperwork account was recently changed.
+      </p>
+
+      <div style="background:#f9fafb;border:1px solid #eee;border-radius:14px;padding:20px;margin:24px 0;">
+        <p style="margin:0;color:#111827;"><strong>Time of change:</strong> ${time}</p>
+      </div>
+
+      <p style="color:#6b7280;font-size:14px;line-height:1.7;">
+        If you made this change, you can safely ignore this email. If you did not change your password, please contact our support team or recover your account immediately.
       </p>
     </div>
 

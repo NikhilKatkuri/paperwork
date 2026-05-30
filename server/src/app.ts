@@ -9,9 +9,11 @@ import cookieParser from 'cookie-parser';
 import router from './router';
 import globalErrorHandler from './middleware/errorHandler';
 import { limiter } from './middleware/limiter';
+import config from '@/config/index';
 
 const app: express.Application = express();
 
+app.set('trust proxy', config.env === 'production');
 app.use(helmet());
 app.use(cors(corsOptions));
 app.use(limiter);

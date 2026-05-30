@@ -6,7 +6,6 @@ import UserModel from '@/modules/auth/schemas/schema.user';
 import ProfileModel from '@/modules/auth/schemas/schema.profile';
 import { SignInService, SignUpService } from '@/modules/auth/types/types.auth';
 import OTP from '@/utils/otp';
-import MailService from '@/utils/mail/index';
 import crypto from 'crypto';
 import { emailQueue } from '@/queues';
 
@@ -60,11 +59,11 @@ class AuthService {
             'sendWelcomeEmail',
             { email, fullName },
             {
-                attempts: 3,
+                attempts: 10,
                 backoff: { type: 'exponential', delay: 60 * 1000 },
             }
         );
-        // new MailService().sendWelcomeEmail(email, fullName);
+
         return {
             accessToken: genAccessToken({
                 userId: newUser._id,
@@ -77,7 +76,16 @@ class AuthService {
         };
     };
 
-    signIn = async ({ email, password }: SignInService) => {
+    signIn = async ({
+        payload,
+        geo,
+        device,
+    }: {
+        payload: SignInService;
+        geo: string;
+        device: string;
+    }) => {
+        const { email, password } = payload;
         const user = await UserModel.findOne({ email }).select('+passwordHash');
         if (!user) {
             throw AppError.Unauthorized('Invalid email or password');
@@ -90,6 +98,20 @@ class AuthService {
         if (!isPasswordValid) {
             throw AppError.Unauthorized('Invalid email or password');
         }
+
+        await emailQueue.add(
+            'sendLoginAlertEmail',
+            {
+                email,
+                device,
+                location: geo,
+                time: new Date().toISOString(),
+            },
+            {
+                attempts: 10,
+                backoff: { type: 'exponential', delay: 20 * 1000 },
+            }
+        );
 
         return {
             accessToken: genAccessToken({
@@ -147,7 +169,16 @@ class AuthService {
             }
 
             const { otp, expiresAt } = new OTP().generateOTP(userId, email);
-            await new MailService().sendOTPEmail(email, parseInt(otp, 10));
+
+            await emailQueue.add(
+                'sendVerificationEmail',
+                { email, otp, expiresAt },
+                {
+                    attempts: 2,
+                    backoff: { type: 'exponential', delay: 5 * 1000 },
+                }
+            );
+
             return expiresAt;
         } catch (error) {
             if (error instanceof AppError) {
@@ -216,6 +247,15 @@ class AuthService {
                 );
 
                 user.passwordHash = newHash;
+                await emailQueue.add(
+                    'sendPasswordChangeAlertEmail',
+                    { email: user.email, time: new Date().toISOString() },
+                    {
+                        attempts: 5,
+                        backoff: { type: 'exponential', delay: 20 * 1000 },
+                    }
+                );
+
                 await user.save();
                 return 'password has been changed successfully.';
             }
@@ -247,9 +287,13 @@ class AuthService {
 
                 const resetLink = `http://localhost:5000/api/v1/auth/reset-password/${token}`;
 
-                await new MailService().sendForgotPasswordEmail(
-                    email,
-                    resetLink
+                await emailQueue.add(
+                    'sendForgotPasswordEmail',
+                    { email, resetLink },
+                    {
+                        attempts: 5,
+                        backoff: { type: 'exponential', delay: 20 * 1000 },
+                    }
                 );
             }
             return 'If an account with that email exists, a password reset link has been sent.';
@@ -283,6 +327,15 @@ class AuthService {
                 user.resetToken = undefined;
                 user.resetExpires = undefined;
                 await user.save();
+
+                await emailQueue.add(
+                    'sendPasswordResetSuccessEmail',
+                    { email: user.email },
+                    {
+                        attempts: 5,
+                        backoff: { type: 'exponential', delay: 30 * 1000 },
+                    }
+                );
             }
             return 'If the token is valid, your password has been reset successfully.';
         } catch (error) {
