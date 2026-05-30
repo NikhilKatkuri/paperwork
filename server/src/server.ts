@@ -1,6 +1,7 @@
 import app from './app';
 import config from '@/config';
 import { connectDB, disconnectDB } from '@/db/connection';
+import WorkerManager from './workers';
 
 const boot = async (): Promise<void> => {
     await connectDB();
@@ -10,7 +11,8 @@ const boot = async (): Promise<void> => {
         );
         console.log(`[URL] http://localhost:${config.port}`);
     });
-
+    const worker = new WorkerManager();
+    worker.initEmailWorker();
     const shutdown = async (signal: string): Promise<void> => {
         console.log(`[server] ${signal} received, shutting down gracefully`);
         server.close(async () => {

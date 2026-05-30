@@ -8,6 +8,7 @@ import { SignInService, SignUpService } from '@/modules/auth/types/types.auth';
 import OTP from '@/utils/otp';
 import MailService from '@/utils/mail/index';
 import crypto from 'crypto';
+import { emailQueue } from '@/queues';
 
 const genAccessToken = (payload: any) => {
     const token = jwt.sign(payload, config.JWT_SECRET, { expiresIn: '60m' });
@@ -55,7 +56,15 @@ class AuthService {
 
         const profile = new ProfileModel(profileData);
         await profile.save();
-        new MailService().sendWelcomeEmail(email, fullName);
+        await emailQueue.add(
+            'sendWelcomeEmail',
+            { email, fullName },
+            {
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 60 * 1000 },
+            }
+        );
+        // new MailService().sendWelcomeEmail(email, fullName);
         return {
             accessToken: genAccessToken({
                 userId: newUser._id,

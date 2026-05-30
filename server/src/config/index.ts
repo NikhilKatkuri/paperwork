@@ -38,7 +38,7 @@ function getEnvArray(key: string, defaultValue: string[] = []): string[] {
 
 type Origins = { env: 'dev'; urls: string[] } | { env: 'prod'; urls: string[] };
 
-interface AppConfig {
+export interface AppConfig {
     env: string;
     port: number;
     mongo: {
@@ -62,6 +62,11 @@ interface AppConfig {
         EXPIRATION: number;
     };
     WEB_URL: string;
+    redis: {
+        host: string;
+        port: number;
+        password?: string | undefined;
+    };
 }
 
 const isDev = getEnvVar('NODE_ENV', 'development') === 'development';
@@ -99,6 +104,11 @@ const config: AppConfig = {
         EXPIRATION: getEnvVar('OTP_EXPIRATION', 300000), // 5 minutes in milliseconds
     },
     WEB_URL: getEnvVar('WEB_URL') as string,
+    redis: {
+        host: getEnvVar('REDIS_HOST') as string,
+        port: getEnvVar('REDIS_PORT') as unknown as number,
+        password: getEnvVar('REDIS_PASSWORD') as string | undefined,
+    },
 };
 
 export default config;
