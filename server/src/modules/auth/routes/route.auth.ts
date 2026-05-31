@@ -30,7 +30,12 @@ authRouter.post(
     controller.signUpController
 );
 
-authRouter.post('/sign-out', authLimiter, controller.signOutController);
+authRouter.post(
+    '/sign-out',
+    authLimiter,
+    protect,
+    controller.signOutController
+);
 
 authRouter.get(
     '/me',
@@ -69,8 +74,8 @@ authRouter.post(
 
 authRouter.post(
     '/forgot-password',
-    protect,
     forgotPasswordLimiter,
+    protect,
     controller.forgotPasswordController
 );
 

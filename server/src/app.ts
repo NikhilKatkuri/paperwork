@@ -10,6 +10,7 @@ import router from './router';
 import globalErrorHandler from './middleware/errorHandler';
 import { limiter } from './middleware/limiter';
 import config from '@/config/index';
+import Trend from './redis/trend';
 
 const app: express.Application = express();
 
@@ -23,4 +24,7 @@ app.use(cookieParser());
 
 app.use(router);
 app.use(globalErrorHandler);
+
+const trendEngine = new Trend();
+export { trendEngine };
 export default app;

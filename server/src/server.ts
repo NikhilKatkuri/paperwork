@@ -11,6 +11,7 @@ const boot = async (): Promise<void> => {
         );
         console.log(`[URL] http://localhost:${config.port}`);
     });
+    
     const worker = new WorkerManager();
     worker.initEmailWorker();
     const shutdown = async (signal: string): Promise<void> => {

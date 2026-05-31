@@ -4,6 +4,7 @@ import { StatusCodes } from 'http-status-codes';
 import { CustomAuthRequest as Request } from '@/types';
 import FillService from '@/modules/core/service/service.fill';
 import { AppError } from '@/utils/AppError';
+import { trendEngine } from '@/app';
 
 class FillController {
     service = new FillService();
@@ -20,6 +21,8 @@ class FillController {
             (this as any)[method] = (this as any)[method].bind(this);
         }
     }
+
+    private inFlightReads = new Map<string, Promise<any>>();
 
     private getContent(req: Request) {
         const { id: userId, email } = req.user!;
@@ -62,16 +65,47 @@ class FillController {
         try {
             const { userId, formId } = this.getContent(req);
 
-            const formData = await this.service.get(formId, userId);
+            let formData = await trendEngine.getForm(formId);
+
+            if (!formData) {
+
+                let dbPromise = this.inFlightReads.get(formId);
+                const isFirst = !dbPromise;
+                
+                if(isFirst){
+                    dbPromise = this.service.get(formId, userId).finally(()=>{
+                        this.inFlightReads.delete(formId);
+                    });
+                    this.inFlightReads.set(formId, dbPromise); 
+                }
+               
+                const db = await dbPromise;
+                if (!db) {
+                    throw AppError.NotFound('Form not found');
+                }
+                
+                formData = JSON.stringify(db, null, 2);
+                
+                if(isFirst){
+                    await trendEngine
+                        .handleDbFallback(formId, formData)
+                        .catch((err) => {
+                            console.error('Error caching form data:', err);
+                        });
+                }
+            }
+
             res.status(StatusCodes.OK).json({
                 success: true,
                 message: 'Form retrieved successfully',
-                data: formData,
+                data: JSON.parse(formData),
             });
+
         } catch (error) {
             next(error);
         }
     }
+
     async submit(req: Request, res: Response, next: NextFunction) {
         try {
             const { ...params } = this.getContent(req);

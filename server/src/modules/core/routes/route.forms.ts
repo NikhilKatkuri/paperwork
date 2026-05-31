@@ -12,15 +12,29 @@ import sectionRouter from '@/modules/core/routes/route.sections';
 import questionsRouter from './route.questions';
 
 import fillRouter from './route.fill';
+import {
+    createFormsInnerLimiter,
+    createFormsLimiter,
+    limiter,
+    lowLimiter,
+} from '@/middleware/limiter';
 
 const formsRouter = express.Router({ mergeParams: true });
 
 const controller = new FormsController();
 
-formsRouter.get('/', protect, controller.getAll);
-formsRouter.post('/', protect, validate(formSchema), controller.create);
+formsRouter.get('/', limiter, protect, controller.getAll);
+formsRouter.post(
+    '/',
+    createFormsLimiter,
+    protect,
+    validate(formSchema),
+    controller.create
+);
+
 formsRouter.put(
     '/:formId',
+    limiter,
     protect,
     validate(putRequestFormSchema),
     controller.put
@@ -28,14 +42,23 @@ formsRouter.put(
 
 formsRouter.patch(
     '/:formId',
+    createFormsInnerLimiter,
     protect,
     validate(patchRequestFormSchema),
     controller.patch
 );
 
-formsRouter.get('/:formId', protect, validate(getFormSchema), controller.get);
+formsRouter.get(
+    '/:formId',
+    limiter,
+    protect,
+    validate(getFormSchema),
+    controller.get
+);
+
 formsRouter.delete(
     '/:formId',
+    createFormsLimiter,
     protect,
     validate(getFormSchema),
     controller.delete
@@ -43,24 +66,37 @@ formsRouter.delete(
 
 formsRouter.post(
     '/:formId/publish',
+    lowLimiter,
     protect,
     validate(getFormSchema),
     controller.publish
 );
 formsRouter.post(
     '/:formId/unpublish',
+    lowLimiter,
     protect,
     validate(getFormSchema),
     controller.unPublish
 );
 formsRouter.post(
     '/:formId/duplicate',
+    lowLimiter,
     protect,
     validate(getFormSchema),
     controller.duplicate
 );
 
-formsRouter.use('/:formId/sections', sectionRouter);
-formsRouter.use('/:formId/sections/:sectionId/questions', questionsRouter);
-formsRouter.use('/:formId/fill', protect, fillRouter);
+formsRouter.use(
+    '/:formId/sections',
+    createFormsInnerLimiter,
+    protect,
+    sectionRouter
+);
+formsRouter.use(
+    '/:formId/sections/:sectionId/questions',
+    createFormsInnerLimiter,
+    protect,
+    questionsRouter
+);
+formsRouter.use('/:formId/fill', lowLimiter, protect, fillRouter);
 export default formsRouter;
