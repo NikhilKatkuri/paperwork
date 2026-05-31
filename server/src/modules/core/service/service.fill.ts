@@ -107,7 +107,7 @@ class FillService {
     }
 
     async post(data: ResponseCore) {
-        const { formId, userId, email, answers } = data;
+        const { formId, userId, email, answers, metadata } = data;
         const session = await mongoose.startSession();
         session.startTransaction();
 
@@ -128,7 +128,7 @@ class FillService {
                     ],
                 },
                 { $inc: { responseCount: 1 } },
-                { session, new: true }
+                { session, returnDocument: 'after' }
             ).lean();
 
             if (!updatedForm) {
@@ -157,6 +157,7 @@ class FillService {
                         userId,
                         email,
                         answers,
+                        metadata,
                     },
                 ],
                 { session }

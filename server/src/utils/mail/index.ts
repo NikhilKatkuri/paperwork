@@ -9,6 +9,7 @@ import {
     passwordResetSuccessTemplate,
     loginAlertTemplate,
     passwordChangeAlertTemplate,
+    formSubmissionConfirmed,
 } from './templates';
 
 interface MailPayload {
@@ -117,6 +118,18 @@ class MailService {
             subject: 'Password Change Alert',
             text: `Your password was changed at ${time}. If this was you, you can safely ignore this email. If not, please secure your account immediately.`,
             html: passwordChangeAlertTemplate(time),
+        });
+    }
+    async sendFormSubmissionConfirmedEmail(
+        email: string,
+        formName: string,
+        submissionId: string
+    ) {
+        return this.send({
+            to: email,
+            subject: 'Form Submission Confirmed',
+            text: `Your submission for ${formName} has been received. Submission ID: ${submissionId}`,
+            html: formSubmissionConfirmed(formName, submissionId),
         });
     }
 }

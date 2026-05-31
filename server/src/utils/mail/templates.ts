@@ -377,3 +377,142 @@ export const passwordChangeAlertTemplate = (time: string) => `
   </div>
 </div>
 `;
+
+export const formSubmissionConfirmed = (
+    formName: string,
+    submissionId: string
+) => `
+<div style="
+    background:#f5f7fb;
+    padding:40px 20px;
+    font-family:Inter,Arial,sans-serif;
+">
+    <div style="
+        max-width:600px;
+        margin:auto;
+        background:#ffffff;
+        border-radius:20px;
+        overflow:hidden;
+        border:1px solid #eaeaea;
+        box-shadow:0 10px 30px rgba(0,0,0,0.05);
+    ">
+        
+        <div style="
+            padding:32px 40px;
+            border-bottom:1px solid #f1f1f1;
+        ">
+            <h1 style="
+                margin:0;
+                font-size:24px;
+                color:#111827;
+                font-weight:700;
+                letter-spacing:-0.5px;
+            ">
+                Paperwork
+            </h1>
+
+            <p style="
+                margin:8px 0 0;
+                color:#6b7280;
+                font-size:14px;
+            ">
+                Smart forms for modern teams
+            </p>
+        </div>
+
+        <div style="padding:40px;">
+            <div style="
+                display:inline-block;
+                background:#eff6ff;
+                color:#1d4ed8;
+                padding:6px 12px;
+                border-radius:999px;
+                font-size:13px;
+                font-weight:600;
+                margin-bottom:20px;
+            ">
+                Submission Received
+            </div>
+
+            <h2 style="
+                margin:0 0 16px;
+                color:#111827;
+                font-size:28px;
+                line-height:1.3;
+                letter-spacing:-1px;
+            ">
+                Thanks for filling it out!
+            </h2>
+
+            <p style="
+                margin:0 0 24px;
+                color:#4b5563;
+                font-size:16px;
+                line-height:1.7;
+            ">
+                Your response for <strong>${formName}</strong> has been successfully recorded. A copy of your submission has been safely logged under our system workflows.
+            </p>
+
+            <div style="
+                background:#f9fafb;
+                border:1px solid #eeeeee;
+                border-radius:14px;
+                padding:18px;
+                margin-bottom:32px;
+            ">
+                <p style="
+                    margin:0 0 4px;
+                    color:#9ca3af;
+                    font-size:12px;
+                    text-transform:uppercase;
+                    letter-spacing:0.5px;
+                    font-weight:600;
+                ">
+                    Submission ID
+                </p>
+                <p style="
+                    margin:0;
+                    color:#111827;
+                    font-family:monospace;
+                    font-size:14px;
+                ">
+                    ${submissionId}
+                </p>
+            </div>
+
+            <div style="text-align:center;">
+                <a 
+                    href="https://your-app-url.com/submissions/${submissionId}"
+                    style="
+                        display:inline-block;
+                        background:#111827;
+                        color:#ffffff;
+                        text-decoration:none;
+                        padding:14px 28px;
+                        border-radius:12px;
+                        font-size:15px;
+                        font-weight:600;
+                    "
+                >
+                    View Your Response
+                </a>
+            </div>
+        </div>
+
+        <div style="
+            padding:24px 40px;
+            border-top:1px solid #f1f1f1;
+            text-align:center;
+        ">
+            <p style="
+                margin:0;
+                color:#9ca3af;
+                font-size:13px;
+                line-height:1.6;
+            ">
+                © 2026 Paperwork. Built for fast, frictionless workflows.
+            </p>
+        </div>
+    </div>
+</div>
+`;

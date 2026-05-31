@@ -4,7 +4,10 @@ import { StatusCodes } from 'http-status-codes';
 import { CustomAuthRequest as Request } from '@/types';
 import FillService from '@/modules/core/service/service.fill';
 import { AppError } from '@/utils/AppError';
-import { trendEngine } from '@/app';
+import { cacheRedis, trendEngine } from '@/redis';
+import mongoose from 'mongoose';
+import { submissionQueue } from '@/queues';
+import { submissionKey } from '@/workers/SubmissionWorker';
 
 class FillController {
     service = new FillService();
@@ -68,25 +71,24 @@ class FillController {
             let formData = await trendEngine.getForm(formId);
 
             if (!formData) {
-
                 let dbPromise = this.inFlightReads.get(formId);
                 const isFirst = !dbPromise;
-                
-                if(isFirst){
-                    dbPromise = this.service.get(formId, userId).finally(()=>{
+
+                if (isFirst) {
+                    dbPromise = this.service.get(formId, userId).finally(() => {
                         this.inFlightReads.delete(formId);
                     });
-                    this.inFlightReads.set(formId, dbPromise); 
+                    this.inFlightReads.set(formId, dbPromise);
                 }
-               
+
                 const db = await dbPromise;
                 if (!db) {
                     throw AppError.NotFound('Form not found');
                 }
-                
+
                 formData = JSON.stringify(db, null, 2);
-                
-                if(isFirst){
+
+                if (isFirst) {
                     await trendEngine
                         .handleDbFallback(formId, formData)
                         .catch((err) => {
@@ -100,7 +102,6 @@ class FillController {
                 message: 'Form retrieved successfully',
                 data: JSON.parse(formData),
             });
-
         } catch (error) {
             next(error);
         }
@@ -108,11 +109,28 @@ class FillController {
 
     async submit(req: Request, res: Response, next: NextFunction) {
         try {
-            const { ...params } = this.getContent(req);
-            await this.service.post(params);
-            res.status(StatusCodes.OK).json({
+            const { ...params } = this.getContent(req); 
+            const submissionId = new mongoose.Types.ObjectId().toString();
+            await cacheRedis.set(
+                submissionKey(submissionId),
+                JSON.stringify({
+                    submissionId,
+                    status: 'pending',
+                    formId: params.formId,
+                    createdAt: Date.now(),
+                }),
+                'EX',
+                3600 // 1hr
+            );
+            await submissionQueue.add('submit', {
+                submissionId,
+                ...params,
+            });
+
+            res.status(StatusCodes.ACCEPTED).json({
                 success: true,
-                message: 'Form submitted successfully',
+                message: 'Submission received',
+                data: { submissionId }, // client uses this to poll
             });
         } catch (error) {
             next(error);
@@ -173,6 +191,29 @@ class FillController {
                 success: true,
                 message: 'Responses exported successfully',
                 data: text,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async getSubmissionStatus(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { submissionId } = req.params as { submissionId: string };
+            if (!submissionId) {
+                throw AppError.BadRequest('Submission ID is required');
+            }
+            const raw = await cacheRedis.get(submissionKey(submissionId));
+
+            if (!raw) {
+                throw AppError.NotFound('Submission not found or expired');
+            }
+
+            const status = JSON.parse(raw);
+
+            res.status(StatusCodes.OK).json({
+                success: true,
+                data: status,
             });
         } catch (error) {
             next(error);

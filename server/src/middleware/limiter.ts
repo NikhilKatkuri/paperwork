@@ -23,7 +23,7 @@ const limiter: RateLimitRequestHandler = ratelimit({
 const lowLimiter: RateLimitRequestHandler = ratelimit({
     ...base,
     windowMs: 15 * 60 * 1000,
-    limit: 5,
+    limit: 15,
     skipSuccessfulRequests: true,
     message: {
         status: status.TOO_MANY_REQUESTS,
@@ -93,7 +93,8 @@ const createFormsInnerLimiter: RateLimitRequestHandler = ratelimit({
     skipSuccessfulRequests: true,
     message: {
         status: status.TOO_MANY_REQUESTS,
-        message: 'too many form question/section creation attempts, please try again later',
+        message:
+            'too many form question/section creation attempts, please try again later',
     },
 });
 
@@ -105,5 +106,5 @@ export {
     refreshTokenLimiter,
     createFormsLimiter,
     createFormsInnerLimiter,
-    lowLimiter
+    lowLimiter,
 };

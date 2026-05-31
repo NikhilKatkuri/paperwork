@@ -1,15 +1,9 @@
 import { Worker, WorkerOptions, Processor, Job } from 'bullmq';
-import config from '@/config/index';
 import MailService from '@/utils/mail';
 import { AppError } from '@/utils/AppError';
+import { redisConnection } from '@/redis';
 
 class WorkerManager {
-    private connection = {
-        host: config.redis.host,
-        port: config.redis.port,
-        password: config.redis.password,
-    };
-
     private mailservice = new MailService();
 
     constructor() {
@@ -35,7 +29,7 @@ class WorkerManager {
     ) {
         return new Worker(name, processor, {
             ...opts,
-            connection: this.connection,
+            connection: redisConnection,
         });
     }
 
@@ -84,6 +78,13 @@ class WorkerManager {
                     job.data.formName,
                     job.data.formId
                 ),
+
+            submissionConfirmed:(job)=>
+                this.mailservice.sendFormSubmissionConfirmedEmail(
+                    job.data.email,
+                    job.data.formId,
+                    job.data.submissionId
+                )
         };
     }
 
@@ -116,5 +117,6 @@ class WorkerManager {
         console.log('[WorkerManager] Email worker successfully mounted.');
     }
 }
-
+const worker = new WorkerManager();
+export { worker };
 export default WorkerManager;

@@ -1,12 +1,7 @@
+import { redisConnection } from '@/redis';
 import { Queue, QueueOptions } from 'bullmq';
-import config from '@/config/index';
 
 class QueueManager {
-    private connection = {
-        host: config.redis.host,
-        port: config.redis.port,
-        password: config.redis.password,
-    };
     constructor() {
         const methods = Object.getOwnPropertyNames(
             QueueManager.prototype
@@ -24,11 +19,24 @@ class QueueManager {
 
     createQueue(name: string, opts: Omit<QueueOptions, 'connection'> = {}) {
         console.log(`[QueueManager] creating queue: ${name} withs opts:`, opts);
-        return new Queue(name, { ...opts, connection: this.connection });
+        return new Queue(name, { ...opts, connection: redisConnection });
     }
 }
 
-const emailQueue = new QueueManager().createQueue('email');
+const manager = new QueueManager();
+
+const emailQueue = manager.createQueue('email');
+const submissionQueue = manager.createQueue('submissions', {
+    defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+            type: 'exponential',
+            delay: 2000,
+        },
+        removeOnComplete: true,
+        removeOnFail: false,
+    },
+});
 
 export default QueueManager;
-export { emailQueue };
+export { emailQueue, submissionQueue, manager as queueManager };

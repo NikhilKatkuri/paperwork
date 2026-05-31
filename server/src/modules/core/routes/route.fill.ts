@@ -7,26 +7,46 @@ import {
 import validate from '@/middleware/validate';
 import { responseIdSchema } from '../validators/validator.fill';
 import protect from '@/middleware/protect';
-import { limiter } from '@/middleware/limiter';
+import { lowLimiter } from '@/middleware/limiter';
+
 const fillRouter = express.Router({ mergeParams: true });
 const fillController = new FillController();
 
-fillRouter.get('/', limiter, protect, validate(fillFormSchema), fillController.fill);
-fillRouter.post('/', limiter, protect, validate(postFormSchema), fillController.submit);
+fillRouter.get(
+    '/',
+    lowLimiter,
+    protect,
+    validate(fillFormSchema),
+    fillController.fill
+);
+fillRouter.post(
+    '/', 
+    lowLimiter,
+    protect,
+    validate(postFormSchema),
+    fillController.submit
+);
 
-fillRouter.get('/responses', limiter, protect, fillController.responses);
+fillRouter.get('/responses', lowLimiter, protect, fillController.responses);
 fillRouter.get(
     '/responses/export/:exportType',
-    limiter,
+    lowLimiter,
     protect,
     fillController.exportResponses
 );
 fillRouter.get(
     '/responses/:responseId',
-    limiter,
+    lowLimiter,
     protect,
     validate(responseIdSchema),
     fillController.getResponse
+);
+
+fillRouter.get(
+    '/submissions/:submissionId/status',
+    lowLimiter,
+    protect,
+    fillController.getSubmissionStatus
 );
 
 export default fillRouter;

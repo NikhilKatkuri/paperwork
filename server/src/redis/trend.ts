@@ -1,3 +1,4 @@
+import { cacheRedis } from '@/redis';
 import { Redis } from 'ioredis';
 
 interface CacheEntry {
@@ -60,7 +61,7 @@ class Trend {
     private TREND_FORM_EXPIRATION_S = 60 * 60; // s   — for Redis
 
     constructor() {
-        this.redis = new Redis();
+        this.redis = cacheRedis;
 
         const methods = Object.getOwnPropertyNames(Trend.prototype).filter(
             (prop) =>
