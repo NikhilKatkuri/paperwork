@@ -79,12 +79,12 @@ class WorkerManager {
                     job.data.formId
                 ),
 
-            submissionConfirmed:(job)=>
+            submissionConfirmed: (job) =>
                 this.mailservice.sendFormSubmissionConfirmedEmail(
                     job.data.email,
                     job.data.formId,
                     job.data.submissionId
-                )
+                ),
         };
     }
 

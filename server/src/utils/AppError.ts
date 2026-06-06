@@ -88,4 +88,8 @@ export class AppError extends Error {
     static Internal(message: string) {
         return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
     }
+
+    static CLoudinaryConfigMissing(message: string) {
+        return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
+    }
 }

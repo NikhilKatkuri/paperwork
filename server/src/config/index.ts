@@ -67,6 +67,15 @@ export interface AppConfig {
         port: number;
         password?: string | undefined;
     };
+    cloudinary: {
+        cloud_name: string;
+        api_key: string;
+        api_secret: string;
+        named_folder: string;
+        expiration: number;
+        window_expiration: number;
+        window_buffer: number;
+    };
 }
 
 const isDev = getEnvVar('NODE_ENV', 'development') === 'development';
@@ -108,6 +117,18 @@ const config: AppConfig = {
         host: getEnvVar('REDIS_HOST') as string,
         port: getEnvVar('REDIS_PORT') as unknown as number,
         password: getEnvVar('REDIS_PASSWORD') as string | undefined,
+    },
+    cloudinary: {
+        cloud_name: getEnvVar('CLOUDINARY_CLOUD_NAME') as string,
+        api_key: getEnvVar('CLOUDINARY_API_KEY') as string,
+        api_secret: getEnvVar('CLOUDINARY_API_SECRET') as string,
+        expiration: getEnvVar('CLOUDINARY_SIGNED_URL_EXPIRATION', 300),
+        named_folder: getEnvVar('CLOUDINARY_FOLDER') as string,
+        window_expiration: getEnvVar(
+            'CLOUDINARY_BUCKET_WINDOW_EXPIRATION',
+            600
+        ),
+        window_buffer: getEnvVar('CLOUDINARY_BUCKET_WINDOW_BUFFER', 300),
     },
 };
 

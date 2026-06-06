@@ -92,7 +92,6 @@ class SubmissionWorker {
                 email,
                 formId,
             });
-            
         } catch (error) {
             await this.updateStatus(submissionId, 'failed', {
                 error: (error as Error).message,

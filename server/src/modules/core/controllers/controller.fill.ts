@@ -109,7 +109,7 @@ class FillController {
 
     async submit(req: Request, res: Response, next: NextFunction) {
         try {
-            const { ...params } = this.getContent(req); 
+            const { ...params } = this.getContent(req);
             const submissionId = new mongoose.Types.ObjectId().toString();
             await cacheRedis.set(
                 submissionKey(submissionId),

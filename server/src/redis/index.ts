@@ -1,7 +1,6 @@
-import Trend from "@/redis/trend";
-import Redis from "ioredis";
-import config from "@/config";
-
+import Trend from '@/redis/trend';
+import Redis from 'ioredis';
+import config from '@/config';
 
 const cacheRedis = new Redis({
     host: config.redis.host,
@@ -17,4 +16,4 @@ const redisConnection = {
 };
 
 const trendEngine = new Trend();
-export { trendEngine, cacheRedis, redisConnection};
+export { trendEngine, cacheRedis, redisConnection };

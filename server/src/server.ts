@@ -13,7 +13,7 @@ const boot = async (): Promise<void> => {
     });
 
     // Initialize database and workers in background (non-blocking)
-    connectDB().catch(err => {
+    connectDB().catch((err) => {
         console.error('[server] DB connection failed:', err);
         process.exit(1);
     });

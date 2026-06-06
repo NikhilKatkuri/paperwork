@@ -1,6 +1,8 @@
 import express from 'express';
 import authRouter from '@/modules/auth/routes/route.auth';
 import formsRouter from '@/modules/core/routes/route.forms';
+import signaturesRouter from '@/modules/signatures/routes';
+import protect from '@/middleware/protect';
 
 const router: express.Router = express.Router();
 
@@ -9,6 +11,7 @@ const getFullPath = (path: string) => `${baseName}${path}`;
 
 router.use(getFullPath('/auth'), authRouter);
 router.use(getFullPath('/forms'), formsRouter);
+router.use(getFullPath('/'), protect, signaturesRouter);
 
 router.use((req: express.Request, res: express.Response) => {
     res.status(404).json({
