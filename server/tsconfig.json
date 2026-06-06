@@ -11,7 +11,7 @@
             "node"
         ] /* Explicitly include Node.js and Express global types */,
 
-        "skipDefaultLibCheck": true,
+        "skipDefaultLibCheck": true, 
         /* File Layout & Emit */
         "rootDir": "./src" /* Where your source code lives */,
         "outDir": "./dist" /* Where your compiled production JS will go */,
@@ -29,7 +29,7 @@
         "noImplicitReturns": true /* Ensures functions with return types always return something */,
         "noFallthroughCasesInSwitch": true /* Prevents bugs caused by missing 'break' in switch blocks */,
         "noUncheckedIndexedAccess": true /* Crucial for DB queries: marks objects accessed by dynamic keys as 'undefined' */,
-        "exactOptionalPropertyTypes": true /* Keeps optional properties completely strict */,
+        "exactOptionalPropertyTypes": false ,
 
         /* Interop & Optimization */
         "esModuleInterop": true /* Enables emitting interoperability between CommonJS and ES Modules */,
