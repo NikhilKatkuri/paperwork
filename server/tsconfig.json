@@ -11,6 +11,7 @@
             "node"
         ] /* Explicitly include Node.js and Express global types */,
 
+        "skipDefaultLibCheck": true,
         /* File Layout & Emit */
         "rootDir": "./src" /* Where your source code lives */,
         "outDir": "./dist" /* Where your compiled production JS will go */,
@@ -46,8 +47,9 @@
     },
     "include": [
         "src/**/*",
-        "src/@types/**/*"
-, "src/modules/auth/schemas/schema.user.ts"    ] /* Only compile code inside the src folder */,
+        "src/@types/**/*",
+        "src/modules/auth/schemas/schema.user.ts"
+    ] /* Only compile code inside the src folder */,
     "exclude": [
         "node_modules",
         "dist",

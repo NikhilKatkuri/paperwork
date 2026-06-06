@@ -63,9 +63,7 @@ export interface AppConfig {
     };
     WEB_URL: string;
     redis: {
-        host: string;
-        port: number;
-        password?: string | undefined;
+        url: string;
     };
     cloudinary: {
         cloud_name: string;
@@ -84,7 +82,7 @@ const config: AppConfig = {
     env: getEnvVar('NODE_ENV', 'development'),
     port: getEnvVar('PORT', 5000),
     mongo: {
-        uri: getEnvVar('MONGO_URI', 'mongodb://localhost:27017/paperwork'),
+        uri: getEnvVar('MONGO_URI') as string,
     },
     debug: getEnvVar('DEBUG', false),
     origins: isDev
@@ -114,9 +112,7 @@ const config: AppConfig = {
     },
     WEB_URL: getEnvVar('WEB_URL') as string,
     redis: {
-        host: getEnvVar('REDIS_HOST') as string,
-        port: getEnvVar('REDIS_PORT') as unknown as number,
-        password: getEnvVar('REDIS_PASSWORD') as string | undefined,
+        url: getEnvVar('REDIS_URL') as string,
     },
     cloudinary: {
         cloud_name: getEnvVar('CLOUDINARY_CLOUD_NAME') as string,

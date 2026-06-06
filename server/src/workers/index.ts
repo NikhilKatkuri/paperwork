@@ -18,8 +18,6 @@ class WorkerManager {
         for (const method of methods) {
             (this as any)[method] = (this as any)[method].bind(this);
         }
-
-        console.log('[WorkerManager] initialized with methods:', methods);
     }
 
     createWorker(

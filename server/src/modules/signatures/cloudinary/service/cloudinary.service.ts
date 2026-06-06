@@ -6,7 +6,7 @@ interface UploadSignature {
     signature: string;
     api_key: string;
     cloud_name: string;
- 
+
     timestamp: number;
     expires_at: number;
 
@@ -31,11 +31,6 @@ class CloudinaryService {
                 'Server is Busy. Please try again later.'
             );
         }
-
-        console.log({
-            window: config.cloudinary.window_expiration,
-            buffer: config.cloudinary.window_buffer,
-        });
 
         cloudinary.config({
             cloud_name,
