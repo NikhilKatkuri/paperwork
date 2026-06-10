@@ -12,6 +12,7 @@ import {
     signUpSchema,
 } from '@/modules/auth/validation/validation.auth';
 import protect from '@/middleware/protect';
+import validateDomain from '../middleware/validateDomain';
 
 const authRouter: express.Router = express.Router();
 const controller = new AuthController();
@@ -27,6 +28,7 @@ authRouter.post(
     '/sign-up',
     authLimiter,
     validate(signUpSchema),
+    validateDomain,
     controller.signUpController
 );
 

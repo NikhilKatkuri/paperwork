@@ -10,7 +10,8 @@
         "clean": "rimraf dist",
         "prebuild": "pnpm run clean",
         "format": "prettier --write src/",
-        "format:check": "prettier --check src/"
+        "format:check": "prettier --check src/",
+        "update:disposable": "tsx src/scripts/update-disposable-domains.ts"
     },
     "keywords": [],
     "author": "",
