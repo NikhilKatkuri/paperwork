@@ -1,0 +1,61 @@
+@import "tailwindcss";
+@import "./theme.css"; 
+
+@theme inline {
+  /* Typography Scale */
+  --text-xs: var(--font-size-xs);
+  --text-sm: var(--font-size-sm);
+  --text-base: var(--font-size-base);
+  --text-lg: var(--font-size-lg);
+  --text-xl: var(--font-size-xl);
+  --text-2xl: var(--font-size-2xl);
+  --text-3xl: var(--font-size-3xl);
+  --text-4xl: var(--font-size-4xl);
+
+  /* Layout Base Colors */
+  --color-theme-surface: var(--theme-surface);
+  --color-theme-on-surface: var(--theme-on-surface);
+  --color-theme-surface-hover: var(--theme-surface-hover);
+
+  /* Core Brand Styling */
+  --color-brand-light: var(--brand-light);
+  --color-on-brand-light: var(--on-brand-light);
+  --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
+  --color-brand-depth: var(--brand-depth);
+  --color-on-brand-depth: var(--on-brand-depth);
+
+  /* Tooltip Configuration */
+  --color-theme-tooltip-surface: var(--theme-tooltip-surface);
+  --color-theme-tooltip-on-surface: var(--theme-tooltip-on-surface);
+  --radius-theme-tooltip: var(--theme-tooltip-radius);
+
+  /* Toast Configuration */
+  --radius-theme-toast: var(--theme-toast-radius);
+  --size-theme-toast-icon: var(--theme-toast-icon-size);
+  --text-theme-toast-actionable: var(--theme-toast-actionable-size);
+
+  --color-theme-toast-success-surface: var(--theme-toast-success-surface);
+  --color-theme-toast-success-on-surface: var(--theme-toast-success-on-surface);
+  --color-theme-toast-danger-surface: var(--theme-toast-danger-surface);
+  --color-theme-toast-danger-on-surface: var(--theme-toast-danger-on-surface);
+  --color-theme-toast-warn-surface: var(--theme-toast-warn-surface);
+  --color-theme-toast-warn-on-surface: var(--theme-toast-warn-on-surface);
+  --color-theme-toast-info-surface: var(--theme-toast-info-surface);
+  --color-theme-toast-info-on-surface: var(--theme-toast-info-on-surface);
+
+  /* Skeleton Mapping */
+  --color-theme-skeletion-surface: var(--theme-skeletion-surface);
+  --radius-theme-skeletion-text: var(--theme-skeletion-radius-text);
+  --radius-theme-skeletion-container: var(--theme-skeletion-radius-container);
+
+  /* Form Elements Mapping */
+  --color-theme-form-surface: var(--theme-form-surface);
+  --color-theme-form-surface-hover: var(--theme-form-surface-hover);
+  --color-theme-form-on-surface: var(--theme-form-on-surface);
+  --color-theme-form-container: var(--theme-form-container);
+  --color-theme-form-container-hover: var(--theme-form-container-hover);
+  --color-theme-form-on-container: var(--theme-form-on-container);
+  --color-theme-form-container-border: var(--theme-form-container-border);
+  --color-theme-form-container-active: var(--theme-form-container-active);
+}
