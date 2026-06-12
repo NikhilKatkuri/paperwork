@@ -26,4 +26,5 @@ async function validateDomain(req: Request, res: Response, next: NextFunction) {
     return next();
 }
 
+
 export default validateDomain;

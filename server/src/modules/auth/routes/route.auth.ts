@@ -3,6 +3,7 @@ import AuthController from '@/modules/auth/controller/controller.auth';
 import {
     authLimiter,
     forgotPasswordLimiter,
+    lowLimiter,
     profileGetterLimiter,
     refreshTokenLimiter,
 } from '@/middleware/limiter';
@@ -10,6 +11,7 @@ import validate from '@/middleware/validate';
 import {
     signInSchema,
     signUpSchema,
+    validateEmailSchema,
 } from '@/modules/auth/validation/validation.auth';
 import protect from '@/middleware/protect';
 import validateDomain from '../middleware/validateDomain';
@@ -85,6 +87,14 @@ authRouter.post(
     '/reset-password/:token',
     forgotPasswordLimiter,
     controller.resetPasswordController
+);
+
+authRouter.post(
+    '/check-email',
+    lowLimiter,
+    validate(validateEmailSchema),
+    controller.checkEmailController
+    
 );
 
 export default authRouter;

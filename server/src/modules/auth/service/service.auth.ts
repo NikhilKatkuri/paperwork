@@ -347,6 +347,18 @@ class AuthService {
             );
         }
     };
+
+    checkEmailExists = async (email: string) => {
+        try {
+            const user = await UserModel.findOne({ email });
+            return !!user;
+        } catch (error) {
+            console.error('Database error inside checkEmailExists:', error);
+            throw AppError.Internal(
+                'Failed to check email. Please try again later.'
+            );
+        }
+    };
 }
 
 export default AuthService;

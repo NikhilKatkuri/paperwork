@@ -7,9 +7,16 @@ import jwt from 'jsonwebtoken';
 import { CustomAuthRequest as Request } from '@/types';
 import geoip from 'geoip-lite';
 import useragent from 'useragent';
+import crypto from 'crypto';
+
+interface EmailCheckCookie {
+    last_check_email: string;
+    result: boolean;
+}
 
 class AuthController {
     authService = new AuthService();
+    private email_check_cache = 'email_check_cache';
 
     constructor() {
         const methods = Object.getOwnPropertyNames(
@@ -355,6 +362,73 @@ class AuthController {
             });
         } catch (error) {
             next(error);
+        }
+    };
+
+    hashEmail = (email: string): string => {
+        return crypto
+            .createHash('sha256')
+            .update(email.trim().toLowerCase())
+            .digest('hex');
+    };
+
+    checkEmailController = async (req: Request, res: Response) => {
+        try {
+            const { email } = req.body;
+
+            const targetEmailHash = this.hashEmail(email.toLowerCase());
+
+            if (req.cookies[this.email_check_cache]) {
+                try {
+                    const lastCheckedEmailHash: EmailCheckCookie = JSON.parse(
+                        req.cookies[this.email_check_cache]
+                    );
+                    if (
+                        lastCheckedEmailHash.last_check_email ===
+                        targetEmailHash
+                    ) {
+                        res.status(StatusCodes.OK).json({
+                            success: true,
+                            message: 'Email check completed (cached)',
+                            exists: lastCheckedEmailHash.result,
+                        });
+                        return;
+                    }
+                } catch (error) {
+                    console.warn(
+                        'Failed to parse email check cache cookie, ignoring cache'
+                    );
+                }
+            }
+
+            const exists = await this.authService.checkEmailExists(
+                email.toLowerCase()
+            );
+
+            res.cookie(
+                this.email_check_cache,
+                JSON.stringify({
+                    last_check_email: targetEmailHash,
+                    result: exists,
+                }),
+                {
+                    httpOnly: true,
+                    secure: config.env === 'production',
+                    sameSite: 'strict',
+                    maxAge: 10 * 60 * 1000,
+                }
+            );
+
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Email check completed',
+                exists,
+            });
+        } catch (error) {
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                success: false,
+                message: 'Failed to check email',
+            });
         }
     };
 }

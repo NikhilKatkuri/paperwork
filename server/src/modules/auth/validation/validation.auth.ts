@@ -30,3 +30,13 @@ export const signUpSchema = z.object({
         bio: z.string().max(500, 'Bio cannot exceed 500 characters').optional(),
     }),
 });
+
+export const validateEmailSchema = z.object({
+    body: z.object({
+        email: z
+            .string()
+            .trim()
+            .email('Invalid email format')
+            .transform((value) => value.toLowerCase()),
+    }),
+});
