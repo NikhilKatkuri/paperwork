@@ -22,3 +22,7 @@ export interface BaseResponse {
 export interface CheckEmailResponse extends BaseResponse {
   exists: boolean;
 }
+
+export interface SignUpResponse extends BaseResponse {
+  accessToken?: string;
+}

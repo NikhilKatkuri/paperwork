@@ -1,6 +1,11 @@
 import API from "@/api";
 import { AppError } from "@/errors";
-import { CheckEmailResponse, SignInProps, SignUpProps } from "@/types/auth";
+import {
+  CheckEmailResponse,
+  SignInProps,
+  SignUpProps,
+  SignUpResponse,
+} from "@/types/auth";
 import axios from "axios";
 
 class AuthServices {
@@ -26,26 +31,42 @@ class AuthServices {
     return response.data;
   }
 
-  async signUp(data: SignUpProps) {
+  async signUp(data: SignUpProps): Promise<SignUpResponse> {
     const { url, method } = AuthServices.apis.signUp;
-    const response = await axios({
-      method,
-      url,
-      data,
-      headers: { "Content-Type": "application/json" },
-    });
 
-    if (response.status !== 200) {
-      throw new Error("Failed to sign up");
+    try {
+      const response = await axios({
+        method,
+        url,
+        data,
+        headers: { "Content-Type": "application/json" },
+        withCredentials: true, 
+      });
+
+      if (!response.data || response.data.success === false) {
+        throw new AppError(
+          response.status,
+          response.data?.message || "Registration failed",
+        );
+      }
+
+      return response.data as SignUpResponse;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        const serverMessage =
+          error.response.data?.message || "Unauthorized signup attempt";
+
+        throw new AppError(error.response.status, serverMessage);
+      }
+
+      throw new AppError(
+        500,
+        error instanceof Error
+          ? error.message
+          : "An unexpected network error occurred",
+      );
     }
-
-    if (!response.data.success) {
-      throw new Error(response.data.message);
-    }
-
-    return response.data;
   }
-
   async checkEmailExists(email: string): Promise<CheckEmailResponse> {
     const { url, method } = AuthServices.apis.checkEmailExists;
     const response = await axios({

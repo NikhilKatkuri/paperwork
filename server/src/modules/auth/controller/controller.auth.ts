@@ -74,8 +74,9 @@ class AuthController {
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                sameSite: 'lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000,
+                path: '/',
             });
 
             res.status(statusCodes.OK).json({
@@ -114,8 +115,9 @@ class AuthController {
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                sameSite: 'lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000,
+                path: '/',
             });
 
             res.status(statusCodes.CREATED).json({
@@ -141,7 +143,8 @@ class AuthController {
             res.clearCookie('refreshToken', {
                 httpOnly: true,
                 secure: config.env === 'production',
-                sameSite: 'strict',
+                sameSite: 'lax',
+                path: '/',
             });
 
             res.status(StatusCodes.OK).json({
@@ -189,8 +192,9 @@ class AuthController {
             res.cookie('refreshToken', newRefreshToken, {
                 httpOnly: true,
                 secure: config.env === 'production',
-                sameSite: 'strict',
+                sameSite: 'lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000,
+                path: '/',
             });
 
             res.status(StatusCodes.OK).json({
@@ -242,8 +246,9 @@ class AuthController {
                 {
                     httpOnly: true,
                     secure: config.env === 'production',
-                    sameSite: 'strict',
+                    sameSite: 'lax',
                     maxAge: 5 * 60 * 1000,
+                    path: '/',
                 }
             );
 
@@ -414,7 +419,7 @@ class AuthController {
                 {
                     httpOnly: true,
                     secure: config.env === 'production',
-                    sameSite: 'strict',
+                    sameSite: 'lax',
                     maxAge: 10 * 60 * 1000,
                 }
             );

@@ -1,12 +1,12 @@
 "use client";
 
 import AuthServices from "@/services/auth";
-import { CheckEmailResponse, SignInProps, SignUpProps } from "@/types/auth";
+import { CheckEmailResponse, SignInProps, SignUpProps, SignUpResponse } from "@/types/auth";
 import { createContext, useContext, ReactNode } from "react";
 
 interface AuthContextType {
   signIn: (data: SignInProps) => Promise<void>;
-  signUp: (data: SignUpProps) => Promise<void>;
+  signUp: (data: SignUpProps) => Promise<SignUpResponse>;
   checkEmailExists: (email: string) => Promise<CheckEmailResponse>;
 }
 

@@ -14,8 +14,8 @@ class API {
     const getUrl = (endpoint: string) => `${baseAuthUrl}/${endpoint}`;
 
     return {
-      signIn: { url: getUrl("signin"), method: "POST" },
-      signUp: { url: getUrl("signup"), method: "POST" },
+      signIn: { url: getUrl("sign-in"), method: "POST" },
+      signUp: { url: getUrl("sign-up"), method: "POST" },
       signOut: { url: getUrl("signout"), method: "POST" },
       refreshToken: { url: getUrl("refresh-token"), method: "POST" },
       me: { url: getUrl("me"), method: "GET" },
