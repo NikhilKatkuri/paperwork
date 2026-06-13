@@ -18,7 +18,8 @@
         "name": "next"
       }
     ],
-    "paths": {
+    "paths": { 
+      "@/components/*": ["./src/components/*"],
       "@/*": ["./src/*"]
     }
   },

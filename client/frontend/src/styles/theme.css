@@ -8,17 +8,17 @@
   --font-size-2xl: 1.953rem;
   --font-size-3xl: 2.441rem;
   --font-size-4xl: 3.052rem;
- 
+
   --theme-surface: #f8fafc;
   --theme-on-surface: #0f172a;
   --theme-surface-hover: #f1f5f9;
 
-  --brand-light: #e0e7ff;           
-  --on-brand-light: #3730a3;        
-  --brand: #6366f1;                 
-  --on-brand: #ffffff;              
-  --brand-depth: #4f46e5;           
-  --on-brand-depth: #ffffff;        
+  --brand-light: #e0e7ff;
+  --on-brand-light: #3730a3;
+  --brand: #6366f1;
+  --on-brand: #ffffff;
+  --brand-depth: #4f46e5;
+  --on-brand-depth: #ffffff;
 
   --theme-tooltip-surface: #1e293b;
   --theme-tooltip-on-surface: #f8fafc;
@@ -38,7 +38,12 @@
   --theme-toast-info-on-surface: #ffffff;
 
   --theme-skeletion-surface: #e2e8f0;
-  --theme-skeletion-shimmer: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100__);
+  --theme-skeletion-shimmer: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 100__
+  );
   --theme-skeletion-radius-text: var(--radius-sm, 4px);
   --theme-skeletion-radius-container: var(--radius-lg, 12px);
 
@@ -63,9 +68,9 @@
   --theme-form-on-container: #0f172a;
   --theme-form-container-border: #bae6fd;
   --theme-form-container-active: #0284c7;
-  --brand: #0284c7;
+  /* --brand: #0284c7;
   --brand-light: #e0f2fe;
-  --on-brand-light: #0369a1;
+  --on-brand-light: #0369a1; */
 }
 
 [data-form-theme="orange"] {
@@ -77,9 +82,9 @@
   --theme-form-on-container: #1e293b;
   --theme-form-container-border: #fed7aa;
   --theme-form-container-active: #ea580c;
-  --brand: #ea580c;
+  /* --brand: #ea580c;
   --brand-light: #ffedd5;
-  --on-brand-light: #c2410c;
+  --on-brand-light: #c2410c; */
 }
 
 [data-form-theme="green"] {
@@ -91,11 +96,11 @@
   --theme-form-on-container: #1e293b;
   --theme-form-container-border: #bbf7d0;
   --theme-form-container-active: #16a34a;
-  --brand: #16a34a;
+  /* --brand: #16a34a;
   --brand-light: #dcfce7;
-  --on-brand-light: #15803d;
+  --on-brand-light: #15803d; */
 }
- 
+
 @media (prefers-color-scheme: dark) {
   :root {
     --theme-surface: #0f172a;
@@ -104,7 +109,12 @@
     --theme-tooltip-surface: #f1f5f9;
     --theme-tooltip-on-surface: #0f172a;
     --theme-skeletion-surface: #1e293b;
-    --theme-skeletion-shimmer: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100__);
+    --theme-skeletion-shimmer: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      rgba(255, 255, 255, 0) 100__
+    );
   }
   [data-form-theme="blue"] {
     --theme-form-surface: #0c1e2e;
