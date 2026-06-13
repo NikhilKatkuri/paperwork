@@ -5,11 +5,11 @@ import SubmissionWorker from './workers/SubmissionWorker';
 import { worker } from './workers';
 
 const boot = async (): Promise<void> => {
-    const server = app.listen(config.port, () => {
+    const server = app.listen(config.port, config.host, () => {
         console.log(
             `[server] running on port ${config.port} in ${config.env} mode`
         );
-        console.log(`[URL] http://localhost:${config.port}`);
+        console.log(`[URL] http://${config.host}:${config.port}`);
     });
 
     // Initialize database and workers in background (non-blocking)

@@ -41,6 +41,7 @@ type Origins = { env: 'dev'; urls: string[] } | { env: 'prod'; urls: string[] };
 export interface AppConfig {
     env: string;
     port: number;
+    host: string;
     mongo: {
         uri: string;
     };
@@ -81,6 +82,7 @@ const isDev = getEnvVar('NODE_ENV', 'development') === 'development';
 const config: AppConfig = {
     env: getEnvVar('NODE_ENV', 'development'),
     port: getEnvVar('PORT', 5000),
+    host: getEnvVar('HOST', '0.0.0.0'),
     mongo: {
         uri: getEnvVar('MONGO_URI') as string,
     },

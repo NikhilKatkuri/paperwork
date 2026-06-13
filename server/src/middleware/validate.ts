@@ -18,6 +18,7 @@ const validate =
                 res.status(400).json({
                     success: false,
                     errors: error.flatten(),
+                    message: 'Validation failed',
                 });
                 return;
             }
