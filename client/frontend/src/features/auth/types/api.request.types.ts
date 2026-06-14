@@ -18,11 +18,16 @@ interface VerifyEmailRequest {
   otp: string;
 }
 
-interface ForgotPasswordRequest {
+interface EmailCheckRequestBody {
   email: string;
 }
 
-type EmailCheckRequestBody = ForgotPasswordRequest;
+type ForgotPasswordRequest = EmailCheckRequestBody;
+
+interface ResetPasswordRequest {
+  newPassword: string;
+}
+
 export type {
   SignInRequestBody,
   SignUpRequestBody,
@@ -30,4 +35,5 @@ export type {
   VerifyEmailRequest,
   ForgotPasswordRequest,
   EmailCheckRequestBody,
+  ResetPasswordRequest,
 };

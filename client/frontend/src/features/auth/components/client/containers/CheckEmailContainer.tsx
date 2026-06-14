@@ -4,9 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { INTENT_EMAIL_CONFIG } from "@/auth/constants/data";
 import { usePathname } from "next/navigation";
-import getIntentFromPathname from "../utils/lookups";
+import getIntentFromPathname from "../../utils/lookups";
 
-function CheckEmailPage() {
+function CheckEmailContainer() {
   const pn = usePathname();
   const intent = getIntentFromPathname(pn);
   const data = INTENT_EMAIL_CONFIG[intent];
@@ -64,4 +64,5 @@ function CheckEmailPage() {
   );
 }
 
-export default CheckEmailPage;
+export default CheckEmailContainer; 
+

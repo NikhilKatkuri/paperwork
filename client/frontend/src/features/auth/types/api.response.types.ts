@@ -11,10 +11,6 @@ type SignInResponse = AuthResponse;
 type SignUpResponse = AuthResponse;
 type SignOutResponse = BaseAuthResponse;
 
-interface EmailCheckResponse extends BaseAuthResponse {
-  exists: boolean;
-}
-
 interface Profile {
   readonly userId: string;
   fullName: string;
@@ -24,6 +20,9 @@ interface Profile {
 
 interface ProfileResponse extends BaseAuthResponse {
   data: Profile;
+}
+interface EmailCheckResponse extends BaseAuthResponse {
+  exists: boolean;
 }
 
 type RefreshTokenResponse = AuthResponse;

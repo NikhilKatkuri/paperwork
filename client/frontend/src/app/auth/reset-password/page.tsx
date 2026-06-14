@@ -1,7 +1,7 @@
+import { redirect } from "next/dist/client/components/navigation";
+
 function page() {
-  return (
-    <div>page</div>
-  )
+   redirect("/auth/forgot-password?step=1");
 }
 
 export default page

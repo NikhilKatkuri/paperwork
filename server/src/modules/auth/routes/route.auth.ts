@@ -78,7 +78,7 @@ authRouter.post(
 authRouter.post(
     '/forgot-password',
     forgotPasswordLimiter,
-    protect,
+    validate(validateEmailSchema),
     controller.forgotPasswordController
 );
 

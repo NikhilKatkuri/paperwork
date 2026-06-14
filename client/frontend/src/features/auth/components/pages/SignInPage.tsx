@@ -1,48 +1,37 @@
+"use client";
+
 import { cn } from "@/utils/cn";
 import LayoutConfig from "../ui/config";
 import Navbar from "../client/Navbar";
-import Image from "next/image";
-import Link from "next/link";
-import SignInClientComponent from "../client/SignInComponent";
+import SignInContainer from "../client/containers/SignInContainer";
+import CheckEmailContainer from "../client/containers/CheckEmailContainer";
+import { redirect, useSearchParams } from "next/navigation";
+
+const renderStep = (step: number) => {
+  switch (step) {
+    case 1:
+      return <CheckEmailContainer />;
+    case 2:
+      return <SignInContainer />;
+    default:
+      return <CheckEmailContainer />;
+  }
+};
 
 const SignInPage = () => {
+  const params = useSearchParams();
+  const currentStep = params.has("step")
+    ? parseInt(params.get("step") as string)
+    : 1;
+  if (!params.has("email") && currentStep === 2) {
+    redirect("/auth/signin?step=1");
+  }
   return (
     <div className={cn(LayoutConfig.layout)}>
       <section className={cn(LayoutConfig.leftSection)}></section>
       <section className={cn(LayoutConfig.rightSection)}>
         <Navbar />
-        <div className="flex flex-col space-y-5 w-full h-full justify-center">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Image
-                src="/paperwork_icon-vector-master.svg"
-                alt="paperwork-icon-vector-master"
-                width={32}
-                height={32}
-                className=""
-              />
-              <p className="text-lg font-medium my-3">Paper Work</p>
-            </div>
-            <h1 className="text-xl md:text-2xl font-semibold md:font-medium">
-              Create without limits
-            </h1>
-            <p className="text-md md:text-lg">
-              Sign in to Paperwork to build beautiful, conversational forms and
-              surveys in seconds.
-            </p>
-          </div>
-          <SignInClientComponent />
-          <footer className="my-3 w-full grid grid-cols-1 space-y-3">
-            <div className="flex items-center justify-center text-xs text-center gap-3 w-full">
-              <Link href={""} className="hover:underline active:underline">
-                Terms of Use
-              </Link>
-              <Link href={""} className="hover:underline active:underline">
-                Privacy Policy
-              </Link>
-            </div>
-          </footer>
-        </div>
+        {renderStep(currentStep)}
       </section>
     </div>
   );

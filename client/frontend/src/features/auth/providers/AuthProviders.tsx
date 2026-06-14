@@ -15,20 +15,38 @@ import useEmailCheckUp from "@/auth/functions/CheckEmail";
 import useSignUp from "../functions/SignUp";
 import useSignOut from "../functions/SignOut";
 import useRefreshToken from "../functions/RefreshToken";
-
-function useAuthLogic() {
+import useChangePassword from "../functions/ChangePassword";
+import useResetPassword from "../functions/ResetPassword";
+import useForgotPassword from "../functions/ForgotPassword";
+ 
+export function useAuthLogic() {
   const signIn = useSignIn();
   const signUp = useSignUp();
   const signOut = useSignOut();
   const emailCheck = useEmailCheckUp();
   const refreshToken = useRefreshToken();
-  return { signIn, signUp, signOut, emailCheck, refreshToken };
+  const changePassword = useChangePassword();
+  const resetPassword = useResetPassword();
+  const forgotPassword = useForgotPassword();
+
+  return {
+    signIn,
+    signUp,
+    signOut,
+    emailCheck,
+    refreshToken,
+    changePassword,
+    resetPassword,
+    forgotPassword,
+  };
 }
 
+ 
 type AuthContextType = ReturnType<typeof useAuthLogic> & {
   accessToken: string | null;
   setAccessToken: (token: string | null) => void;
   initializing: boolean;
+ 
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessTokenState] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
 
+ 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scheduleRefreshRef = useRef<(token: string) => void>(() => {});
 
@@ -61,15 +80,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const delay = expiryMs - Date.now() - 60 * 1000;
 
-      refreshTimerRef.current = setTimeout(async () => {
-        const res = await handleRefreshToken();
-        if (res.ok) {
-          setAccessTokenState(res.data.accessToken);
-          scheduleRefreshRef.current(res.data.accessToken);
-        } else {
-          setAccessTokenState(null);
-        }
-      }, Math.max(delay, 0));
+      refreshTimerRef.current = setTimeout(
+        async () => {
+          const res = await handleRefreshToken();
+          if (res.ok) {
+            setAccessTokenState(res.data.accessToken);
+            scheduleRefreshRef.current(res.data.accessToken);
+          } else {
+            setAccessTokenState(null);
+          }
+        },
+        Math.max(delay, 0),
+      );
     },
     [handleRefreshToken],
   );

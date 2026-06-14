@@ -6,6 +6,7 @@ import {
   validatePassword,
   validateString,
 } from "@/utils/validations";
+import { useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -15,10 +16,11 @@ const ToastOptions = {
 } as const;
 
 const SignUpClientComponent = () => {
-  const { signUp ,setAccessToken} = useAuth();
+  const initialEmail = useSearchParams().get("email");
+  const { signUp, setAccessToken } = useAuth();
   const { loading, handleSignUp } = signUp;
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail || "");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -59,7 +61,7 @@ const SignUpClientComponent = () => {
       toast.error(res.error, ToastOptions);
     }
   };
-  
+
   return (
     <form
       onSubmit={handleSubmit}

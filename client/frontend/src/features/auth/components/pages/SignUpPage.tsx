@@ -1,49 +1,38 @@
+"use client";
+
 import { cn } from "@/utils/cn";
 import LayoutConfig from "../ui/config";
 import Navbar from "../client/Navbar";
-import Image from "next/image";
-import Link from "next/link";
+import { redirect, useSearchParams } from "next/navigation";
+import CheckEmailContainer from "../client/containers/CheckEmailContainer";
+import SignUpContainer from "../client/containers/SignUpContainer";
 
-import SignUpClientComponent from "@/auth/components/client/SignUpComponent";
+function renderStep(step: number) {
+  switch (step) {
+    case 1:
+      return <CheckEmailContainer />;
+    case 2:
+      return <SignUpContainer />;
+    default:
+      return <CheckEmailContainer />;
+  }
+}
 
 const SignUpPage = () => {
+  const params = useSearchParams();
+  const currentStep = params.has("step")
+    ? parseInt(params.get("step") as string)
+    : 1;
+  if (!params.has("email") && currentStep === 2) {
+    redirect("/auth/signup?step=1");
+  }
+
   return (
     <div className={cn(LayoutConfig.layout)}>
       <section className={cn(LayoutConfig.leftSection)}></section>
       <section className={cn(LayoutConfig.rightSection)}>
         <Navbar />
-        <div className="flex flex-col space-y-5 w-full h-full items-center  justify-center">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Image
-                src="/paperwork_icon-vector-master.svg"
-                alt="paperwork-icon-vector-master"
-                width={32}
-                height={32}
-                className=""
-              />
-              <p className="text-lg font-medium my-3">Paper Work</p>
-            </div>
-            <h1 className="text-xl md:text-2xl font-semibold md:font-medium">
-              Build your first form
-            </h1>
-            <p className="text-md md:text-lg">
-              Sign up to unlock logic-driven questions, real-time response
-              analytics, and gorgeous templates.
-            </p>
-          </div>
-          <SignUpClientComponent />
-          <footer className="my-3 w-full grid grid-cols-1 space-y-3">
-            <div className="flex items-center justify-center text-xs text-center gap-3 w-full">
-              <Link href={""} className="hover:underline active:underline">
-                Terms of Use
-              </Link>
-              <Link href={""} className="hover:underline active:underline">
-                Privacy Policy
-              </Link>
-            </div>
-          </footer>
-        </div>
+        {renderStep(currentStep)}
       </section>
     </div>
   );

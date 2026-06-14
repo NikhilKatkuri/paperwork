@@ -6,14 +6,14 @@ import axios, { AxiosError } from "axios";
 import { EmailCheckRequestBody } from "../types/api.request.types";
 import { EmailCheckResponse } from "../types/api.response.types";
 
-type EmailCheckResult =
+export type EmailCheckResult =
   | { ok: true; data: EmailCheckResponse }
   | { ok: false; error: string };
 
 function useEmailCheckUp() {
   const [loading, setLoading] = useState<boolean>(false);
 
-  async function handleEmailCheckUp(
+  async function handleEmailCheck(
     credential: EmailCheckRequestBody,
   ): Promise<EmailCheckResult> {
     setLoading(true);
@@ -61,7 +61,7 @@ function useEmailCheckUp() {
 
   return {
     loading,
-    handleEmailCheckUp,
+    handleEmailCheck,
   };
 }
 

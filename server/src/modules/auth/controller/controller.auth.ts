@@ -340,7 +340,7 @@ class AuthController {
         next: NextFunction
     ) => {
         try {
-            const { email } = this.getContext(req);
+            const { email } = req.body;
             await this.authService.forgotPasswordService(email);
             res.status(StatusCodes.OK).json({
                 success: true,

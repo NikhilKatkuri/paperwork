@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/providers";
 import { validateEmail, validatePassword } from "@/utils/validations";
+import { useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -11,10 +12,11 @@ const ToastOptions = {
 } as const;
 
 const SignInClientComponent = () => {
-  const { signIn ,setAccessToken} = useAuth();
+  const initialEmail = useSearchParams().get("email");
+  const { signIn, setAccessToken } = useAuth();
   const { loading, handleSignIn } = signIn;
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail || "");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 

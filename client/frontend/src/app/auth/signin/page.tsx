@@ -1,4 +1,3 @@
-"use client";
 import SignInPage from "@/auth/components/pages/SignInPage";
 
 function page() {
