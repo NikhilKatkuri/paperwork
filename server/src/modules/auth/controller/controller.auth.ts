@@ -73,7 +73,7 @@ class AuthController {
 
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
+                secure: config.env === 'production',
                 sameSite: 'lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000,
                 path: '/',
@@ -114,7 +114,7 @@ class AuthController {
 
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
+                secure: config.env === 'production',
                 sameSite: 'lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000,
                 path: '/',
@@ -175,6 +175,9 @@ class AuthController {
                     userId: string;
                     email: string;
                 };
+                if (!decode.userId || !decode.email) {
+                    throw AppError.Unauthorized('Invalid refresh token');
+                }
             } catch (jwterror) {
                 throw AppError.Unauthorized('Invalid or expired refresh token');
             }
@@ -293,7 +296,12 @@ class AuthController {
                 verificationData.expiresAt
             );
 
-            res.clearCookie('emailVerification');
+            res.clearCookie('emailVerification', {
+                httpOnly: true,
+                secure: config.env === 'production',
+                sameSite: 'lax',
+                path: '/',
+            });
             res.status(StatusCodes.OK).json({
                 success: true,
                 message: 'Email verified successfully',
@@ -421,6 +429,7 @@ class AuthController {
                     secure: config.env === 'production',
                     sameSite: 'lax',
                     maxAge: 10 * 60 * 1000,
+                    path: '/',
                 }
             );
 

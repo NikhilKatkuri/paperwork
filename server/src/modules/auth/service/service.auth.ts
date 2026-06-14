@@ -9,16 +9,17 @@ import OTP from '@/utils/otp';
 import crypto from 'crypto';
 import { emailQueue } from '@/queues';
 
-const genAccessToken = (payload: any) => {
-    const token = jwt.sign(payload, config.JWT_SECRET, { expiresIn: '60m' });
-    return token;
+interface TokenPayload {
+    userId: string;
+    email: string;
+}
+
+const genAccessToken = (payload: TokenPayload): string => {
+    return jwt.sign(payload, config.JWT_SECRET, { expiresIn: '15m' });
 };
 
-const genRefreshToken = (payload: any) => {
-    const token = jwt.sign(payload, config.JWT_REFRESH_SECRET, {
-        expiresIn: '7d',
-    });
-    return token;
+const genRefreshToken = (payload: TokenPayload): string => {
+    return jwt.sign(payload, config.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 };
 
 class AuthService {
@@ -55,6 +56,9 @@ class AuthService {
 
         const profile = new ProfileModel(profileData);
         await profile.save();
+
+        const userId = newUser._id.toString();
+
         await emailQueue.add(
             'sendWelcomeEmail',
             { email, fullName },
@@ -65,14 +69,8 @@ class AuthService {
         );
 
         return {
-            accessToken: genAccessToken({
-                userId: newUser._id,
-                email: newUser.email,
-            }),
-            refreshToken: genRefreshToken({
-                userId: newUser._id,
-                email: newUser.email,
-            }),
+            accessToken: genAccessToken({ userId, email: newUser.email }),
+            refreshToken: genRefreshToken({ userId, email: newUser.email }),
         };
     };
 
@@ -99,6 +97,8 @@ class AuthService {
             throw AppError.Unauthorized('Invalid email or password');
         }
 
+        const userId = user._id.toString();
+
         await emailQueue.add(
             'sendLoginAlertEmail',
             {
@@ -114,14 +114,8 @@ class AuthService {
         );
 
         return {
-            accessToken: genAccessToken({
-                userId: user._id,
-                email: user.email,
-            }),
-            refreshToken: genRefreshToken({
-                userId: user._id,
-                email: user.email,
-            }),
+            accessToken: genAccessToken({ userId, email: user.email }),
+            refreshToken: genRefreshToken({ userId, email: user.email }),
         };
     };
 
@@ -132,6 +126,11 @@ class AuthService {
         userId: string;
         email: string;
     }) => {
+        const user = await UserModel.findById(userId);
+        if (!user) {
+            throw AppError.Unauthorized('User no longer exists');
+        }
+
         return {
             newAccessToken: genAccessToken({ userId, email }),
             newRefreshToken: genRefreshToken({ userId, email }),
@@ -196,22 +195,19 @@ class AuthService {
         otp: string,
         expiresAt: number
     ) => {
+        const isValid = new OTP().verifyOTP(userId, email, otp, expiresAt);
+
+        if (!isValid) {
+            throw AppError.BadRequest(
+                'Invalid or expired OTP. Please request a new one.'
+            );
+        }
+
         try {
-            const isValid = new OTP().verifyOTP(userId, email, otp, expiresAt);
-
-            if (!isValid) {
-                throw AppError.BadRequest(
-                    'Invalid or expired OTP. Please request a new one.'
-                );
-            }
-
             await UserModel.findByIdAndUpdate(userId, {
                 isVerified: true,
             });
         } catch (error) {
-            if (error instanceof AppError) {
-                throw error;
-            }
             throw AppError.Internal('Failed to verify OTP. Please try again.');
         }
     };
@@ -222,45 +218,47 @@ class AuthService {
         newPassword: string
     ) => {
         try {
-            const user = await UserModel.findById(userId);
-            if (user) {
-                const isMatch = await bcrypt.compare(
-                    currentPassword,
-                    user.passwordHash
-                );
-
-                if (!isMatch) throw AppError.Unauthorized('Incorrect password');
-
-                const isSameAsOld = await bcrypt.compare(
-                    newPassword,
-                    user.passwordHash
-                );
-
-                if (isSameAsOld)
-                    throw AppError.BadRequest(
-                        'New password must be different from the current password'
-                    );
-
-                const newHash = await bcrypt.hash(
-                    newPassword,
-                    Number(config.SALT_ROUNDS)
-                );
-
-                user.passwordHash = newHash;
-                await emailQueue.add(
-                    'sendPasswordChangeAlertEmail',
-                    { email: user.email, time: new Date().toISOString() },
-                    {
-                        attempts: 5,
-                        backoff: { type: 'exponential', delay: 20 * 1000 },
-                    }
-                );
-
-                await user.save();
-                return 'password has been changed successfully.';
+            const user =
+                await UserModel.findById(userId).select('+passwordHash');
+            if (!user) {
+                throw AppError.Unauthorized('User not found');
             }
 
-            return 'if the user exists, the password has been changed successfully.';
+            const isMatch = await bcrypt.compare(
+                currentPassword,
+                user.passwordHash
+            );
+
+            if (!isMatch) throw AppError.Unauthorized('Incorrect password');
+
+            const isSameAsOld = await bcrypt.compare(
+                newPassword,
+                user.passwordHash
+            );
+
+            if (isSameAsOld)
+                throw AppError.BadRequest(
+                    'New password must be different from the current password'
+                );
+
+            const newHash = await bcrypt.hash(
+                newPassword,
+                Number(config.SALT_ROUNDS)
+            );
+
+            user.passwordHash = newHash;
+            await user.save();
+
+            await emailQueue.add(
+                'sendPasswordChangeAlertEmail',
+                { email: user.email, time: new Date().toISOString() },
+                {
+                    attempts: 5,
+                    backoff: { type: 'exponential', delay: 20 * 1000 },
+                }
+            );
+
+            return 'Password has been changed successfully.';
         } catch (error) {
             if (error instanceof AppError) {
                 throw error;
@@ -285,7 +283,7 @@ class AuthService {
                 user.resetExpires = new Date(Date.now() + 15 * 60 * 1000);
                 await user.save();
 
-                const resetLink = `http://localhost:5000/api/v1/auth/reset-password/${token}`;
+                const resetLink = `${config.WEB_URL}/reset-password/${token}`;
 
                 await emailQueue.add(
                     'sendForgotPasswordEmail',

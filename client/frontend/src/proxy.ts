@@ -1,23 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
 
-const CookiesConfigs = {
-  refreshToken: "refreshToken",
-};
+const REFRESH_TOKEN_COOKIE = "refreshToken";
 
-async function proxy(req: NextRequest) {
-  const cookieStore = await cookies();
+const AUTH_PATHS = ["signin", "signup", "check-email"];
 
-  if (
-    cookieStore.has(CookiesConfigs.refreshToken) &&
-    req.nextUrl.pathname !== "/user"
-  ) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/user";
-    return NextResponse.redirect(url);
+const PROTECTED_PATHS = ["user"];
+
+export async function proxy(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  const refreshToken = req.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
+
+  let isValid = false;
+  if (refreshToken) {
+    try {
+      jwt.verify(refreshToken, process.env.NEXT_PUBLIC_JWT_REFRESH_SECRET!);
+      isValid = true;
+    } catch {
+      isValid = false;
+    }
+  }
+
+  const isAuthPath = AUTH_PATHS.some((path) => pathname.includes(path));
+  const isProtectedPath = PROTECTED_PATHS.some((path) =>
+    pathname.includes(path),
+  );
+
+  if (isValid && isAuthPath) {
+    return NextResponse.redirect(new URL("/user", req.url));
+  }
+
+  if (!isValid && isProtectedPath) {
+    return NextResponse.redirect(new URL("/auth/check-email?redirect=/auth/signin", req.url));
   }
 
   return NextResponse.next();
 }
 
-export default proxy;
+export const config = {
+  matcher: [
+    "/user",
+    "/auth/signin",
+    "/auth/signup",
+    "/auth/check-email",
+  ],
+};

@@ -51,7 +51,6 @@ authRouter.get(
 authRouter.post(
     '/refresh-token',
     refreshTokenLimiter,
-    protect,
     controller.refreshTokenController
 );
 
@@ -94,7 +93,6 @@ authRouter.post(
     lowLimiter,
     validate(validateEmailSchema),
     controller.checkEmailController
-    
 );
 
 export default authRouter;

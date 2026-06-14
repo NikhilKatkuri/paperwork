@@ -1,7 +1,10 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { SolarAltArrowLeftBroken, SolarAltArrowRightBroken } from "../../icons";
+import {
+  SolarAltArrowLeftBroken,
+  SolarAltArrowRightBroken,
+} from "@/icons/index";
 
 const ROUTE_CONFIG: Record<string, { backTo?: string; forwardTo?: string }> = {
   "/auth/check-email": {
@@ -12,14 +15,14 @@ const ROUTE_CONFIG: Record<string, { backTo?: string; forwardTo?: string }> = {
   },
 };
 
-const Nav = () => {
+const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
- 
+
   const config = ROUTE_CONFIG[pathname] || ROUTE_CONFIG["/auth/check-email"];
   const currentRedirect = searchParams.get("redirect") || "";
- 
+
   const navigateWithParam = (targetPath: string) => {
     const url = currentRedirect
       ? `${targetPath}?redirect=${encodeURIComponent(currentRedirect)}`
@@ -32,7 +35,6 @@ const Nav = () => {
 
   return (
     <div className="flex items-center justify-between w-full">
-     
       {canGoBack ? (
         <button
           type="button"
@@ -44,7 +46,7 @@ const Nav = () => {
       ) : (
         <div className="w-11 h-11" />
       )}
- 
+
       {canGoForward ? (
         <button
           type="button"
@@ -60,4 +62,4 @@ const Nav = () => {
   );
 };
 
-export default Nav;
+export default Navbar;

@@ -1,7 +1,6 @@
 "use client";
 
-import { AppError } from "@/errors";
-import { useAuth } from "@/providers/AuthProviders";
+import { useAuth } from "@/providers";
 import {
   validateEmail,
   validatePassword,
@@ -16,64 +15,51 @@ const ToastOptions = {
 } as const;
 
 const SignUpClientComponent = () => {
-  const signUp = useAuth().signUp;
+  const { signUp ,setAccessToken} = useAuth();
+  const { loading, handleSignUp } = signUp;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const inUse = useRef(false);
-  const [loading,setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.ChangeEvent<HTMLFormElement>) => {
     inUse.current = true;
-    setLoading(true);
     e.preventDefault();
 
-    try {
-      const emailError = validateEmail(email);
-      const passwordError = validatePassword(password);
-      const nameError = validateString(fullName, "fullName");
+    const newErrors: Record<string, string> = {};
 
-      const newErrors: Record<string, string> = {};
-      if (emailError) newErrors.email = emailError;
-      if (passwordError) newErrors.password = passwordError;
-      if (nameError) newErrors.fullName = nameError;
+    const emailError = validateEmail(email);
+    if (emailError) {
+      newErrors.email = emailError;
+    }
+    const fullNameError = validateString(fullName, "fullName");
+    if (fullNameError) {
+      newErrors.fullName = fullNameError;
+    }
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      newErrors.password = passwordError;
+    }
 
-      setErrors(newErrors);
+    setFieldErrors(newErrors);
 
-      const hasErrors = Object.keys(newErrors).length > 0;
-      if (hasErrors) return;
+    if (Object.keys(newErrors).length > 0) {
+      return;
+    }
 
-      const res = await signUp({
-        email,
-        password,
-        fullName,
-      });
+    const res = await handleSignUp({ email, password, fullName });
 
-      if (res && res.success) {
-        toast.success(res.message || "Sign up successful!", ToastOptions);
-      }
-      console.log(res.accessToken);
-    } catch (error) {
-      console.error("Error during sign up:", error);
-
-      if (error instanceof AppError) {
-        toast.error(error.message, ToastOptions);
-        return;
-      } 
-
-
-      toast.error(
-        "An unexpected error occurred. Please try again.",
-        ToastOptions,
-      );
-    } finally {
-      inUse.current = false;
-      setLoading(false);
+    if (res.ok) {
+      toast.success("Account created successfully!", ToastOptions);
+      setAccessToken(res.data.accessToken);
+    } else {
+      toast.error(res.error, ToastOptions);
     }
   };
+  
   return (
     <form
       onSubmit={handleSubmit}
@@ -89,8 +75,8 @@ const SignUpClientComponent = () => {
             placeholder="Email"
           />
         </div>
-        {errors.email && (
-          <p className="text-xs text-red-500 mt-2 px-3">{errors.email}</p>
+        {fieldErrors.email && (
+          <p className="text-xs text-red-500 mt-2 px-3">{fieldErrors.email}</p>
         )}
       </div>
       <div>
@@ -103,8 +89,10 @@ const SignUpClientComponent = () => {
             placeholder="Full Name"
           />
         </div>
-        {errors.fullName && (
-          <p className="text-xs text-red-500 mt-2 px-3">{errors.fullName}</p>
+        {fieldErrors.fullName && (
+          <p className="text-xs text-red-500 mt-2 px-3">
+            {fieldErrors.fullName}
+          </p>
         )}
       </div>
       <div className="">
@@ -117,8 +105,10 @@ const SignUpClientComponent = () => {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        {errors.password && (
-          <p className="text-xs text-red-500 mt-2 px-3">{errors.password}</p>
+        {fieldErrors.password && (
+          <p className="text-xs text-red-500 mt-2 px-3">
+            {fieldErrors.password}
+          </p>
         )}
       </div>
       <button

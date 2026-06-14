@@ -18,7 +18,9 @@
         "name": "next"
       }
     ],
-    "paths": { 
+    "paths": {
+      "@/icons/*": ["./src/components/icons/*"],
+      "@/auth/*": ["./src/features/auth/*"],
       "@/components/*": ["./src/components/*"],
       "@/*": ["./src/*"]
     }

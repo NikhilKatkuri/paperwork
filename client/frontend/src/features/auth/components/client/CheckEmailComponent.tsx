@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-
-import { AppError } from "@/errors";
-import { useAuth } from "@/providers/AuthProviders";
-import { CheckEmailResponse } from "@/types/auth";
+import { useAuth } from "@/providers";
 
 const TOAST_OPTIONS = {
   position: "top-center",
@@ -31,52 +28,40 @@ interface Props {
   redirectTo: string;
 }
 
-export default function CheckEmailClientComponent({
-  redirectTo,
-}: Props) {
+export default function CheckEmailClientComponent({ redirectTo }: Props) {
   const router = useRouter();
-  const { checkEmailExists } = useAuth();
-
+  const { emailCheck } = useAuth();
+  const { loading, handleEmailCheckUp } = emailCheck;
   const [email, setEmail] = useState("");
 
-  const intent: Intent = redirectTo.includes("/signup")
-    ? "signup"
-    : "signin";
-
+  const intent: Intent = redirectTo.includes("/signup") ? "signup" : "signin";
   const config = INTENT_CONFIG[intent];
 
-  const handleSubmit = async (
-    e: React.FormEvent<HTMLFormElement>,
-  ) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const value = email.trim();
 
     if (!value) return;
 
-    try {
-      const { exists }: CheckEmailResponse =
-        await checkEmailExists(value);
+    const res = await handleEmailCheckUp({ email: value });
 
+    if (res.ok) {
+      const data = res.data;
       toast.success(
-        exists ? config.ifExists : config.ifNotExists,
+        data.exists ? config.ifExists : config.ifNotExists,
         TOAST_OPTIONS,
       );
 
-      if (!config.shouldRedirect(exists)) {
+      if (!config.shouldRedirect(data.exists)) {
         return;
       }
 
       setTimeout(() => {
         router.push(redirectTo);
       }, 2000);
-    } catch (error) {
-      toast.error(
-        error instanceof AppError
-          ? error.message
-          : "Invalid email or something went wrong. Please try again.",
-        TOAST_OPTIONS,
-      );
+    } else {
+      toast.error(res.error, TOAST_OPTIONS);
     }
   };
 
@@ -98,9 +83,10 @@ export default function CheckEmailClientComponent({
 
       <button
         type="submit"
-        className="w-full rounded-full bg-brand-depth/95 p-3 px-4 text-on-brand-depth transition hover:bg-brand-depth active:scale-[0.97]"
+        disabled={loading}
+        className="w-full rounded-full bg-brand-depth/95 p-3 px-4 text-on-brand-depth transition hover:bg-brand-depth active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Continue
+        {loading ? "validating..." : "continue"}
       </button>
     </form>
   );
