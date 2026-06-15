@@ -283,7 +283,13 @@ class AuthService {
                 user.resetExpires = new Date(Date.now() + 15 * 60 * 1000);
                 await user.save();
 
-                const resetLink = `${config.WEB_URL}/reset-password/${token}`;
+                const jwtToken = jwt.sign(
+                    { token, email: user.email },
+                    config.JWT_RESET_PASSWORD_SECRET,
+                    { expiresIn: '15m' }
+                );
+
+                const resetLink = `${config.WEB_URL}/auth/reset-password/${jwtToken}`;
 
                 await emailQueue.add(
                     'sendForgotPasswordEmail',

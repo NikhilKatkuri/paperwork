@@ -50,7 +50,7 @@ export interface AppConfig {
     SALT_ROUNDS: number;
     JWT_SECRET: string;
     JWT_REFRESH_SECRET: string;
-    JWT_RESET_PASSWORD_SECRET: string;
+    JWT_RESET_PASSWORD_SECRET: string; 
     mail: {
         host: string;
         port: string;

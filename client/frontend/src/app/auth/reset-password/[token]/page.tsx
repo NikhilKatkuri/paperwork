@@ -1,10 +1,7 @@
-"use client";
-import { useParams } from "next/navigation";
+import ResetPasswordPage from "@/auth/components/pages/ResetPasswordPage";
 
 function Page() {
-  const { token } = useParams();
-
-  return <div>{token}</div>;
+  return <ResetPasswordPage />;
 }
 
 export default Page;
