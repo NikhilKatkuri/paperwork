@@ -8,8 +8,8 @@ import {
     getQuestionSchema,
     reorderQuestionSchema,
     updateQuestionSchema,
-} from '@/modules/core/validators/validator.question';
-import questionsController from '@/modules/core/controllers/controller.questions';
+} from '@/modules/forms/validators/validator.question';
+import questionsController from '@/modules/forms/controllers/controller.questions';
 
 const questionsRouter = express.Router({ mergeParams: true });
 const controller = new questionsController();

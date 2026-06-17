@@ -4,7 +4,7 @@ import { AppError } from '@/utils/AppError';
 import config from '@/config';
 import UserModel from '@/modules/auth/schemas/schema.user';
 import ProfileModel from '@/modules/auth/schemas/schema.profile';
-import { SignInService, SignUpService } from '@/modules/auth/types/types.auth';
+import { SignInService, SignUpService } from '@/modules/auth/types/auth.types';
 import OTP from '@/utils/otp';
 import crypto from 'crypto';
 import { emailQueue } from '@/queues';
@@ -84,8 +84,14 @@ class AuthService {
         device: string;
     }) => {
         const { email, password } = payload;
-        const user = await UserModel.findOne({ email }).select('+passwordHash');
-        if (!user) {
+
+        const user = await UserModel.findOne({ email });
+
+        if (
+            !user ||
+            (user.accountWillbeDeletedAt &&
+                new Date() > new Date(user.accountWillbeDeletedAt))
+        ) {
             throw AppError.Unauthorized('Invalid email or password');
         }
 
@@ -99,6 +105,16 @@ class AuthService {
 
         const userId = user._id.toString();
 
+        await UserModel.findByIdAndUpdate(userId, {
+            $unset: {
+                accountDeletedStatus: '',
+                accountDeactivationStatus: '',
+                accountDeleteRequestedAt: '',
+                accountWillbeDeletedAt: '',
+            },
+        });
+        
+        // @NOTE - need to implement 
         await emailQueue.add(
             'sendLoginAlertEmail',
             {

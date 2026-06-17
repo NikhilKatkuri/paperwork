@@ -1,5 +1,5 @@
 import { cacheRedis } from '@/redis';
-import FillService from '@/modules/core/service/service.fill';
+import FillService from '@/modules/forms/service/service.fill';
 import { emailQueue } from '@/queues';
 import { Job } from 'bullmq';
 import { worker } from '@/workers/index';

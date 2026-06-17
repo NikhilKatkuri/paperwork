@@ -1,7 +1,7 @@
 import { NextFunction, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { CustomAuthRequest as Request } from '@/types';
-import SectionService from '@/modules/core/service/service.sections';
+import SectionService from '@/modules/forms/service/service.sections';
 import { AppError } from '@/utils/AppError';
 
 class SectionController {

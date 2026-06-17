@@ -3,7 +3,7 @@ import ratelimit, {
     type RateLimitRequestHandler,
 } from 'express-rate-limit';
 import status from 'http-status-codes';
- 
+
 const base: Partial<Options> = {
     standardHeaders: 'draft-7',
     legacyHeaders: false,
@@ -11,23 +11,21 @@ const base: Partial<Options> = {
     message: {
         status: status.TOO_MANY_REQUESTS,
         message: 'Too many requests, please try again later.',
-    }, 
+    },
 };
 
- 
 const limiter: RateLimitRequestHandler = ratelimit({
     ...base,
     windowMs: 15 * 60 * 1000,
     limit: 100,
 });
 
- 
 const lowLimiter: RateLimitRequestHandler = ratelimit({
     ...base,
     windowMs: 15 * 60 * 1000,
     limit: 30,
 });
- 
+
 const authLimiter: RateLimitRequestHandler = ratelimit({
     ...base,
     windowMs: 15 * 60 * 1000,
@@ -38,7 +36,7 @@ const authLimiter: RateLimitRequestHandler = ratelimit({
             'Too many authentication attempts. Please try again in 15 minutes.',
     },
 });
- 
+
 const forgotPasswordLimiter: RateLimitRequestHandler = ratelimit({
     ...base,
     windowMs: 15 * 60 * 1000,
@@ -50,13 +48,12 @@ const forgotPasswordLimiter: RateLimitRequestHandler = ratelimit({
     },
 });
 
- 
 const profileGetterLimiter: RateLimitRequestHandler = ratelimit({
     ...base,
     windowMs: 15 * 60 * 1000,
     limit: 150,
 });
- 
+
 const refreshTokenLimiter: RateLimitRequestHandler = ratelimit({
     ...base,
     windowMs: 15 * 60 * 1000,
@@ -68,7 +65,6 @@ const refreshTokenLimiter: RateLimitRequestHandler = ratelimit({
     },
 });
 
- 
 const createFormsLimiter: RateLimitRequestHandler = ratelimit({
     ...base,
     windowMs: 15 * 60 * 1000,
@@ -80,15 +76,25 @@ const createFormsLimiter: RateLimitRequestHandler = ratelimit({
     },
 });
 
- 
 const createFormsInnerLimiter: RateLimitRequestHandler = ratelimit({
     ...base,
     windowMs: 15 * 60 * 1000,
-    limit: 400, 
+    limit: 400,
     message: {
         status: status.TOO_MANY_REQUESTS,
         message:
             'Batch modification rate warning. Please pause before saving additional changes.',
+    },
+});
+
+const actionLimiter: RateLimitRequestHandler = ratelimit({
+    ...base,
+    windowMs: 60 * 60 * 1000,
+    limit: 10,
+    message: {
+        status: status.TOO_MANY_REQUESTS,
+        message:
+            'Action rate limit exceeded. Please slow down and try again later.',
     },
 });
 
@@ -101,4 +107,5 @@ export {
     createFormsLimiter,
     createFormsInnerLimiter,
     lowLimiter,
+    actionLimiter,
 };

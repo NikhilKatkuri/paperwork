@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { sectionActionEnum } from '@/modules/core/schemas/schemas.sections';
+import { sectionActionEnum } from '@/modules/forms/schemas/schemas.sections';
 export const zodObjectId = z
     .string()
     .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Database ID format');

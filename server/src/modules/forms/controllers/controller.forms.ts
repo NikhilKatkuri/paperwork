@@ -1,7 +1,7 @@
 import { NextFunction, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { CustomAuthRequest as Request } from '@/types';
-import FormsService from '@/modules/core/service/service.forms';
+import FormsService from '@/modules/forms/service/service.forms';
 
 class FormsController {
     service = new FormsService();

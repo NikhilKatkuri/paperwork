@@ -1,6 +1,7 @@
 import express from 'express';
-import AuthController from '@/modules/auth/controller/controller.auth';
+import AuthController from '@/modules/auth/controller/auth.controller';
 import {
+    actionLimiter,
     authLimiter,
     forgotPasswordLimiter,
     lowLimiter,
@@ -9,15 +10,20 @@ import {
 } from '@/middleware/limiter';
 import validate from '@/middleware/validate';
 import {
+    accountActionsSchema,
+    SecuritySettingsSchema,
     signInSchema,
     signUpSchema,
+    UpdateSecuritySettingsSchema,
     validateEmailSchema,
 } from '@/modules/auth/validation/validation.auth';
 import protect from '@/middleware/protect';
 import validateDomain from '../middleware/validateDomain';
+import UserController from '../controller/user.controller';
 
 const authRouter: express.Router = express.Router();
 const controller = new AuthController();
+const userController = new UserController();
 
 authRouter.post(
     '/sign-in',
@@ -93,6 +99,37 @@ authRouter.post(
     lowLimiter,
     validate(validateEmailSchema),
     controller.checkEmailController
+);
+
+authRouter.post(
+    '/account/action',
+    actionLimiter,
+    protect,
+    validate(accountActionsSchema),
+    userController.accountActions
+);
+
+authRouter.post(
+    '/account/personal',
+    actionLimiter,
+    protect,
+    validate(SecuritySettingsSchema),
+    userController.PersonalInfo
+);
+
+authRouter.get(
+    '/account/personal',
+    profileGetterLimiter,
+    protect,
+    userController.getPersonalInfo
+);
+
+authRouter.put(
+    '/account/personal',
+    actionLimiter,
+    protect,
+    validate(UpdateSecuritySettingsSchema),
+    userController.PersonalInfo
 );
 
 export default authRouter;

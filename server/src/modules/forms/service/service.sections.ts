@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
 import { SectionCore } from '@/types/form/forms';
 import { AppError } from '@/utils/AppError';
-import SectionModel from '@/modules/core/schemas/schemas.sections';
-import FormsModel from '@/modules/core/schemas/schemas.forms';
-import QuestionsModel from '@/modules/core/schemas/schemas.questions';
+import SectionModel from '@/modules/forms/schemas/schemas.sections';
+import FormsModel from '@/modules/forms/schemas/schemas.forms';
+import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
 
 interface I {
     userId: string;

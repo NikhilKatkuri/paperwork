@@ -1,12 +1,12 @@
 import mongoose from 'mongoose';
 import { AppError } from '@/utils/AppError';
-import FormsModel from '@/modules/core/schemas/schemas.forms';
-import SectionModel from '@/modules/core/schemas/schemas.sections';
-import QuestionsModel from '@/modules/core/schemas/schemas.questions';
-import FormResponseModel from '@/modules/core/schemas/schemas.fill';
+import FormsModel from '@/modules/forms/schemas/schemas.forms';
+import SectionModel from '@/modules/forms/schemas/schemas.sections';
+import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
+import FormResponseModel from '@/modules/forms/schemas/schemas.fill';
 import { ResponseCore } from '@/types/form/forms';
 import { FormDocument, QuestionDocument } from '@/types/form/Document';
-import FileService from '@/modules/core/service/service.internal.file';
+import FileService from '@/modules/forms/service/service.internal.file';
 
 class FillService {
     private validateEmailDomain(

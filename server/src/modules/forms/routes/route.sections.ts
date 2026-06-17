@@ -4,10 +4,10 @@ import {
     createSectionSchema,
     getSectionSchema,
     orderSectionSchema,
-} from '@/modules/core/validators/validator.sections';
+} from '@/modules/forms/validators/validator.sections';
 import protect from '@/middleware/protect';
-import SectionController from '@/modules/core/controllers/controller.sections';
-import { getFormSchema } from '@/modules/core/validators/validator.form';
+import SectionController from '@/modules/forms/controllers/controller.sections';
+import { getFormSchema } from '@/modules/forms/validators/validator.form';
 
 const sectionRouter = express.Router({ mergeParams: true });
 const controller = new SectionController();

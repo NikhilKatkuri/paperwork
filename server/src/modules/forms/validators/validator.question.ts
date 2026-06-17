@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
     fieldValidationRuleEnum,
     ratingIconEnum,
-} from '@/modules/core/schemas/schemas.questions';
+} from '@/modules/forms/schemas/schemas.questions';
 import { zodObjectId } from './validator.sections';
 
 export const getAllQuestionsSchema = z.object({

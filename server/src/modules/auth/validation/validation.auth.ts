@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { COUNTRIES, GENDERS, LANGUAGES } from '../constants/enums';
 
 export const signInSchema = z.object({
     body: z.object({
@@ -39,4 +40,42 @@ export const validateEmailSchema = z.object({
             .email('Invalid email format')
             .transform((value) => value.toLowerCase()),
     }),
+});
+
+export const accountActionsSchema = z.object({
+    body: z.object({
+        action: z.enum(
+            [
+                'delete-account',
+                'enable-2fa',
+                'disable-2fa',
+                'deactivate-account',
+            ],
+            {
+                message: 'Invalid API',
+            }
+        ),
+        password: z.string().min(1, 'Invalid API'),
+    }),
+});
+
+export const SecuritySettingsSchema = z.object({
+    body: z.object({
+        dob: z.string().refine((date) => !isNaN(Date.parse(date)), {
+            message: 'Invalid date format',
+        }),
+        gender: z.enum(Object.values(GENDERS), {
+            message: 'Invalid gender value',
+        }),
+        country: z.enum(Object.values(COUNTRIES), {
+            message: 'Invalid country value',
+        }),
+        language: z.enum(Object.values(LANGUAGES), {
+            message: 'Invalid language value',
+        }),
+    }),
+});
+
+export const UpdateSecuritySettingsSchema = z.object({
+    body: SecuritySettingsSchema.shape.body.partial(),
 });

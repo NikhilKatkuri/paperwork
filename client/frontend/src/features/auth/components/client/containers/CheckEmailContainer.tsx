@@ -12,7 +12,7 @@ function CheckEmailContainer() {
   const data = INTENT_EMAIL_CONFIG[intent];
 
   return (
-    <div className="flex flex-col space-y-5 w-full h-full justify-center">
+    <div className="flex flex-col space-y-5 w-full h-full justify-center ">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <Image
@@ -30,7 +30,7 @@ function CheckEmailContainer() {
         <p className="text-md md:text-lg">{data.subtitle}</p>
       </div>
       <CheckEmailClientComponent />
-      <footer className="my-3 w-full grid grid-cols-1 space-y-3">
+      <footer className="my-3 w-full grid grid-cols-1 space-y-3 select-none">
         <p className="text-xs text-center">
           {data.footerText}{" "}
           <Link

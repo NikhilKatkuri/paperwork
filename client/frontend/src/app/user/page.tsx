@@ -1,12 +1,7 @@
-import SignOutButton from '@/auth/components/client/SignOutButton'
-import React from 'react'
+import { redirect } from 'next/navigation'
 
 const page = () => {
-  return (
-    <div>page
-      <SignOutButton/>
-    </div>
-  )
+  redirect('/user/profile')
 }
 
 export default page

@@ -1,6 +1,6 @@
 import { NextFunction, Response } from 'express';
 import statusCodes, { StatusCodes } from 'http-status-codes';
-import AuthService from '@/modules/auth/service/service.auth';
+import AuthService from '@/modules/auth/service/auth.service';
 import config from '@/config';
 import { AppError } from '@/utils/AppError';
 import jwt from 'jsonwebtoken';

@@ -1,7 +1,7 @@
 import { NextFunction, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { CustomAuthRequest as Request } from '@/types';
-import questionService from '@/modules/core/service/service.questions';
+import questionService from '@/modules/forms/service/service.questions';
 import { AppError } from '@/utils/AppError';
 
 class questionsController {

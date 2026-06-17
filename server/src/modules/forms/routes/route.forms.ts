@@ -1,5 +1,5 @@
 import express from 'express';
-import FormsController from '@/modules/core/controllers/controller.forms';
+import FormsController from '@/modules/forms/controllers/controller.forms';
 import protect from '@/middleware/protect';
 import validate from '@/middleware/validate';
 import {
@@ -7,8 +7,8 @@ import {
     getFormSchema,
     patchRequestFormSchema,
     putRequestFormSchema,
-} from '@/modules/core/validators/validator.form';
-import sectionRouter from '@/modules/core/routes/route.sections';
+} from '@/modules/forms/validators/validator.form';
+import sectionRouter from '@/modules/forms/routes/route.sections';
 import questionsRouter from './route.questions';
 
 import fillRouter from './route.fill';

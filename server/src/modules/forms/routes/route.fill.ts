@@ -1,9 +1,9 @@
 import express from 'express';
-import FillController from '@/modules/core/controllers/controller.fill';
+import FillController from '@/modules/forms/controllers/controller.fill';
 import {
     fillFormSchema,
     postFormSchema,
-} from '@/modules/core/validators/validator.question';
+} from '@/modules/forms/validators/validator.question';
 import validate from '@/middleware/validate';
 import { responseIdSchema } from '../validators/validator.fill';
 import protect from '@/middleware/protect';

@@ -1,5 +1,30 @@
-import { ProfileDocument } from '@/types/profile.types';
+import { ProfileDocument, SensitiveDocument } from '../types/profile.auth';
 import mongoose, { Schema } from 'mongoose';
+import { GENDERS, COUNTRIES, LANGUAGES } from '../constants/enums';
+
+const sensitiveSchema = new Schema<SensitiveDocument>(
+    {
+        dob: {
+            type: Date,
+        },
+        gender: {
+            type: String,
+            enum: [...Object.values(GENDERS)],
+        },
+        country: {
+            type: String,
+            enum: [...Object.values(COUNTRIES)],
+        },
+        language: {
+            type: String,
+            enum: [...Object.values(LANGUAGES)],
+        },
+    },
+    {
+        timestamps: false,
+        _id: false,
+    }
+);
 
 export const profileSchema = new Schema<ProfileDocument>(
     {
@@ -12,6 +37,11 @@ export const profileSchema = new Schema<ProfileDocument>(
         fullName: { type: String, required: true },
         avatarUrl: { type: String },
         bio: { type: String },
+        sensitiveData: {
+            type: sensitiveSchema,
+            required: false,
+            default: null,
+        },
     },
     {
         timestamps: true,

@@ -1,6 +1,6 @@
 import express from 'express';
 import authRouter from '@/modules/auth/routes/route.auth';
-import formsRouter from '@/modules/core/routes/route.forms';
+import formsRouter from '@/modules/forms/routes/route.forms';
 import signaturesRouter from '@/modules/signatures/routes';
 import protect from '@/middleware/protect';
 
