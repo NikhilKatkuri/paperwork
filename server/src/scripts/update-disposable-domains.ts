@@ -16,9 +16,7 @@ const load = async () => {
         console.log('unable to fetch response');
         return;
     }
-    const normalized = [
-        ...new Set(domains.map((d) => d.toLowerCase())),
-    ].sort();
+    const normalized = [...new Set(domains.map((d) => d.toLowerCase()))].sort();
 
     const filePath = join(__dirname, '../data/disposable-domains.json');
 
@@ -26,7 +24,7 @@ const load = async () => {
 
     await writeFile(filePath, JSON.stringify(normalized, null, 2), 'utf8');
 
-    console.log(`✅ Saved ${normalized.length} domains to ${filePath}`);
+    console.log(`Saved ${normalized.length} domains to ${filePath}`);
 };
 
 load().catch((err) => {

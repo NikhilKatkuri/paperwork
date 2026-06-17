@@ -1,13 +1,13 @@
+import HashBoot from './hash.service';
+import UserModel from '../schemas/user.schema';
+import ProfileModel from '../schemas/profile.schema';
 import { AppError } from '@/utils/AppError';
 import {
     userAccountDeactivationStatus,
     userAccountDeletedStatus,
 } from '../constants/enums';
-import UserModel from '../schemas/schema.user';
 import { AccountActionService } from '../types/auth.types';
-import bcrypt from 'bcryptjs';
 import { sensitiveData } from '../types/profile.auth';
-import ProfileModel from '../schemas/schema.profile';
 
 class UserService {
     private accountDeletionPeriodInDays = 30 * 24 * 60 * 60 * 1000;
@@ -26,6 +26,13 @@ class UserService {
         }
     }
 
+    /**
+     * Performs account-related actions for a user.
+     *
+     * @param data
+     * @param userId
+     * @returns the result of the operation
+     */
     async account(
         data: AccountActionService,
         userId: string
@@ -40,7 +47,7 @@ class UserService {
                 throw AppError.Unauthorized('Invalid credentials or request');
             }
 
-            const isPasswordValid = await bcrypt.compare(
+            const isPasswordValid = await HashBoot.verifyHash(
                 password,
                 user.passwordHash
             );
@@ -106,7 +113,7 @@ class UserService {
                     userId,
                     objectToUpdate[action],
                     {
-                        new: true,
+                        returnDocument: 'after',
                     }
                 );
                 return {
@@ -124,6 +131,14 @@ class UserService {
         }
     }
 
+    /**
+     * Performs actions related to a user's personal information, such as adding or updating sensitive data.
+     *
+     * @param data
+     * @param userId
+     * @param method
+     * @returns the result of the operation
+     */
     async PersonalInfo(
         data: sensitiveData,
         userId: string,
@@ -168,10 +183,16 @@ class UserService {
         }
     }
 
+    /**
+     * Retrieves the personal information of a user based on their user ID.
+     *
+     * @param userId
+     * @returns the sensitive personal information of the user, or null if not found
+     */
     async getPersonalInfo(userId: string) {
         try {
             const profile = await ProfileModel.findOne({ userId })
-                .select('sensitiveData -_id')
+                .select('+sensitiveData -_id')
                 .lean();
 
             if (!profile) {
@@ -187,4 +208,7 @@ class UserService {
         }
     }
 }
-export default UserService;
+
+const UserServiceBoot = new UserService();
+
+export default UserServiceBoot;

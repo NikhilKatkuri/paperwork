@@ -1,6 +1,6 @@
 import domains from '@/data/disposable-domains.json';
 import { Response, NextFunction } from 'express';
-import { CustomAuthRequest as Request } from '@/types';
+import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
 
 const disposableDomains = new Set(domains);
@@ -25,6 +25,5 @@ async function validateDomain(req: Request, res: Response, next: NextFunction) {
     }
     return next();
 }
-
 
 export default validateDomain;

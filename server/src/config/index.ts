@@ -1,134 +1,134 @@
+import { AppConfig } from '@/types';
+import { SystemError } from '@/utils/AppError';
 import dotenv from 'dotenv';
 dotenv.config();
 
-function getEnvVar(key: string, defaultValue: number): number;
-function getEnvVar(key: string, defaultValue: boolean): boolean;
-function getEnvVar(key: string, defaultValue: string): string;
-function getEnvVar(key: string): string | undefined;
-function getEnvVar(
+export function getEnvVar<T extends string | number | boolean>(
     key: string,
-    defaultValue?: string | number | boolean
-): string | number | boolean | undefined {
+    defaultValue?: T
+): T {
     const value = process.env[key];
+
     if (value === undefined || value.trim() === '') {
-        return defaultValue;
+        if (defaultValue !== undefined) {
+            return defaultValue;
+        }
+        throw new SystemError(
+            `[${key}]`,
+            `Environment variable "${key}" is missing.`
+        );
     }
+
     const trimmed = value.trim();
-    if (typeof defaultValue === 'boolean') {
-        const lower = trimmed.toLowerCase();
-        if (lower === 'true' || lower === '1') return true;
-        if (lower === 'false' || lower === '0') return false;
-        return defaultValue;
+
+    if (trimmed === 'true') {
+        return true as unknown as T;
     }
-    if (typeof defaultValue === 'number') {
-        const num = Number(trimmed);
-        return isNaN(num) ? defaultValue : num;
+    if (trimmed === 'false') {
+        return false as unknown as T;
     }
-    return trimmed;
+
+    const isPureNumber = /^-?\d+(\.\d+)?$/.test(trimmed);
+    if (isPureNumber) {
+        const parsedNum = Number(trimmed);
+        if (!isNaN(parsedNum)) {
+            return parsedNum as unknown as T;
+        }
+    }
+
+    return trimmed as unknown as T;
 }
 
-function getEnvArray(key: string, defaultValue: string[] = []): string[] {
+function getEnvArray(key: string, defaultValue?: string[]): string[] {
     const value = process.env[key];
-    if (value === undefined || value.trim() === '') return defaultValue;
+    if (value === undefined || value.trim() === '') {
+        if (defaultValue !== undefined) {
+            return defaultValue;
+        }
+        throw new SystemError(
+            `[${key}]`,
+            `Environment variable "${key}" is not defined.`
+        );
+    }
     return value
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
 }
 
-type Origins = { env: 'dev'; urls: string[] } | { env: 'prod'; urls: string[] };
-
-export interface AppConfig {
-    env: string;
-    port: number;
-    host: string;
-    mongo: {
-        uri: string;
-    };
-    debug: boolean;
-    origins: Origins;
-    SALT_ROUNDS: number;
-    JWT_SECRET: string;
-    JWT_TEMP_SECRET: string;
-    JWT_REFRESH_SECRET: string;
-    JWT_RESET_PASSWORD_SECRET: string;
-    mail: {
-        host: string;
-        port: string;
-        secure: string;
-        hostUser: string;
-        hostPass: string;
-    };
-    otp: {
-        SECRET: string;
-        EXPIRATION: number;
-    };
-    WEB_URL: string;
-    redis: {
-        url: string;
-    };
-    cloudinary: {
-        cloud_name: string;
-        api_key: string;
-        api_secret: string;
-        named_folder: string;
-        expiration: number;
-        window_expiration: number;
-        window_buffer: number;
-    };
-}
-
-const isDev = getEnvVar('NODE_ENV', 'development') === 'development';
+const isDev = getEnvVar<string>('NODE_ENV', 'development') === 'development';
 
 const config: AppConfig = {
-    env: getEnvVar('NODE_ENV', 'development'),
-    port: getEnvVar('PORT', 5000),
-    host: getEnvVar('HOST', '0.0.0.0'),
+    env: getEnvVar<string>('NODE_ENV', 'development'),
+    port: getEnvVar<number>('PORT', 5000),
+    host: getEnvVar<string>('HOST', '0.0.0.0'),
     mongo: {
-        uri: getEnvVar('MONGO_URI') as string,
+        uri: getEnvVar<string>('MONGO_URI'),
     },
-    debug: getEnvVar('DEBUG', false),
+    debug: getEnvVar<boolean>('DEBUG', false),
     origins: isDev
         ? {
               env: 'dev',
-              urls: getEnvArray('DEV_ORIGINS', [
-                  'http://localhost:3000',
-                  'http://localhost:5173',
-                  'http://localhost:5000',
-              ]),
+              urls: getEnvArray('DEV_ORIGINS', ['http://localhost:3000']),
           }
-        : { env: 'prod', urls: getEnvArray('PROD_ORIGINS') },
-    SALT_ROUNDS: getEnvVar('SALT_ROUNDS', 10),
-    JWT_SECRET: getEnvVar('JWT_SECRET') as string,
-    JWT_TEMP_SECRET: getEnvVar('JWT_TEMP_SECRET') as string,
-    JWT_REFRESH_SECRET: getEnvVar('JWT_REFRESH_SECRET') as string,
-    JWT_RESET_PASSWORD_SECRET: getEnvVar('JWT_RESET_PASSWORD_SECRET') as string,
+        : {
+              env: 'prod',
+              urls: getEnvArray('PROD_ORIGINS'),
+          },
+    SALT_ROUNDS: getEnvVar<number>('SALT_ROUNDS', 10),
+    jwt: {
+        secret: getEnvVar<string>('JWT_SECRET'),
+        tempSecret: getEnvVar<string>('JWT_TEMP_SECRET'),
+        refreshSecret: getEnvVar<string>('JWT_REFRESH_SECRET'),
+        resetPasswordSecret: getEnvVar<string>('JWT_RESET_PASSWORD_SECRET'),
+        expiresIn: getEnvVar<number>('JWT_EXPIRES_IN', 900),
+        tempExpiresIn: getEnvVar<number>('JWT_TEMP_EXPIRES_IN', 900),
+        refreshExpiresIn: getEnvVar<number>('JWT_REFRESH_EXPIRES_IN', 604800),
+        resetPasswordExpiresIn: getEnvVar<number>(
+            'JWT_RESET_PASSWORD_EXPIRES_IN',
+            900
+        ),
+    },
     mail: {
-        host: getEnvVar('MAIL_HOST') as string,
-        port: getEnvVar('MAIL_PORT') as string,
-        secure: getEnvVar('MAIL_SECURE') as string,
-        hostUser: getEnvVar('MAIL_HOST_USER') as string,
-        hostPass: getEnvVar('MAIL_HOST_PASS') as string,
+        host: getEnvVar<string>('MAIL_HOST', 'smtp.gmail.com'),
+        port: getEnvVar<number>('MAIL_PORT', 465),
+        secure: getEnvVar<boolean>('MAIL_SECURE', true),
+        hostUser: getEnvVar<string>('MAIL_HOST_USER'),
+        hostPass: getEnvVar<string>('MAIL_HOST_PASS'),
     },
     otp: {
-        SECRET: getEnvVar('OTP_SECRET') as string,
-        EXPIRATION: getEnvVar('OTP_EXPIRATION', 300000), // 5 minutes in milliseconds
+        SECRET: getEnvVar<string>('OTP_SECRET'),
+        EXPIRATION: getEnvVar<number>('OTP_EXPIRATION', 300000),
     },
-    WEB_URL: getEnvVar('WEB_URL') as string,
+    WEB_URL: getEnvVar<string>('WEB_URL'),
     redis: {
-        url: getEnvVar('REDIS_URL') as string,
+        url: getEnvVar<string>('REDIS_URL'),
     },
     cloudinary: {
-        cloud_name: getEnvVar('CLOUDINARY_CLOUD_NAME') as string,
-        api_key: getEnvVar('CLOUDINARY_API_KEY') as string,
-        api_secret: getEnvVar('CLOUDINARY_API_SECRET') as string,
-        expiration: getEnvVar('CLOUDINARY_SIGNED_URL_EXPIRATION', 300),
-        named_folder: getEnvVar('CLOUDINARY_FOLDER') as string,
-        window_expiration: getEnvVar(
-            'CLOUDINARY_BUCKET_WINDOW_EXPIRATION',
-            600
+        cloud_name: getEnvVar<string>('CLOUDINARY_CLOUD_NAME'),
+        api_key: getEnvVar<string>('CLOUDINARY_API_KEY'),
+        api_secret: getEnvVar<string>('CLOUDINARY_API_SECRET'),
+        expiration: getEnvVar<number>(
+            'CLOUDINARY_SIGNED_URL_EXPIRATION',
+            300000
         ),
-        window_buffer: getEnvVar('CLOUDINARY_BUCKET_WINDOW_BUFFER', 300),
+        named_folder: getEnvVar<string>('CLOUDINARY_FOLDER', 'paperwork'),
+        window_expiration: getEnvVar<number>(
+            'CLOUDINARY_BUCKET_WINDOW_EXPIRATION',
+            600000
+        ),
+        window_buffer: getEnvVar<number>(
+            'CLOUDINARY_BUCKET_WINDOW_BUFFER',
+            300000
+        ),
+    },
+    argonOptions: {
+        type: getEnvVar<number>('ARGON_TYPE', 2),
+        memoryCost: getEnvVar<number>('ARGON_MEMORY_COST', 65536),
+        timeCost: getEnvVar<number>('ARGON_TIME_COST', 3),
+        parallelism: getEnvVar<number>('ARGON_PARALLELISM', 4),
+        hashLength: getEnvVar<number>('ARGON_HASH_LENGTH', 32),
+        secret: getEnvVar<string>('ARGON_SECRET'),
     },
 };
 

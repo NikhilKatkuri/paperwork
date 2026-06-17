@@ -93,3 +93,17 @@ export class AppError extends Error {
         return new AppError(StatusCodes.INTERNAL_SERVER_ERROR, message);
     }
 }
+
+export class SystemError extends Error {
+    public readonly loc: string;
+    public readonly isOperational: boolean;
+
+    constructor(loc: string, message: string) {
+        super(message);
+        this.loc = loc;
+        this.isOperational = false;
+
+        Object.setPrototypeOf(this, SystemError.prototype);
+        Error.captureStackTrace(this, this.constructor);
+    }
+}

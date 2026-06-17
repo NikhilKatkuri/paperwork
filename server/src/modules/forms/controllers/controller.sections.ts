@@ -1,6 +1,6 @@
 import { NextFunction, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { CustomAuthRequest as Request } from '@/types';
+import { Request } from 'express';
 import SectionService from '@/modules/forms/service/service.sections';
 import { AppError } from '@/utils/AppError';
 

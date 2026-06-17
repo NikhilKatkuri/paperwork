@@ -1,3 +1,4 @@
 ignoredBuiltDependencies:
+  - argon2
   - esbuild
   - msgpackr-extract

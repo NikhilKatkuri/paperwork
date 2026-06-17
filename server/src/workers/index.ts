@@ -56,7 +56,8 @@ class WorkerManager {
             sendVerificationEmail: (job) =>
                 this.mailservice.sendOTPEmail(
                     job.data.email,
-                    String(job.data.otp).padStart(6, '0')
+                    String(job.data.otp).padStart(6, '0'),
+                    `Your Verification Code - Expires at ${new Date(job.data.expiresAt).toLocaleString()}`
                 ),
             sendPasswordChangeAlertEmail: (job) =>
                 this.mailservice.sendPasswordChangeAlertEmail(
@@ -76,7 +77,6 @@ class WorkerManager {
                     job.data.formName,
                     job.data.formId
                 ),
-
             submissionConfirmed: (job) =>
                 this.mailservice.sendFormSubmissionConfirmedEmail(
                     job.data.email,
@@ -87,34 +87,50 @@ class WorkerManager {
     }
 
     initEmailWorker() {
-        this.createWorker('email', async (job: Job) => {
-            try {
-                const configMap = this.getBoxConfig();
-                const fn = configMap[job.name];
+        const emailWorker = this.createWorker(
+            'email',
+            async (job: Job) => {
+                try {
+                    const configMap = this.getBoxConfig();
+                    const fn = configMap[job.name];
 
-                if (!fn) {
+                    if (!fn) {
+                        throw AppError.Internal(
+                            `No processor found for job: ${job.name}`
+                        );
+                    }
+
+                    await fn(job);
+                } catch (error: any) {
                     console.error(
-                        `[WorkerManager] No processor found for job: ${job.name}`
+                        `[WorkerManager] Job ${job.id} (${job.name}) failed execution:`,
+                        error.message
                     );
-                    throw AppError.Internal(
-                        `No processor found for job: ${job.name}`
-                    );
+                    throw error;
                 }
-
-                await fn(job);
-            } catch (error: any) {
-                console.error(
-                    `[WorkerManager] Job ${job.id} (${job.name}) failed execution:`,
-                    error.message
-                );
-
-                throw error;
+            },
+            {
+                concurrency: 1,
             }
+        );
+
+        this.onWorkerError(emailWorker, (err) => {
+            console.error('[WorkerManager Global Error]:', err.message);
         });
 
-        console.log('[WorkerManager] Email worker successfully mounted.');
+        this.onWorkerFailed(emailWorker, (job, err) => {
+            console.error(
+                `[WorkerManager Global Failure]: Job ${job?.id} failed structural completion. Reason:`,
+                err.message
+            );
+        });
+
+        console.log(
+            '[WorkerManager] Email worker successfully mounted with concurrency limits.'
+        );
     }
 }
+
 const worker = new WorkerManager();
 export { worker };
 export default WorkerManager;

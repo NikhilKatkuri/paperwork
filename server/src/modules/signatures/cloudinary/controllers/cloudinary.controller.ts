@@ -1,6 +1,6 @@
 import CloudinaryService from '../service/cloudinary.service';
 import { Response } from 'express';
-import { CustomAuthRequest as Request } from '@/types';
+import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { AppError } from '@/utils/AppError';
 

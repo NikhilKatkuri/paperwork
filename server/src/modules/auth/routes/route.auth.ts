@@ -11,6 +11,7 @@ import {
 import validate from '@/middleware/validate';
 import {
     accountActionsSchema,
+    profileUpdateSchema,
     SecuritySettingsSchema,
     signInSchema,
     signUpSchema,
@@ -54,6 +55,14 @@ authRouter.get(
     profileGetterLimiter,
     protect,
     controller.getProfileController
+);
+
+authRouter.post(
+    '/me',
+    authLimiter,
+    protect,
+    validate(profileUpdateSchema),
+    controller.updateProfileController
 );
 
 authRouter.post(

@@ -47,14 +47,20 @@ export const profileSchema = new Schema<ProfileDocument>(
         timestamps: true,
     }
 );
+
+const transformProfile = (_: any, ret: any) => {
+    if (ret.avatarUrl == null || ret.avatarUrl === '') delete ret.avatarUrl;
+    if (ret.bio == null || ret.bio === '') delete ret.bio;
+    return ret;
+};
+
 profileSchema.set('toObject', {
-    transform: (_, ret) => {
-        Reflect.deleteProperty(ret, '__v');
-        if (!ret.avatarUrl) delete ret.avatarUrl;
-        if (!ret.bio) delete ret.bio;
-        return ret;
-    },
+    versionKey: false,
+    transform: transformProfile,
 });
+
+profileSchema.set('toJSON', { versionKey: false, transform: transformProfile });
+
 const ProfileModel = mongoose.model<ProfileDocument>('Profile', profileSchema);
 
 export default ProfileModel;

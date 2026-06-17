@@ -1,14 +1,9 @@
 import config from '@/config';
 import { AppError } from '@/utils/AppError';
-import { Response, NextFunction } from 'express';
+import { Response, NextFunction, Request } from 'express';
 import jwt from 'jsonwebtoken';
-import { CustomAuthRequest as CustomRequest } from '@/types';
 
-const protect = async (
-    req: CustomRequest,
-    _res: Response,
-    next: NextFunction
-) => {
+const protect = async (req: Request, _res: Response, next: NextFunction) => {
     try {
         const authorizationHeader = req.headers.authorization;
         if (
@@ -23,7 +18,7 @@ const protect = async (
             throw AppError.Unauthorized('unauthorized');
         }
 
-        const decodedToken = (await jwt.verify(token, config.JWT_SECRET)) as {
+        const decodedToken = (await jwt.verify(token, config.jwt.secret)) as {
             userId: string;
             email: string;
         } | null;

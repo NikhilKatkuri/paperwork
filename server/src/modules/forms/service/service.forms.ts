@@ -3,7 +3,7 @@ import { AppError } from '@/utils/AppError';
 import FormsModel from '@/modules/forms/schemas/schemas.forms';
 import SectionModel from '@/modules/forms/schemas/schemas.sections';
 import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
-import UserModel from '@/modules/auth/schemas/schema.user';
+import UserModel from '@/modules/auth/schemas/user.schema';
 import { FormCore } from '@/types/form/forms';
 import { emailQueue } from '@/queues';
 

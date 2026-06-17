@@ -1,59 +1,25 @@
 import { NextFunction, Response } from 'express';
 import statusCodes from 'http-status-codes';
-import AuthService from '@/modules/auth/service/auth.service';
-import config from '@/config';
 import { AppError } from '@/utils/AppError';
-import jwt from 'jsonwebtoken';
-import { CustomAuthRequest as Request } from '@/types';
-import geoip from 'geoip-lite';
-import useragent from 'useragent';
-import crypto from 'crypto';
+import { Request } from 'express';
+import TokenBoot from '../service/token.service';
+import { TokenPayload } from '../types/token.types';
+import { AutoBoundController } from '@/utils/AutoBoundClass';
+import AuthServiceBoot from '@/modules/auth/service/auth.service';
+import userAgentService from '../service/userAgent.service';
+import HashBoot from '../service/hash.service';
 
 interface EmailCheckCookie {
     last_check_email: string;
     result: boolean;
 }
 
-class AuthController {
-    authService = new AuthService();
+class AuthController extends AutoBoundController {
     private email_check_cache = 'email_check_cache';
+    private geoMeta = userAgentService.getMeta;
 
     constructor() {
-        const methods = Object.getOwnPropertyNames(
-            AuthController.prototype
-        ).filter(
-            (prop) =>
-                prop !== 'constructor' &&
-                typeof (this as any)[prop] === 'function'
-        );
-
-        for (const method of methods) {
-            (this as any)[method] = (this as any)[method].bind(this);
-        }
-    }
-
-    private geoByIp(req: Request) {
-        if (!req.ip) {
-            return 'unkown ip';
-        }
-
-        const geo = geoip.lookup(req.ip);
-        return geo
-            ? `city: ${geo.city}, country: ${geo.country}, region: ${geo.region}`
-            : 'Unknown Location';
-    }
-
-    private deviceByUserAgent(req: Request) {
-        const ua = useragent.parse(req.headers['user-agent']).toJSON();
-        return `family: ${ua.family}, version: ${ua.major}.${ua.minor}.${ua.patch} device: ${ua.device}`;
-    }
-
-    private getContext(req: Request) {
-        const { id: userId, email } = req.user || {};
-        if (!userId || !email) {
-            throw AppError.Unauthorized('User not authenticated');
-        }
-        return { userId, email };
+        super();
     }
 
     signInController = async (
@@ -62,11 +28,12 @@ class AuthController {
         next: NextFunction
     ) => {
         try {
+            const meta = this.geoMeta(req);
             const { email, password } = req.body;
-            await this.authService.signIn({
+            await AuthServiceBoot.signIn({
                 payload: { email, password },
-                geo: this.geoByIp(req),
-                device: this.deviceByUserAgent(req),
+                geo: Object.values(meta).join(', '),
+                device: Object.values(meta).join(','),
                 res,
             });
         } catch (error) {
@@ -80,10 +47,11 @@ class AuthController {
             if (!otp) {
                 throw AppError.BadRequest('OTP is required');
             }
-            await this.authService.verify2FA({
+            const meta = this.geoMeta(req);
+            await AuthServiceBoot.verify2FA({
                 otp: otp.toString(),
-                geo: this.geoByIp(req),
-                device: this.deviceByUserAgent(req),
+                geo: Object.values(meta).join(', '),
+                device: Object.values(meta).join(','),
                 res,
                 req,
             });
@@ -97,31 +65,15 @@ class AuthController {
         res: Response,
         next: NextFunction
     ) => {
-        const {
-            email,
-            password,
-            fullName,
-            avatarUrl = null,
-            bio = '',
-        } = req.body;
+        const { email, password, fullName } = req.body;
         try {
-            const { accessToken, refreshToken } = await this.authService.signUp(
-                {
-                    email,
-                    password,
-                    fullName,
-                    avatarUrl,
-                    bio,
-                }
-            );
-
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                secure: config.env === 'production',
-                sameSite: 'lax',
-                maxAge: 7 * 24 * 60 * 60 * 1000,
-                path: '/',
+            const { accessToken, refreshToken } = await AuthServiceBoot.signUp({
+                email,
+                password,
+                fullName,
             });
+
+            this.cookieSetter(res, 'refreshToken', refreshToken);
 
             res.status(statusCodes.CREATED).json({
                 success: true,
@@ -143,12 +95,8 @@ class AuthController {
             if (!refreshToken) {
                 throw AppError.Unauthorized('No refresh token provided');
             }
-            res.clearCookie('refreshToken', {
-                httpOnly: true,
-                secure: config.env === 'production',
-                sameSite: 'lax',
-                path: '/',
-            });
+
+            this.clearCookie(res, 'refreshToken');
 
             res.status(statusCodes.OK).json({
                 success: true,
@@ -169,15 +117,12 @@ class AuthController {
             if (!refreshToken) {
                 throw AppError.Unauthorized('No refresh token provided');
             }
-            let decode;
+            let decode: TokenPayload | null = null;
             try {
-                decode = jwt.verify(
+                decode = await TokenBoot.verifyToken<TokenPayload>(
                     refreshToken,
-                    config.JWT_REFRESH_SECRET
-                ) as {
-                    userId: string;
-                    email: string;
-                };
+                    'refresh'
+                );
                 if (!decode.userId || !decode.email) {
                     throw AppError.Unauthorized('Invalid refresh token');
                 }
@@ -190,18 +135,12 @@ class AuthController {
             }
 
             const { newAccessToken, newRefreshToken } =
-                await this.authService.refreshTokenService({
+                await AuthServiceBoot.refreshTokenService({
                     userId: decode.userId,
                     email: decode.email,
                 });
 
-            res.cookie('refreshToken', newRefreshToken, {
-                httpOnly: true,
-                secure: config.env === 'production',
-                sameSite: 'lax',
-                maxAge: 7 * 24 * 60 * 60 * 1000,
-                path: '/',
-            });
+            this.cookieSetter(res, 'refreshToken', newRefreshToken);
 
             res.status(statusCodes.OK).json({
                 success: true,
@@ -220,10 +159,34 @@ class AuthController {
     ) => {
         try {
             const { userId } = this.getContext(req);
-            const profile = await this.authService.getProfileService(userId);
+            const profile = await AuthServiceBoot.getProfileService(userId);
             res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Profile retrieved successfully',
+                data: { profile },
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    updateProfileController = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { userId } = this.getContext(req);
+            const { fullName, avatarUrl, bio } = req.body;
+            const profile = await AuthServiceBoot.updateProfileService(userId, {
+                fullName,
+                avatarUrl,
+                bio,
+            });
+
+            res.status(statusCodes.OK).json({
+                success: true,
+                message: 'Profile updated successfully',
                 data: { profile },
             });
         } catch (error) {
@@ -239,23 +202,16 @@ class AuthController {
         try {
             const { userId, email } = this.getContext(req);
 
-            const r = await this.authService.sendVerificationService(
+            const r = await AuthServiceBoot.sendVerificationService(
                 userId,
                 email
             );
 
-            res.cookie(
+            this.cookieSetter(
+                res,
                 'emailVerification',
-                JSON.stringify({
-                    expiresAt: r,
-                }),
-                {
-                    httpOnly: true,
-                    secure: config.env === 'production',
-                    sameSite: 'lax',
-                    maxAge: 5 * 60 * 1000,
-                    path: '/',
-                }
+                JSON.stringify({ expiresAt: r }),
+                5 * 60 * 1000
             );
 
             res.status(statusCodes.OK).json({
@@ -292,19 +248,15 @@ class AuthController {
                 );
             }
 
-            await this.authService.verifyEmailService(
+            await AuthServiceBoot.verifyEmailService(
                 userId,
                 email,
                 otp,
                 verificationData.expiresAt
             );
 
-            res.clearCookie('emailVerification', {
-                httpOnly: true,
-                secure: config.env === 'production',
-                sameSite: 'lax',
-                path: '/',
-            });
+            this.clearCookie(res, 'emailVerification');
+
             res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Email verified successfully',
@@ -323,7 +275,7 @@ class AuthController {
             const { userId } = this.getContext(req);
             const { currentPassword, newPassword } = req.body;
 
-            await this.authService.changePasswordService(
+            await AuthServiceBoot.changePasswordService(
                 userId,
                 currentPassword,
                 newPassword
@@ -344,7 +296,7 @@ class AuthController {
     ) => {
         try {
             const { email } = req.body;
-            await this.authService.forgotPasswordService(email);
+            await AuthServiceBoot.forgotPasswordService(email);
             res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Password reset instructions sent to your email',
@@ -367,7 +319,7 @@ class AuthController {
 
             const { newPassword } = req.body;
 
-            const message = await this.authService.resetPasswordService(
+            const message = await AuthServiceBoot.resetPasswordService(
                 token,
                 newPassword
             );
@@ -381,18 +333,11 @@ class AuthController {
         }
     };
 
-    hashEmail = (email: string): string => {
-        return crypto
-            .createHash('sha256')
-            .update(email.trim().toLowerCase())
-            .digest('hex');
-    };
-
     checkEmailController = async (req: Request, res: Response) => {
         try {
             const { email } = req.body;
 
-            const targetEmailHash = this.hashEmail(email.toLowerCase());
+            const targetEmailHash = HashBoot.hashEmail(email.toLowerCase());
 
             if (req.cookies[this.email_check_cache]) {
                 try {
@@ -417,23 +362,18 @@ class AuthController {
                 }
             }
 
-            const exists = await this.authService.checkEmailExists(
+            const exists = await AuthServiceBoot.checkEmailExists(
                 email.toLowerCase()
             );
 
-            res.cookie(
+            this.cookieSetter(
+                res,
                 this.email_check_cache,
                 JSON.stringify({
                     last_check_email: targetEmailHash,
                     result: exists,
                 }),
-                {
-                    httpOnly: true,
-                    secure: config.env === 'production',
-                    sameSite: 'lax',
-                    maxAge: 10 * 60 * 1000,
-                    path: '/',
-                }
+                10 * 60 * 1000
             );
 
             res.status(statusCodes.OK).json({

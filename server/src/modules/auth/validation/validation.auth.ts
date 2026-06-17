@@ -27,8 +27,6 @@ export const signUpSchema = z.object({
             .string()
             .min(2, 'Full name must be at least 2 characters long')
             .max(100, 'Full name cannot exceed 100 characters'),
-        avatarUrl: z.string().url('Invalid URL format').optional(),
-        bio: z.string().max(500, 'Bio cannot exceed 500 characters').optional(),
     }),
 });
 
@@ -78,4 +76,15 @@ export const SecuritySettingsSchema = z.object({
 
 export const UpdateSecuritySettingsSchema = z.object({
     body: SecuritySettingsSchema.shape.body.partial(),
+});
+
+export const profileUpdateSchema = z.object({
+    body: z.object({
+        fullName: z
+            .string()
+            .min(2, 'Full name must be at least 2 characters long')
+            .max(100, 'Full name cannot exceed 100 characters'),
+        bio: z.string().max(500, 'Bio cannot exceed 500 characters'),
+        avatarUrl: z.string().url('Invalid URL format'),
+    }),
 });
