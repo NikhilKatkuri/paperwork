@@ -49,8 +49,9 @@ export interface AppConfig {
     origins: Origins;
     SALT_ROUNDS: number;
     JWT_SECRET: string;
+    JWT_TEMP_SECRET: string;
     JWT_REFRESH_SECRET: string;
-    JWT_RESET_PASSWORD_SECRET: string; 
+    JWT_RESET_PASSWORD_SECRET: string;
     mail: {
         host: string;
         port: string;
@@ -99,6 +100,7 @@ const config: AppConfig = {
         : { env: 'prod', urls: getEnvArray('PROD_ORIGINS') },
     SALT_ROUNDS: getEnvVar('SALT_ROUNDS', 10),
     JWT_SECRET: getEnvVar('JWT_SECRET') as string,
+    JWT_TEMP_SECRET: getEnvVar('JWT_TEMP_SECRET') as string,
     JWT_REFRESH_SECRET: getEnvVar('JWT_REFRESH_SECRET') as string,
     JWT_RESET_PASSWORD_SECRET: getEnvVar('JWT_RESET_PASSWORD_SECRET') as string,
     mail: {

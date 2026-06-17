@@ -32,6 +32,8 @@ authRouter.post(
     controller.signInController
 );
 
+authRouter.post('/sign-in/2fa/:otp', authLimiter, controller.verify2FA);
+
 authRouter.post(
     '/sign-up',
     authLimiter,

@@ -1,3 +1,4 @@
+import { CustomAuthRequest as Request } from '@/types';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { AppError } from '@/utils/AppError';
@@ -8,6 +9,10 @@ import { SignInService, SignUpService } from '@/modules/auth/types/auth.types';
 import OTP from '@/utils/otp';
 import crypto from 'crypto';
 import { emailQueue } from '@/queues';
+import { Response } from 'express';
+import statusCodes from 'http-status-codes';
+import { UserDocument } from '../types/user.auth';
+import MailService from '@/utils/mail';
 
 interface TokenPayload {
     userId: string;
@@ -16,6 +21,10 @@ interface TokenPayload {
 
 const genAccessToken = (payload: TokenPayload): string => {
     return jwt.sign(payload, config.JWT_SECRET, { expiresIn: '15m' });
+};
+
+const genTempAccessToken = (payload: TokenPayload): string => {
+    return jwt.sign(payload, config.JWT_TEMP_SECRET, { expiresIn: '15m' });
 };
 
 const genRefreshToken = (payload: TokenPayload): string => {
@@ -78,14 +87,16 @@ class AuthService {
         payload,
         geo,
         device,
+        res,
     }: {
         payload: SignInService;
         geo: string;
         device: string;
+        res: Response;
     }) => {
         const { email, password } = payload;
 
-        const user = await UserModel.findOne({ email });
+        const user: UserDocument | null = await UserModel.findOne({ email });
 
         if (
             !user ||
@@ -113,8 +124,59 @@ class AuthService {
                 accountWillbeDeletedAt: '',
             },
         });
-        
-        // @NOTE - need to implement 
+
+        if (user.twofactorEnabled) {
+            return await this.otpFor2FA(userId, email, res);
+        }
+
+        return this.cookieForSignIn({ email, device, geo, userId, res });
+    };
+
+    private async otpFor2FA(userId: string, email: string, res: Response) {
+        const { otp, expiresAt } = new OTP().generateOTP(userId, email);
+
+        await new MailService().sendOTPEmail(
+            email,
+            otp,
+            `Your 2FA verification code - expires at ${new Date(expiresAt).toLocaleString()}`
+        );
+
+        res.cookie('Expiry2faAt', expiresAt, {
+            httpOnly: true,
+            secure: config.env === 'production',
+            sameSite: 'lax',
+            maxAge: 15 * 60 * 1000,
+            path: '/',
+        });
+
+        const tempAccessToken = genTempAccessToken({ userId, email });
+
+        res.cookie('tempAccessToken', tempAccessToken, {
+            httpOnly: true,
+            secure: config.env === 'production',
+            sameSite: 'lax',
+            maxAge: 15 * 60 * 1000,
+        });
+
+        return res.status(statusCodes.OK).json({
+            success: true,
+            message: '2FA OTP sent to your email. Please verify.',
+        });
+    }
+
+    private async cookieForSignIn({
+        email,
+        device,
+        geo,
+        userId,
+        res,
+    }: {
+        email: string;
+        device: string;
+        geo: string;
+        userId: string;
+        res: Response;
+    }) {
         await emailQueue.add(
             'sendLoginAlertEmail',
             {
@@ -129,10 +191,103 @@ class AuthService {
             }
         );
 
-        return {
-            accessToken: genAccessToken({ userId, email: user.email }),
-            refreshToken: genRefreshToken({ userId, email: user.email }),
-        };
+        const accessToken = genAccessToken({ userId, email });
+        const refreshToken = genRefreshToken({ userId, email });
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: config.env === 'production',
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: '/',
+        });
+
+        res.status(statusCodes.OK).json({
+            success: true,
+            message: 'User signed in successfully',
+            accessToken,
+        });
+    }
+
+    verify2FA = async ({
+        otp,
+        geo,
+        device,
+        res,
+        req,
+    }: {
+        otp: string;
+        geo: string;
+        device: string;
+        res: Response;
+        req: Request;
+    }) => {
+        const twoFAExpireAt = req.cookies?.Expiry2faAt;
+        const tempToken = req.cookies?.tempAccessToken;
+
+        if (!twoFAExpireAt || !tempToken) {
+            throw AppError.BadRequest(
+                '2FA session has expired or is invalid. Please sign in again.'
+            );
+        }
+
+        let decodedTempToken: TokenPayload;
+
+        try {
+            decodedTempToken = jwt.verify(
+                tempToken,
+                config.JWT_TEMP_SECRET
+            ) as TokenPayload;
+        } catch (error) {
+            throw AppError.BadRequest(
+                'Invalid or expired temporary session. Please sign in again.'
+            );
+        }
+
+        if (
+            !decodedTempToken ||
+            !decodedTempToken.userId ||
+            !decodedTempToken.email
+        ) {
+            throw AppError.BadRequest(
+                'Invalid session payload. Please sign in again.'
+            );
+        }
+
+        const isValid = new OTP().verifyOTP(
+            decodedTempToken.userId,
+            decodedTempToken.email,
+            otp,
+            parseInt(twoFAExpireAt)
+        );
+
+        if (!isValid) {
+            throw AppError.BadRequest(
+                'Invalid or expired OTP. Please try again.'
+            );
+        }
+
+        res.clearCookie('Expiry2faAt', {
+            httpOnly: true,
+            secure: config.env === 'production',
+            sameSite: 'lax',
+            path: '/',
+        });
+
+        res.clearCookie('tempAccessToken', {
+            httpOnly: true,
+            secure: config.env === 'production',
+            sameSite: 'lax',
+            path: '/',
+        });
+
+        return await this.cookieForSignIn({
+            userId: decodedTempToken.userId,
+            email: decodedTempToken.email,
+            device,
+            geo,
+            res,
+        });
     };
 
     refreshTokenService = async ({
@@ -155,7 +310,9 @@ class AuthService {
 
     getProfileService = async (userId: string) => {
         try {
-            const profile = await ProfileModel.findOne({ userId });
+            const profile = await ProfileModel.findOne({ userId }).select(
+                '-_id -__v -sensitiveData'
+            );
             if (!profile) {
                 throw AppError.NotFound('Profile not found');
             }

@@ -49,10 +49,14 @@ class MailService {
         });
     }
 
-    async sendOTPEmail(email: string, otp: string) {
+    async sendOTPEmail(
+        email: string,
+        otp: string,
+        subject: string = 'Your verification code'
+    ) {
         return this.send({
             to: email,
-            subject: 'Your verification code',
+            subject: subject,
             text: `Your OTP is ${otp}`,
             html: otpTemplate(otp),
         });

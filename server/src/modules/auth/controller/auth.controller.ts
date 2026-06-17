@@ -1,5 +1,5 @@
 import { NextFunction, Response } from 'express';
-import statusCodes, { StatusCodes } from 'http-status-codes';
+import statusCodes from 'http-status-codes';
 import AuthService from '@/modules/auth/service/auth.service';
 import config from '@/config';
 import { AppError } from '@/utils/AppError';
@@ -63,26 +63,29 @@ class AuthController {
     ) => {
         try {
             const { email, password } = req.body;
-            const { accessToken, refreshToken } = await this.authService.signIn(
-                {
-                    payload: { email, password },
-                    geo: this.geoByIp(req),
-                    device: this.deviceByUserAgent(req),
-                }
-            );
-
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                secure: config.env === 'production',
-                sameSite: 'lax',
-                maxAge: 7 * 24 * 60 * 60 * 1000,
-                path: '/',
+            await this.authService.signIn({
+                payload: { email, password },
+                geo: this.geoByIp(req),
+                device: this.deviceByUserAgent(req),
+                res,
             });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-            res.status(statusCodes.OK).json({
-                success: true,
-                message: 'User signed in successfully',
-                accessToken,
+    verify2FA = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { otp } = req.params;
+            if (!otp) {
+                throw AppError.BadRequest('OTP is required');
+            }
+            await this.authService.verify2FA({
+                otp: otp.toString(),
+                geo: this.geoByIp(req),
+                device: this.deviceByUserAgent(req),
+                res,
+                req,
             });
         } catch (error) {
             next(error);
@@ -147,7 +150,7 @@ class AuthController {
                 path: '/',
             });
 
-            res.status(StatusCodes.OK).json({
+            res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Logged out successfully',
             });
@@ -200,7 +203,7 @@ class AuthController {
                 path: '/',
             });
 
-            res.status(StatusCodes.OK).json({
+            res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Token refreshed successfully',
                 accessToken: newAccessToken,
@@ -218,7 +221,7 @@ class AuthController {
         try {
             const { userId } = this.getContext(req);
             const profile = await this.authService.getProfileService(userId);
-            res.status(StatusCodes.OK).json({
+            res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Profile retrieved successfully',
                 data: { profile },
@@ -255,7 +258,7 @@ class AuthController {
                 }
             );
 
-            res.status(StatusCodes.OK).json({
+            res.status(statusCodes.OK).json({
                 success: true,
                 message: `Verification OTP sent to ${email}`,
             });
@@ -302,7 +305,7 @@ class AuthController {
                 sameSite: 'lax',
                 path: '/',
             });
-            res.status(StatusCodes.OK).json({
+            res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Email verified successfully',
             });
@@ -325,7 +328,7 @@ class AuthController {
                 currentPassword,
                 newPassword
             );
-            res.status(StatusCodes.OK).json({
+            res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Password changed successfully',
             });
@@ -342,7 +345,7 @@ class AuthController {
         try {
             const { email } = req.body;
             await this.authService.forgotPasswordService(email);
-            res.status(StatusCodes.OK).json({
+            res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Password reset instructions sent to your email',
             });
@@ -369,7 +372,7 @@ class AuthController {
                 newPassword
             );
 
-            res.status(StatusCodes.OK).json({
+            res.status(statusCodes.OK).json({
                 success: true,
                 message,
             });
@@ -400,7 +403,7 @@ class AuthController {
                         lastCheckedEmailHash.last_check_email ===
                         targetEmailHash
                     ) {
-                        res.status(StatusCodes.OK).json({
+                        res.status(statusCodes.OK).json({
                             success: true,
                             message: 'Email check completed (cached)',
                             exists: lastCheckedEmailHash.result,
@@ -433,13 +436,13 @@ class AuthController {
                 }
             );
 
-            res.status(StatusCodes.OK).json({
+            res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Email check completed',
                 exists,
             });
         } catch (error) {
-            res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
                 success: false,
                 message: 'Failed to check email',
             });
