@@ -5,15 +5,23 @@ import SubmissionWorker from './workers/SubmissionWorker';
 import { worker } from './workers';
 
 const boot = async (): Promise<void> => {
-    const server = app.listen(config.port, config.host, () => {
-        console.log(
-            `[server] running on port ${config.port} in ${config.env} mode`
-        );
-        console.log(`[URL] http://${config.host}:${config.port}`);
-    });
+    let server: ReturnType<typeof app.listen>;
+    if (config.env === 'production') {
+        server = app.listen(config.port, () => {
+            console.log(
+                `[server] running on port ${config.port} in ${config.env} mode`
+            );
+        });
+    } else {
+        server = app.listen(config.port, config.host, () => {
+            console.log(
+                `[server] running on port ${config.port} in ${config.env} mode`
+            );
+            console.log(`[URL] http://${config.host}:${config.port}`);
+        });
+    }
 
-    // Initialize database and workers in background (non-blocking)
-    connectDB().catch((err) => {
+    await connectDB().catch((err) => {
         console.error('[server] DB connection failed:', err);
         process.exit(1);
     });

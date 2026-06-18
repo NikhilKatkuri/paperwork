@@ -4,11 +4,11 @@ import config from '@/config';
 
 const cacheRedis = new Redis(config.redis.url, {
     maxRetriesPerRequest: 3,
-    db: 1,
 });
 
 const redisConnection = {
     url: config.redis.url,
+    skipEvictionCheck: true,
 };
 
 const trendEngine = new Trend();
