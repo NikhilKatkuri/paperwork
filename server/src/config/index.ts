@@ -130,6 +130,7 @@ const config: AppConfig = {
         hashLength: getEnvVar<number>('ARGON_HASH_LENGTH', 32),
         secret: getEnvVar<string>('ARGON_SECRET'),
     },
+    RESEND_API_KEY: getEnvVar<string>('RESEND_API_KEY'),
 };
 
 export default config;

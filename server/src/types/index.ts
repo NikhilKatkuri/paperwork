@@ -52,4 +52,5 @@ export interface AppConfig {
         hashLength: number;
         secret: string;
     };
+    RESEND_API_KEY: string;
 }

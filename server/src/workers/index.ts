@@ -111,6 +111,7 @@ class WorkerManager {
             },
             {
                 concurrency: 1,
+                drainDelay: 10,
             }
         );
 
