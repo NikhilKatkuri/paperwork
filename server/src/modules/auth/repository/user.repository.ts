@@ -36,11 +36,13 @@ class UserRepository<T extends object = UserDocument> extends AutoBoundClass {
 
     findUserByIdAndUpdateFeilds = async (
         userId: string,
-        feilds: UpdateQuery<T>
+        feilds: UpdateQuery<T>,
+        selectedFields: string | Record<string, 1 | 0> = {}
     ): Promise<T | null> => {
         return (await UserModel.findByIdAndUpdate(userId, feilds, {
             returnDocument: 'after',
             lean: true,
+            select: selectedFields,
         })) as unknown as T | null;
     };
 

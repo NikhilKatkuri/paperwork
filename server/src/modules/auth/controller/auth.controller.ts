@@ -16,19 +16,14 @@ interface EmailCheckCookie {
 
 class AuthController extends AutoBoundController {
     private email_check_cache = 'email_check_cache';
-    private geoMeta = userAgentService.getMeta;
 
     constructor() {
         super();
     }
 
-    signInController = async (
-        req: Request,
-        res: Response,
-        next: NextFunction
-    ) => {
+    async signInController(req: Request, res: Response, next: NextFunction) {
         try {
-            const meta = this.geoMeta(req);
+            const meta = userAgentService.getMeta(req);
             const { email, password } = req.body;
             await AuthServiceBoot.signIn({
                 payload: { email, password },
@@ -39,15 +34,15 @@ class AuthController extends AutoBoundController {
         } catch (error) {
             next(error);
         }
-    };
+    }
 
-    verify2FA = async (req: Request, res: Response, next: NextFunction) => {
+    async verify2FA(req: Request, res: Response, next: NextFunction) {
         try {
             const { otp } = req.params;
             if (!otp) {
                 throw AppError.BadRequest('OTP is required');
             }
-            const meta = this.geoMeta(req);
+            const meta = userAgentService.getMeta(req);
             await AuthServiceBoot.verify2FA({
                 otp: otp.toString(),
                 geo: Object.values(meta).join(', '),
@@ -58,15 +53,11 @@ class AuthController extends AutoBoundController {
         } catch (error) {
             next(error);
         }
-    };
+    }
 
-    signUpController = async (
-        req: Request,
-        res: Response,
-        next: NextFunction
-    ) => {
-        const { email, password, fullName } = req.body;
+    async signUpController(req: Request, res: Response, next: NextFunction) {
         try {
+            const { email, password, fullName } = req.body;
             const { accessToken, refreshToken } = await AuthServiceBoot.signUp({
                 email,
                 password,
@@ -83,13 +74,9 @@ class AuthController extends AutoBoundController {
         } catch (error) {
             next(error);
         }
-    };
+    }
 
-    signOutController = async (
-        req: Request,
-        res: Response,
-        next: NextFunction
-    ) => {
+    async signOutController(req: Request, res: Response, next: NextFunction) {
         try {
             const refreshToken = req.cookies?.refreshToken;
             if (!refreshToken) {
@@ -105,13 +92,13 @@ class AuthController extends AutoBoundController {
         } catch (error) {
             next(error);
         }
-    };
+    }
 
-    refreshTokenController = async (
+    async refreshTokenController(
         req: Request,
         res: Response,
         next: NextFunction
-    ) => {
+    ) {
         try {
             const refreshToken = req.cookies?.refreshToken;
             if (!refreshToken) {
@@ -150,13 +137,13 @@ class AuthController extends AutoBoundController {
         } catch (error) {
             next(error);
         }
-    };
+    }
 
-    getProfileController = async (
+    async getProfileController(
         req: Request,
         res: Response,
         next: NextFunction
-    ) => {
+    ) {
         try {
             const { userId } = this.getContext(req);
             const profile = await AuthServiceBoot.getProfileService(userId);
@@ -168,13 +155,13 @@ class AuthController extends AutoBoundController {
         } catch (error) {
             next(error);
         }
-    };
+    }
 
-    updateProfileController = async (
+    async updateProfileController(
         req: Request,
         res: Response,
         next: NextFunction
-    ) => {
+    ) {
         try {
             const { userId } = this.getContext(req);
             const { fullName, avatarUrl, bio } = req.body;
@@ -192,13 +179,13 @@ class AuthController extends AutoBoundController {
         } catch (error) {
             next(error);
         }
-    };
+    }
 
-    sendVerificationController = async (
+    async sendVerificationController(
         req: Request,
         res: Response,
         next: NextFunction
-    ) => {
+    ) {
         try {
             const { userId, email } = this.getContext(req);
 
@@ -221,13 +208,13 @@ class AuthController extends AutoBoundController {
         } catch (error) {
             next(error);
         }
-    };
+    }
 
-    verifyEmailController = async (
+    async verifyEmailController(
         req: Request,
         res: Response,
         next: NextFunction
-    ) => {
+    ) {
         try {
             const { userId, email } = this.getContext(req);
             const { otp } = req.body;
@@ -264,13 +251,13 @@ class AuthController extends AutoBoundController {
         } catch (error) {
             next(error);
         }
-    };
+    }
 
-    changePasswordController = async (
+    async changePasswordController(
         req: Request,
         res: Response,
         next: NextFunction
-    ) => {
+    ) {
         try {
             const { userId } = this.getContext(req);
             const { currentPassword, newPassword } = req.body;
@@ -287,13 +274,13 @@ class AuthController extends AutoBoundController {
         } catch (error) {
             next(error);
         }
-    };
+    }
 
-    forgotPasswordController = async (
+    async forgotPasswordController(
         req: Request,
         res: Response,
         next: NextFunction
-    ) => {
+    ) {
         try {
             const { email } = req.body;
             await AuthServiceBoot.forgotPasswordService(email);
@@ -304,13 +291,13 @@ class AuthController extends AutoBoundController {
         } catch (error) {
             next(error);
         }
-    };
+    }
 
-    resetPasswordController = async (
+    async resetPasswordController(
         req: Request,
         res: Response,
         next: NextFunction
-    ) => {
+    ) {
         try {
             const { token } = req.params as { token: string };
             if (!token) {
@@ -331,9 +318,13 @@ class AuthController extends AutoBoundController {
         } catch (error) {
             next(error);
         }
-    };
+    }
 
-    checkEmailController = async (req: Request, res: Response) => {
+    async checkEmailController(
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) {
         try {
             const { email } = req.body;
 
@@ -382,12 +373,9 @@ class AuthController extends AutoBoundController {
                 exists,
             });
         } catch (error) {
-            res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
-                success: false,
-                message: 'Failed to check email',
-            });
+            next(error);
         }
-    };
+    }
 }
 
 export default AuthController;

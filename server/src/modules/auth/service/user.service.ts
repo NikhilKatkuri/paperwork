@@ -8,6 +8,7 @@ import {
 } from '../constants/enums';
 import { AccountActionService } from '../types/auth.types';
 import { sensitiveData } from '../types/profile.auth';
+import UserRepoBoot from '../repository/user.repository';
 
 class UserService {
     private accountDeletionPeriodInDays = 30 * 24 * 60 * 60 * 1000;
@@ -36,7 +37,7 @@ class UserService {
     async account(
         data: AccountActionService,
         userId: string
-    ): Promise<{ success: boolean; message: string }> {
+    ): Promise<{ success: boolean; message: string; data?: any }> {
         const { action, password } = data;
         try {
             const user = await UserModel.findById(userId).select(
@@ -109,16 +110,24 @@ class UserService {
             };
 
             try {
-                await UserModel.findByIdAndUpdate(
-                    userId,
-                    objectToUpdate[action],
-                    {
-                        returnDocument: 'after',
-                    }
-                );
+                const updatedUser =
+                    await UserRepoBoot.findUserByIdAndUpdateFeilds(
+                        userId,
+                        objectToUpdate[action],
+                        {
+                            ...Object.keys(objectToUpdate[action]).reduce(
+                                (acc, key) => {
+                                    acc[key] = 1;
+                                    return acc;
+                                },
+                                {} as Record<string, 1 | 0>
+                            ),
+                        }
+                    );
                 return {
                     success: true,
                     message: `Account ${action} successful`,
+                    data: updatedUser,
                 };
             } catch (error) {
                 throw AppError.Internal('Failed to update user account');
@@ -143,7 +152,7 @@ class UserService {
         data: sensitiveData,
         userId: string,
         method: 'add' | 'update' = 'add'
-    ): Promise<{ success: boolean; message: string }> {
+    ): Promise<{ success: boolean; message: string; data?: any }> {
         try {
             const profile = await ProfileModel.findOne({ userId });
 
@@ -171,6 +180,7 @@ class UserService {
                         method === 'update'
                             ? 'Updated successfully'
                             : 'Added successfully',
+                    data: profile.sensitiveData,
                 };
             } catch (error) {
                 throw AppError.Internal('Failed to save profile changes');

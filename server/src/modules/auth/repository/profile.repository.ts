@@ -1,6 +1,6 @@
 import AutoBoundClass from '@/utils/AutoBoundClass';
 import ProfileModel from '@/modules/auth/schemas/profile.schema';
-import { Profile, ProfileDocument } from '../types/profile.auth';
+import { ProfileDocument } from '../types/profile.auth';
 
 class ProfileRepository<
     T extends object = ProfileDocument,
@@ -11,7 +11,7 @@ class ProfileRepository<
 
     async findByUserId(
         userId: string,
-        selectFields: string = ''
+        selectFields: Record<string, 1 | 0> = {}
     ): Promise<T | null> {
         return (await ProfileModel.findOne({ userId })
             .select(selectFields)
@@ -19,23 +19,23 @@ class ProfileRepository<
     }
 
     async createProfile(userId: string): Promise<T> {
-        const docs = await ProfileModel.create([{ userId }], {
-            validateBeforeSave: true,
-        });
-        return docs[0]!.toObject() as unknown as T;
+        const doc = new ProfileModel({ userId });
+        await doc.save({ validateBeforeSave: true });
+        return doc.toObject() as unknown as T;
     }
 
-    async updateProfile<P>(
+    async updateProfile<P = any>(
         userId: string,
-        updateData: Partial<
-            Exclude<P, Profile['sensitiveData'] | Profile['userId']>
-        >
+        updateData: Record<string, any>,
+        selectFields: Record<string, 1 | 0> = {}
     ): Promise<P | null> {
         const updatedProfile = await ProfileModel.findOneAndUpdate(
             { userId },
-            { $set: updateData },
+            updateData,
             { returnDocument: 'after', runValidators: true }
-        ).lean();
+        )
+            .select(selectFields)
+            .lean();
 
         return updatedProfile as P | null;
     }

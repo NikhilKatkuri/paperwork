@@ -35,8 +35,7 @@ class AuthService extends AutoBoundController {
         const session = await mongoose.startSession();
 
         try {
-            let tokens;
-            await session.withTransaction(async () => {
+            const newUser = await session.withTransaction(async () => {
                 const newUser = await UserModel.create(
                     [{ email, passwordHash: hashedPassword }],
                     { session }
@@ -54,18 +53,22 @@ class AuthService extends AutoBoundController {
                         backoff: { type: 'exponential', delay: 60 * 1000 },
                     }
                 );
-
-                tokens = {
-                    accessToken: TokenBoot.generateToken({
-                        userId,
-                        email: newUser[0]!.email,
-                    }),
-                    refreshToken: TokenBoot.generateToken(
-                        { userId, email: newUser[0]!.email },
-                        'refresh'
-                    ),
-                };
+                return newUser[0]!;
             });
+
+            const tokens = {
+                accessToken: TokenBoot.generateToken({
+                    userId: newUser!._id.toString(),
+                    email: newUser!.email,
+                }),
+                refreshToken: TokenBoot.generateToken(
+                    {
+                        userId: newUser!._id.toString(),
+                        email: newUser!.email,
+                    },
+                    'refresh'
+                ),
+            };
 
             return tokens;
         } finally {
@@ -134,6 +137,7 @@ class AuthService extends AutoBoundController {
             expiresAt.toString(),
             15 * 60 * 1000
         );
+
         this.cookieSetter(
             res,
             'tempAccessToken',
@@ -143,6 +147,7 @@ class AuthService extends AutoBoundController {
 
         res.status(statusCodes.OK).json({
             success: true,
+            twoFactorRequired: true,
             message: '2FA OTP sent to your email. Please verify.',
         });
     }
@@ -288,15 +293,13 @@ class AuthService extends AutoBoundController {
 
     getProfileService = async (userId: string) => {
         try {
-            const profile = await ProfileRepoBoot.findByUserId(
-                userId,
-                'userId fullName avatarUrl bio'
-            );
+            const profile = await ProfileRepoBoot.findByUserId(userId, {
+                sensitiveData: 0,
+            });
 
             if (!profile) {
                 throw AppError.NotFound('Profile not found');
             }
-
             return profile;
         } catch (error) {
             if (error instanceof AppError) throw error;
@@ -313,7 +316,10 @@ class AuthService extends AutoBoundController {
         try {
             const profile = await ProfileRepoBoot.updateProfile<Profile>(
                 userId,
-                updateData
+                updateData,
+                {
+                    sensitiveData: 0,
+                }
             );
             if (!profile) {
                 throw AppError.NotFound('Profile not found');

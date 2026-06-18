@@ -125,7 +125,7 @@ authRouter.post(
     actionLimiter,
     protect,
     validate(SecuritySettingsSchema),
-    userController.PersonalInfo
+    userController.personalInfo
 );
 
 authRouter.get(
@@ -140,7 +140,7 @@ authRouter.put(
     actionLimiter,
     protect,
     validate(UpdateSecuritySettingsSchema),
-    userController.PersonalInfo
+    userController.personalInfo
 );
 
 export default authRouter;

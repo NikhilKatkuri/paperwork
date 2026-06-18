@@ -12,8 +12,8 @@ class UserController extends AutoBoundController {
     }
 
     async accountActions(req: Request, res: Response, next: NextFunction) {
-        const { userId } = this.getContext(req);
         try {
+            const { userId } = this.getContext(req);
             const data = req.body as AccountActionService;
             const result = await UserServiceBoot.account(data, userId);
             res.status(StatusCodes.OK).json(result);
@@ -22,9 +22,9 @@ class UserController extends AutoBoundController {
         }
     }
 
-    async PersonalInfo(req: Request, res: Response, next: NextFunction) {
-        const { userId } = this.getContext(req);
+    async personalInfo(req: Request, res: Response, next: NextFunction) {
         try {
+            const { userId } = this.getContext(req);
             const data = req.body as sensitiveData;
             const result = await UserServiceBoot.PersonalInfo(
                 data,
@@ -38,8 +38,8 @@ class UserController extends AutoBoundController {
     }
 
     async getPersonalInfo(req: Request, res: Response, next: NextFunction) {
-        const { userId } = this.getContext(req);
         try {
+            const { userId } = this.getContext(req);
             const result = await UserServiceBoot.getPersonalInfo(userId);
             res.status(StatusCodes.OK).json({
                 success: result !== null,
