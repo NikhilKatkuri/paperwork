@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/providers";
 import { validateEmail, validatePassword } from "@/utils/validations";
-import { useSearchParams } from "next/navigation";
+import { redirect, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -46,8 +46,26 @@ const SignInClientComponent = () => {
     const res = await handleSignIn({ email, password });
 
     if (res.ok) {
-      toast.success("Signed in successfully!", ToastOptions);
-      setAccessToken(res.data.accessToken);
+      if (res.data?.twoFactorRequired) {
+        toast.info(
+          "Two-factor authentication is required. Please check your email for the verification code.",
+          { ...ToastOptions, duration: 1200 },
+        );
+        setTimeout(() => {
+          toast.loading(
+            "Redirecting to 2FA verification page...",
+            ToastOptions,
+          );
+        }, 1200);
+
+        setTimeout(() => {
+          toast.dismiss();
+          redirect("/auth/signin/2fa");
+        }, 2000);
+      } else {
+        toast.success("Signed in successfully!", ToastOptions);
+        setAccessToken(res.data.accessToken);
+      }
     } else {
       toast.error(res.error, ToastOptions);
     }

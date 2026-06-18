@@ -7,7 +7,10 @@ interface AuthResponse extends BaseAuthResponse {
   accessToken: string;
 }
 
-type SignInResponse = AuthResponse;
+interface SignInResponse  extends AuthResponse {
+  twoFactorRequired?: true;
+}
+
 type SignUpResponse = AuthResponse;
 type SignOutResponse = BaseAuthResponse;
 

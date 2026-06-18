@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 
 const REFRESH_TOKEN_COOKIE = "refreshToken";
 
-const AUTH_PATHS = ["signin", "signup"];
+const AUTH_PATHS = ["signin", "signup", "2fa"];
 const EXCLUD_PATHS = ["reset-password"];
 const PROTECTED_PATHS = ["user"];
 
@@ -30,7 +30,7 @@ export async function proxy(req: NextRequest) {
   );
 
   if (isValid && isAuthPath) {
-    return NextResponse.redirect(new URL("/user", req.url));
+    return NextResponse.redirect(new URL("/user/profile", req.url));
   }
 
   if (!isValid && isProtectedPath) {
@@ -41,5 +41,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/user", "/auth/signin", "/auth/signup", "/auth/reset-password"],
+  matcher: ["/user/:path*", "/auth/signin", "/auth/signup", "/auth/reset-password","/auth/signin/2fa"],
 };

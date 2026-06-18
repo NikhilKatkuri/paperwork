@@ -2,7 +2,7 @@ import SignOutButton from '@/auth/components/client/SignOutButton'
 
 const page = () => {
   return (
-    <div>page
+    <div>
       <SignOutButton/>
     </div>
   )

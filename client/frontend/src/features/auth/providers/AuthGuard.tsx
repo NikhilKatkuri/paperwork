@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthProviders";
 import { usePathname, useRouter } from "next/navigation";
 
-const PUBLIC_PATHS = ["signin", "signup", "check-email", "forgot-password"];
+const PUBLIC_PATHS = ["signin", "signup", "check-email", "forgot-password","2fa"];
 const PROTECTED_PATHS = ["/user"];
 const EXCLUD_PATHS = ["reset-password"];
 function isPublicPath(path: string) {
