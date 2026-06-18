@@ -1,127 +1,234 @@
-# AUTH API ENDPOINTS
+# Paperwork — Auth API Reference
 
-This document provides an overview of the authentication API endpoints available in the Paperwork application. These endpoints allow users to sign up, sign in, refresh their access tokens, and sign out.
+A complete reference for all authentication and account management endpoints in the Paperwork application.
 
-## Sign Up
+---
 
-- **Endpoint**: `POST /auth/signup`
-- **Description**: Registers a new user with the provided email and password.
-- **Request Body**:
+## Table of Contents
+
+- [Base URL & Authentication](#base-url--authentication)
+- [Authentication Endpoints](#authentication-endpoints)
+    - [Sign Up](#sign-up)
+    - [Sign In](#sign-in)
+    - [Verify 2FA](#verify-2fa)
+    - [Refresh Token](#refresh-token)
+    - [Sign Out](#sign-out)
+- [User Profile](#user-profile)
+    - [Get Profile](#get-profile)
+    - [Update Profile](#update-profile)
+- [Email Verification](#email-verification)
+    - [Send Verification Email](#send-verification-email)
+    - [Verify Email](#verify-email)
+- [Password Management](#password-management)
+    - [Change Password](#change-password)
+    - [Forgot Password](#forgot-password)
+    - [Reset Password](#reset-password)
+- [Account Actions](#account-actions)
+- [Personal Information](#personal-information)
+    - [Add Personal Information](#add-personal-information)
+    - [Get Personal Information](#get-personal-information)
+    - [Update Personal Information](#update-personal-information)
+- [Error Responses](#error-responses)
+
+---
+
+## Base URL & Authentication
+
+All endpoints are prefixed with `/auth`.
+
+Protected endpoints require a valid JWT access token in the `Authorization` header:
 
 ```
+Authorization: Bearer <access_token>
+```
+
+---
+
+## Authentication Endpoints
+
+### Sign Up
+
+Registers a new user account.
+
+- **Method:** `POST`
+- **Endpoint:** `/auth/sign-up`
+- **Auth required:** No
+
+**Request Body**
+
+```json
 {
-    "email": "knikhi@example.com",
+    "email": "user@example.com",
     "password": "supersecurepassword123",
-    "fullName": "knikhi"
+    "fullName": "John Doe"
 }
 ```
 
-- **Response**:
+**Success Response** `200 OK`
 
-```
+```json
 {
     "success": true,
     "message": "User registered successfully",
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTE3ZTJhZDIyMDMwNTRhMjU1YmEzODgiLCJlbWFpbCI6ImtuaWtoaUBleGFtcGxlLmNvbSIsImlhdCI6MTc3OTk1MDI1NCwiZXhwIjoxNzc5OTUxMTU0fQ.iN6O9vgtW1lk_oHvY0tlrM8i4JbGM2RMXBJJaTU_bNg"
+    "accessToken": "<jwt_token>"
 }
 ```
 
-- **Error Response**:
+**Error Response**
 
-```
+```json
 {
     "success": false,
     "message": "Email already in use"
 }
 ```
 
-## Sign In
+---
 
-- **Endpoint**: `POST /auth/signin`
-- **Description**: Authenticates a user with the provided email and password, returning an access token and a refresh token.
-- **Request Body**:
+### Sign In
 
-```
+Authenticates a user and returns an access token.
+
+- **Method:** `POST`
+- **Endpoint:** `/auth/sign-in`
+- **Auth required:** No
+
+**Request Body**
+
+```json
 {
-"email": "knikhi@example.com",
-"password": "supersecurepassword123",
-"fullName": "knikhi"
+    "email": "user@example.com",
+    "password": "supersecurepassword123"
 }
 ```
 
-- **Response**:
+**Success Response** `200 OK`
 
-```{
-"success": true,
-"message": "User signed in successfully",
-"accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTE3ZTJhZDIyMDMwNTRhMjU1YmEzODgiLCJlbWFpbCI6ImtuaWtoaUBleGFtcGxlLmNvbSIsImlhdCI6MTc3OTk1MDM4NCwiZXhwIjoxNzc5OTUxMjg0fQ.ExGuXg075qSGArMXNWY50EOVEvuUXA--KO4DeDgLs8M"
+```json
+{
+    "success": true,
+    "message": "User signed in successfully",
+    "accessToken": "<jwt_token>"
 }
 ```
 
-- **Error Response**:
+**2FA Response** (when two-factor authentication is enabled)
 
+```json
+{
+    "success": true,
+    "twoFactorRequired": true,
+    "message": "2FA OTP sent to your email. Please verify."
+}
 ```
+
+**Error Response**
+
+```json
 {
     "success": false,
     "message": "Invalid email or password"
 }
 ```
 
-## Refresh Token
+---
 
-- **Endpoint**: `POST /auth/refresh-token`
-- **Authentication**: Requires a valid access token in the `Authorization` header (e.g., `Bearer <access_token>`).
-- **Description**: Refreshes the access token using a valid refresh token.
-- **Request Body**:
+### Verify 2FA
 
-```
+Completes sign-in when 2FA is enabled. Must be called from the same browser session immediately after receiving the 2FA prompt.
+
+- **Method:** `POST`
+- **Endpoint:** `/auth/sign-in/2fa/:otp`
+- **Auth required:** No (session context required)
+
+**URL Parameter**
+
+| Param | Type   | Description                  |
+| ----- | ------ | ---------------------------- |
+| `otp` | string | One-time password from email |
+
+**Success Response** `200 OK`
+
+```json
 {
-"success": true,
-"message": "Token refreshed successfully",
-"accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTE3ZTJhZDIyMDMwNTRhMjU1YmEzODgiLCJlbWFpbCI6ImtuaWtoaUBleGFtcGxlLmNvbSIsImlhdCI6MTc3OTk1MDQ3NSwiZXhwIjoxNzc5OTUxMzc1fQ.8TAw0adNsRQN6Ul5sR992wSOKbiBtcsb8TkNsyscyDc"
+    "success": true,
+    "message": "User signed in successfully",
+    "accessToken": "<jwt_token>"
 }
 ```
 
-- **Error Response**:
+---
 
+### Refresh Token
+
+Issues a new access token using the current refresh token stored in the session.
+
+- **Method:** `POST`
+- **Endpoint:** `/auth/refresh-token`
+- **Auth required:** Yes
+
+**Success Response** `200 OK`
+
+```json
+{
+    "success": true,
+    "message": "Token refreshed successfully",
+    "accessToken": "<jwt_token>"
+}
 ```
+
+**Error Response**
+
+```json
 {
     "success": false,
     "message": "Invalid refresh token"
 }
 ```
 
-## Sign Out
+---
 
-- **Endpoint**: `POST /auth/signout`
-- **Authentication**: Requires a valid access token in the `Authorization` header (e.g., `Bearer <access_token>`).
-- **Description**: Signs out the user by invalidating the refresh token.
-- **Request Body**:
+### Sign Out
 
-```
+Invalidates the user's refresh token and ends the session.
+
+- **Method:** `POST`
+- **Endpoint:** `/auth/signout`
+- **Auth required:** Yes
+
+**Success Response** `200 OK`
+
+```json
 {
-"success": true,
-"message": "Logged out successfully"
+    "success": true,
+    "message": "Logged out successfully"
 }
 ```
 
-- **Error Response**:
+**Error Response**
 
-```
+```json
 {
     "success": false,
     "message": "Invalid refresh token"
 }
 ```
 
-## ME
+---
 
-- **Endpoint**: `GET /auth/me`
-- **Authentication**: Requires a valid access token in the `Authorization` header (e.g., `Bearer <access_token>`).
-- **Description**: Retrieves the authenticated user's information.
-- **Response**:
+## User Profile
 
-````
+### Get Profile
+
+Retrieves the authenticated user's profile.
+
+- **Method:** `GET`
+- **Endpoint:** `/auth/me`
+- **Auth required:** Yes
+
+**Success Response** `200 OK`
+
+```json
 {
     "success": true,
     "message": "Profile retrieved successfully",
@@ -129,158 +236,428 @@ This document provides an overview of the authentication API endpoints available
         "profile": {
             "_id": "6a17e2ae2203054a255ba389",
             "userId": "6a17e2ad2203054a255ba388",
-            "fullName": "knikhi",
+            "fullName": "John Doe",
             "createdAt": "2026-05-28T06:37:34.039Z",
             "updatedAt": "2026-05-28T06:37:34.039Z"
         }
     }
-}```
-````
-
-- **Error Response**:
-
+}
 ```
+
+**Error Response**
+
+```json
 {
     "success": false,
     "message": "Unauthorized"
 }
 ```
 
-## send verification for email
+---
 
-- **Endpoint**: `POST /auth/send-verification`
-- **Authentication**: Requires a valid access token in the `Authorization` header (e.g., `Bearer <access_token>`).
-- **Description**: Sends a verification email to the user's registered email address.
-- **Response**:
+### Update Profile
 
+Updates the authenticated user's profile fields.
+
+- **Method:** `POST`
+- **Endpoint:** `/auth/me`
+- **Auth required:** Yes
+
+**Request Body** (all fields optional)
+
+```json
+{
+    "fullName": "John Doe",
+    "bio": "Software Engineer",
+    "avatarUrl": "https://example.com/avatar.png"
+}
 ```
+
+**Success Response** `200 OK`
+
+```json
+{
+    "success": true,
+    "message": "Profile updated successfully",
+    "data": {
+        "profile": {
+            "_id": "6a32d5b226f5133981648e95",
+            "userId": "6a32d5b226f5133981648e94",
+            "fullName": "John Doe",
+            "bio": "Software Engineer",
+            "avatarUrl": "https://example.com/avatar.png",
+            "createdAt": "2026-06-17T17:13:22.434Z",
+            "updatedAt": "2026-06-18T12:56:07.908Z"
+        }
+    }
+}
+```
+
+**Error Response**
+
+```json
+{
+    "success": false,
+    "message": "Unauthorized"
+}
+```
+
+---
+
+## Email Verification
+
+### Send Verification Email
+
+Sends a verification OTP to the user's registered email address.
+
+- **Method:** `POST`
+- **Endpoint:** `/auth/send-verification`
+- **Auth required:** Yes
+
+**Success Response** `200 OK`
+
+```json
 {
     "success": true,
     "message": "Verification email sent successfully"
 }
 ```
 
-- **Error Response**:
+**Error Response**
 
-```
+```json
 {
     "success": false,
     "message": "Failed to send verification email"
 }
 ```
 
-## verify email
+---
 
-- **Endpoint**: `POST /auth/verify-email`
-- **Authentication**: Requires a valid access token in the `Authorization` header (e.g., `Bearer <access_token>`).
-- **Description**: Verifies the user's email address using a verification token.
-- **Request Body**:
+### Verify Email
 
-```
+Verifies the user's email address using the OTP received in the verification email.
+
+- **Method:** `POST`
+- **Endpoint:** `/auth/verify-email`
+- **Auth required:** Yes
+
+**Request Body**
+
+```json
 {
-    "otp": "verification_token_received_in_email"
+    "otp": "123456"
 }
 ```
 
-- **Response**:
+**Success Response** `200 OK`
 
-```
+```json
 {
     "success": true,
     "message": "Email verified successfully"
 }
 ```
 
-- **Error Response**:
+**Error Response**
 
-```
+```json
 {
     "success": false,
     "message": "Invalid or expired verification token"
 }
 ```
 
-## change password
+---
 
-- **Endpoint**: `POST /auth/change-password`
-- **Authentication**: Requires a valid access token in the `Authorization` header (e.g
-  as `Bearer <access_token>`).
-- **Description**: Changes the user's password.
-- **Request Body**:
+## Password Management
 
-```
+### Change Password
+
+Changes the authenticated user's password.
+
+- **Method:** `POST`
+- **Endpoint:** `/auth/change-password`
+- **Auth required:** Yes
+
+**Request Body**
+
+```json
 {
     "currentPassword": "current_password",
     "newPassword": "new_secure_password123"
 }
 ```
 
-- **Response**:
+**Success Response** `200 OK`
 
-```
+```json
 {
     "success": true,
     "message": "Password changed successfully"
 }
 ```
 
-- **Error Response**:
+**Error Response**
 
-```
+```json
 {
     "success": false,
     "message": "Current password is incorrect"
 }
 ```
 
-## forgot password
+---
 
-- **Endpoint**: `POST /auth/forgot-password`
-- **Description**: Initiates the forgot password process by sending a password reset email to the user's registered email address.
-- **Request Body**:
+### Forgot Password
 
-```
+Initiates password reset by sending a reset link to the user's email.
+
+- **Method:** `POST`
+- **Endpoint:** `/auth/forgot-password`
+- **Auth required:** No
+
+**Request Body**
+
+```json
 {
     "email": "user@example.com"
 }
 ```
 
-- **Response**:
+**Success Response** `200 OK`
 
-```
+```json
 {
     "success": true,
     "message": "Password reset email sent successfully"
 }
 ```
 
-## reset password
+---
 
-- **Endpoint**: `POST /auth/reset-password/:token`
-- **Description**: Resets the user's password using a password reset token.
+### Reset Password
 
-- **Request Body**:
+Resets the user's password using the token received in the reset email.
 
-```
+- **Method:** `POST`
+- **Endpoint:** `/auth/reset-password/:token`
+- **Auth required:** No
+
+**URL Parameter**
+
+| Param   | Type   | Description                          |
+| ------- | ------ | ------------------------------------ |
+| `token` | string | Password reset token from email link |
+
+**Request Body**
+
+```json
 {
     "newPassword": "new_secure_password123"
 }
 ```
 
-- **Response**:
+**Success Response** `200 OK`
 
-```
+```json
 {
     "success": true,
     "message": "Password reset successfully"
 }
 ```
 
-- **Error Response**:
+**Error Response**
 
-```
+```json
 {
     "success": false,
     "message": "Invalid or expired password reset token"
 }
 ```
+
+---
+
+## Account Actions
+
+Performs security-sensitive account operations (enable/disable 2FA, deactivate or delete account).
+
+- **Method:** `POST`
+- **Endpoint:** `/auth/account/action`
+- **Auth required:** Yes
+
+**Action Types**
+
+| Action             | Description                        |
+| ------------------ | ---------------------------------- |
+| `enable-2fa`       | Enables two-factor authentication  |
+| `disable-2fa`      | Disables two-factor authentication |
+| `deactive-account` | Deactivates the account            |
+| `delete-account`   | Permanently deletes the account    |
+
+**Request Body**
+
+```json
+{
+    "action": "enable-2fa",
+    "password": "your_password"
+}
+```
+
+**Success Response** `200 OK`
+
+```json
+{
+    "success": true,
+    "message": "Account enable-2fa successful",
+    "data": {
+        "_id": "6a32d5b226f5133981648e94",
+        "twofactorEnabled": true
+    }
+}
+```
+
+**Error Response**
+
+```json
+{
+    "success": false,
+    "message": "Account action unavailable"
+}
+```
+
+---
+
+## Personal Information
+
+Manages sensitive demographic data stored within the user's profile. All endpoints require authentication and observe rate limiting.
+
+- **Base Route:** `/auth/account/personal`
+- **Auth required:** Yes
+- **Headers:** `Content-Type: application/json`
+
+### Field Reference
+
+| Field      | Type   | Description               | Example      |
+| ---------- | ------ | ------------------------- | ------------ |
+| `dob`      | string | Date of birth (ISO 8601)  | `YYYY-MM-DD` |
+| `gender`   | string | Gender (enum)             | `"MALE"`     |
+| `country`  | string | ISO country code (enum)   | `"USA"`      |
+| `language` | string | Preferred language (enum) | `"ENGLISH"`  |
+
+---
+
+### Add Personal Information
+
+Initializes the personal information block for a profile that has none set yet.
+
+- **Method:** `POST`
+- **Endpoint:** `/auth/account/personal`
+- **Rate limiter:** `actionLimiter`
+
+**Request Body** (all fields optional)
+
+```json
+{
+    "dob": "1995-04-15",
+    "gender": "MALE",
+    "country": "USA",
+    "language": "ENGLISH"
+}
+```
+
+**Responses**
+
+| Status                  | Description                             |
+| ----------------------- | --------------------------------------- |
+| `200 OK`                | Personal information saved successfully |
+| `400 Bad Request`       | Invalid or unrecognized field values    |
+| `401 Unauthorized`      | Missing or expired access token         |
+| `429 Too Many Requests` | Rate limit exceeded                     |
+
+---
+
+### Get Personal Information
+
+Retrieves the authenticated user's personal information.
+
+- **Method:** `GET`
+- **Endpoint:** `/auth/account/personal`
+- **Rate limiter:** `profileGetterLimiter`
+
+**Success Response** `200 OK`
+
+```json
+{
+    "success": true,
+    "message": "retrieved successfully",
+    "data": {
+        "dob": "1995-04-15T00:00:00.000Z",
+        "gender": "MALE",
+        "country": "USA",
+        "language": "ENGLISH"
+    }
+}
+```
+
+**Error Response** `401 Unauthorized`
+
+```json
+{
+    "success": false,
+    "message": "Unauthorized"
+}
+```
+
+---
+
+### Update Personal Information
+
+Partially or fully updates existing personal information fields.
+
+- **Method:** `PUT`
+- **Endpoint:** `/auth/account/personal`
+- **Rate limiter:** `actionLimiter`
+
+**Request Body** (include only fields to update)
+
+```json
+{
+    "country": "CANADA",
+    "language": "FRENCH"
+}
+```
+
+**Responses**
+
+| Status             | Description                          |
+| ------------------ | ------------------------------------ |
+| `200 OK`           | Fields updated successfully          |
+| `400 Bad Request`  | Payload fails validation constraints |
+| `401 Unauthorized` | Session expired or invalid token     |
+
+---
+
+## Error Responses
+
+All endpoints return a consistent error shape:
+
+```json
+{
+    "success": false,
+    "message": "<description of the error>"
+}
+```
+
+Common error messages across the API:
+
+| Message                                      | Cause                                     |
+| -------------------------------------------- | ----------------------------------------- |
+| `Unauthorized`                               | Missing, invalid, or expired access token |
+| `Invalid email or password`                  | Sign-in credentials don't match           |
+| `Email already in use`                       | Registration with a duplicate email       |
+| `Invalid refresh token`                      | Refresh/sign-out with a bad token         |
+| `Invalid or expired verification token`      | Email OTP is stale or incorrect           |
+| `Invalid or expired password reset token`    | Reset token is stale or incorrect         |
+| `Current password is incorrect`              | Wrong password on change-password         |
+| `Too many attempts, please try again later.` | Rate limit exceeded                       |
