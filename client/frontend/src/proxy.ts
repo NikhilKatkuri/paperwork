@@ -1,32 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
+import { jwtVerify } from "jose";
+import { AUTH_PATHS, EXCLUDED_PATHS, PROTECTED_PATHS } from "./_paths";
 
 const REFRESH_TOKEN_COOKIE = "refreshToken";
 
-const AUTH_PATHS = ["signin", "signup", "2fa"];
-const EXCLUD_PATHS = ["reset-password"];
-const PROTECTED_PATHS = ["user"];
-
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (EXCLUD_PATHS.some((path) => pathname.includes(path))) {
-    return NextResponse.next();
+
+  if (EXCLUDED_PATHS.some((p) => pathname.startsWith(p))) {
+    return;
   }
+
   const refreshToken = req.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
 
   let isValid = false;
   if (refreshToken) {
     try {
-      jwt.verify(refreshToken, process.env.NEXT_PUBLIC_JWT_REFRESH_SECRET!);
+      const secret = new TextEncoder().encode(
+        process.env.NEXT_PUBLIC_JWT_RESET_PASSWORD_SECRET!,
+      );
+      await jwtVerify(refreshToken, secret);
       isValid = true;
     } catch {
       isValid = false;
     }
   }
 
-  const isAuthPath = AUTH_PATHS.some((path) => pathname.includes(path));
+  const isAuthPath = AUTH_PATHS.some((path) => pathname.startsWith(path));
   const isProtectedPath = PROTECTED_PATHS.some((path) =>
-    pathname.includes(path),
+    pathname.startsWith(path),
   );
 
   if (isValid && isAuthPath) {
@@ -41,5 +43,12 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/user/:path*", "/auth/signin", "/auth/signup", "/auth/reset-password","/auth/signin/2fa"],
+  matcher: [
+    "/user/:path*",
+    "/auth/signin",
+    "/auth/signup",
+    "/auth/reset-password",
+    "/auth/signin/2fa",
+    "/",
+  ],
 };

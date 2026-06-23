@@ -1,11 +1,7 @@
-import SignOutButton from '@/auth/components/client/SignOutButton'
+import Dashboard from "@/features/user/components/layouts/Dashboard";
 
 const page = () => {
-  return (
-    <div>page
-      <SignOutButton />
-    </div>
-  )
-}
+  return <Dashboard />;
+};
 
-export default page
+export default page;

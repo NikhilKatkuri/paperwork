@@ -1,50 +1,42 @@
 "use client";
 
-import { ReactNode, useEffect, useCallback } from "react";
+import { ReactNode, useEffect } from "react";
 import { useAuth } from "./AuthProviders";
 import { usePathname, useRouter } from "next/navigation";
+import { EXCLUDED_PATHS, PROTECTED_PATHS, AUTH_PATHS } from "@/_paths";
 
-const PUBLIC_PATHS = ["signin", "signup", "check-email", "forgot-password","2fa"];
-const PROTECTED_PATHS = ["/user"];
-const EXCLUD_PATHS = ["reset-password"];
-function isPublicPath(path: string) {
-  return PUBLIC_PATHS.some((publicPath) => path.includes(publicPath));
-}
+const isAuthPath = (path: string) => AUTH_PATHS.some((p) => path.startsWith(p));
 
-function isProtectedPath(path: string) {
-  return PROTECTED_PATHS.some((protectedPath) => path.includes(protectedPath));
-}
+const isProtectedPath = (path: string) =>
+  PROTECTED_PATHS.some((p) => path.startsWith(p));
 
 export const AuthGuardProvider = ({ children }: { children: ReactNode }) => {
   const { accessToken, initializing } = useAuth();
   const router = useRouter();
   const path = usePathname();
 
-  const handleRouteChange = useCallback(() => {
+  useEffect(() => {
     if (initializing) return;
-    const isAuthenticated = !!accessToken;
-    if (EXCLUD_PATHS.some((p) => path.includes(p))) {
+
+    if (EXCLUDED_PATHS.some((p) => path.startsWith(p))) {
       return;
     }
-    if (isAuthenticated && isPublicPath(path)) {
+
+    const isAuthenticated = Boolean(accessToken);
+
+    if (isAuthenticated && isAuthPath(path)) {
       router.replace("/user");
-    } else if (!isAuthenticated && isProtectedPath(path)) {
+      return;
+    }
+
+    if (!isAuthenticated && isProtectedPath(path)) {
       router.replace("/auth/signin?step=1");
-    } else if (
-      !isAuthenticated &&
-      !isPublicPath(path) &&
-      !isProtectedPath(path)
-    ) {
-      router.replace("/auth/signin?step=1");
+      return;
     }
   }, [accessToken, initializing, path, router]);
 
-  useEffect(() => {
-    handleRouteChange();
-  }, [handleRouteChange]);
-
   if (initializing) {
-    return <div>Loading...</div>;
+    return null;
   }
 
   return <>{children}</>;
