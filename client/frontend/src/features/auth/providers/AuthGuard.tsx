@@ -6,9 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { EXCLUDED_PATHS, PROTECTED_PATHS, AUTH_PATHS } from "@/_paths";
 
 const isAuthPath = (path: string) => AUTH_PATHS.some((p) => path.startsWith(p));
-
-const isProtectedPath = (path: string) =>
-  PROTECTED_PATHS.some((p) => path.startsWith(p));
+const isProtectedPath = (path: string) => PROTECTED_PATHS.some((p) => path.startsWith(p));
 
 export const AuthGuardProvider = ({ children }: { children: ReactNode }) => {
   const { accessToken, initializing } = useAuth();
@@ -22,7 +20,7 @@ export const AuthGuardProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    const isAuthenticated = Boolean(accessToken);
+    const isAuthenticated = !!accessToken;
 
     if (isAuthenticated && isAuthPath(path)) {
       router.replace("/user");
@@ -34,9 +32,13 @@ export const AuthGuardProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
   }, [accessToken, initializing, path, router]);
-
+ 
   if (initializing) {
-    return null;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p>Loading session...</p>
+      </div>
+    );
   }
 
   return <>{children}</>;

@@ -6,5 +6,10 @@ export const AUTH_PATHS = [
   "/auth/2fa",
 ];
 
-export const PROTECTED_PATHS = ["/user"];
+export const PROTECTED_PATHS = [
+  "/user",
+  "/user/settings",
+  "/user/2fa",
+  "/user/verify-email",
+];
 export const EXCLUDED_PATHS = ["/auth/reset-password"];

@@ -1,7 +1,7 @@
-import Dashboard from "@/features/user/components/layouts/Dashboard";
+import { redirect } from 'next/navigation'
 
 const page = () => {
-  return <Dashboard />;
-};
+  redirect('/user/settings')
+}
 
-export default page;
+export default page
