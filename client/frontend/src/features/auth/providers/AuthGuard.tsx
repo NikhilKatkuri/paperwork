@@ -5,8 +5,8 @@ import { useAuth } from "./AuthProviders";
 import { usePathname, useRouter } from "next/navigation";
 import { EXCLUDED_PATHS, PROTECTED_PATHS, AUTH_PATHS } from "@/_paths";
 
-const isProtectedPath = (path: string) =>
-  PROTECTED_PATHS.some((p) => path.startsWith(p));
+const isAuthPath = (path: string) => AUTH_PATHS.some((p) => path.startsWith(p));
+const isProtectedPath = (path: string) => PROTECTED_PATHS.some((p) => path.startsWith(p));
 
 export const AuthGuardProvider = ({ children }: { children: ReactNode }) => {
   const { accessToken, initializing } = useAuth();
@@ -18,12 +18,10 @@ export const AuthGuardProvider = ({ children }: { children: ReactNode }) => {
 
     if (EXCLUDED_PATHS.some((p) => path.startsWith(p))) return;
 
-    const isAuthenticated = Boolean(accessToken);
+    const isAuthenticated = !!accessToken;
 
-    const isLoginOrSignup = AUTH_PATHS.some((p) => path.startsWith(p));
-
-    if (isAuthenticated && isLoginOrSignup) {
-      router.replace("/user/profile");
+    if (isAuthenticated && isAuthPath(path)) {
+      router.replace("/user");
       return;
     }
 
@@ -32,9 +30,13 @@ export const AuthGuardProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
   }, [accessToken, initializing, path, router]);
-
+ 
   if (initializing) {
-    return <div className="">loading</div>;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p>Loading session...</p>
+      </div>
+    );
   }
 
   return <>{children}</>;

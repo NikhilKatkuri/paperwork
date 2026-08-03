@@ -101,7 +101,7 @@
   --on-brand-light: #15803d; */
 }
 
-@media (prefers-color-scheme: dark) {
+/* @media (prefers-color-scheme: dark) {
   :root {
     --theme-surface: #0f172a;
     --theme-on-surface: #f8fafc;
@@ -134,4 +134,4 @@
     --theme-form-on-container: #dcfce7;
     --theme-form-container-border: #166534;
   }
-}
+} */

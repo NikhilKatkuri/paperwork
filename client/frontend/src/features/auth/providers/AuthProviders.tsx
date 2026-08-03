@@ -68,13 +68,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initializing, setInitializing] = useState(true);
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleRefreshTokenRef = useRef(handleRefreshToken);
   const scheduleRefreshRef = useRef<(token: string) => void>(() => {});
 
-  const handleRefreshTokenRef = useRef(handleRefreshToken);
   useEffect(() => {
     handleRefreshTokenRef.current = handleRefreshToken;
   }, [handleRefreshToken]);
 
+  // Define scheduleRefresh safely using a stable callback
   const scheduleRefresh = useCallback((token: string) => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
 
@@ -88,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await handleRefreshTokenRef.current();
         if (res.ok) {
           setAccessTokenState(res.data.accessToken);
-          api.setBearer(res.data.accessToken);
+          // Use the ref version to avoid closure hoisting issues
           scheduleRefreshRef.current(res.data.accessToken);
         } else {
           setAccessTokenState(null);
@@ -99,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  // Keep scheduleRefreshRef updated with the latest function instance
   useEffect(() => {
     scheduleRefreshRef.current = scheduleRefresh;
   }, [scheduleRefresh]);
@@ -116,7 +118,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    let isMounted = true;
+
     handleRefreshTokenRef.current().then((res) => {
+      if (!isMounted) return;
       if (res.ok) {
         updateAccessToken(res.data.accessToken);
       }
@@ -124,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
+      isMounted = false;
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     };
   }, [updateAccessToken]);
