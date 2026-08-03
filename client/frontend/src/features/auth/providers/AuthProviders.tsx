@@ -18,6 +18,7 @@ import useRefreshToken from "../functions/RefreshToken";
 import useChangePassword from "../functions/ChangePassword";
 import useResetPassword from "../functions/ResetPassword";
 import useForgotPassword from "../functions/ForgotPassword";
+import api from "@/api/useApi";
 
 export function useAuthLogic() {
   const signIn = useSignIn();
@@ -87,9 +88,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await handleRefreshTokenRef.current();
         if (res.ok) {
           setAccessTokenState(res.data.accessToken);
+          api.setBearer(res.data.accessToken);
           scheduleRefreshRef.current(res.data.accessToken);
         } else {
           setAccessTokenState(null);
+          api.setBearer("");
         }
       },
       Math.max(delay, 0),

@@ -5,8 +5,6 @@ import { useAuth } from "./AuthProviders";
 import { usePathname, useRouter } from "next/navigation";
 import { EXCLUDED_PATHS, PROTECTED_PATHS, AUTH_PATHS } from "@/_paths";
 
-const isAuthPath = (path: string) => AUTH_PATHS.some((p) => path.startsWith(p));
-
 const isProtectedPath = (path: string) =>
   PROTECTED_PATHS.some((p) => path.startsWith(p));
 
@@ -18,14 +16,14 @@ export const AuthGuardProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (initializing) return;
 
-    if (EXCLUDED_PATHS.some((p) => path.startsWith(p))) {
-      return;
-    }
+    if (EXCLUDED_PATHS.some((p) => path.startsWith(p))) return;
 
     const isAuthenticated = Boolean(accessToken);
 
-    if (isAuthenticated && isAuthPath(path)) {
-      router.replace("/user");
+    const isLoginOrSignup = AUTH_PATHS.some((p) => path.startsWith(p));
+
+    if (isAuthenticated && isLoginOrSignup) {
+      router.replace("/user/profile");
       return;
     }
 
@@ -36,7 +34,7 @@ export const AuthGuardProvider = ({ children }: { children: ReactNode }) => {
   }, [accessToken, initializing, path, router]);
 
   if (initializing) {
-    return null;
+    return <div className="">loading</div>;
   }
 
   return <>{children}</>;

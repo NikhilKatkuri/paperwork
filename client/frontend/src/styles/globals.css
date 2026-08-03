@@ -21,6 +21,18 @@
   --color-theme-on-surface: var(--theme-on-surface);
   --color-theme-surface-hover: var(--theme-surface-hover);
 
+  --color-theme-grey-sm: color-mix(
+    in srgb,
+    var(--color-black),
+    transparent 95%
+  );
+  --color-theme-grey-base: color-mix(
+    in srgb,
+    var(--color-black),
+    transparent 90%
+  );
+  --color-theme-grey-lg: #e5e5e5;
+  --color-theme-grey-xl: #e5e0e0;
   /* Core Brand Styling */
   --color-brand-light: var(--brand-light);
   --color-on-brand-light: var(--on-brand-light);
@@ -134,5 +146,3 @@ body {
     transform: translateY(0) scale(1);
   }
 }
-
- 
