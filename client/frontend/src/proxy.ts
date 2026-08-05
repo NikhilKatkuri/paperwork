@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
-import { AUTH_PATHS, PROTECTED_PATHS } from "./_paths";
+import { AUTH_PATHS, EXCLUDED_PATHS, PROTECTED_PATHS } from "./_paths";
 
 const REFRESH_TOKEN_COOKIE = "refreshToken";
 const REFRESH_SECRET = new TextEncoder().encode(

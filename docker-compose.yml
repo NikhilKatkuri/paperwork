@@ -1,0 +1,23 @@
+services:
+  redis:
+    image: redis:8-alpine
+    container_name: redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+  mongo:
+    image: mongo:7
+    container_name: mongo-dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  redis_data:
+  mongo_data:
