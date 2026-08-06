@@ -1,5 +1,5 @@
 const LayoutConfig = {
-  layout: "w-full h-screen lg:grid lg:grid-cols-[320px_1fr]",
+  layout: "w-full h-screen position-relative ",
 };
 
 type LayoutContentType = "Edit_Profile" | "Account_Management" | "Notifications";

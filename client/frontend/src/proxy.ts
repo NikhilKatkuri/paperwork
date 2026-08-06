@@ -4,7 +4,7 @@ import { AUTH_PATHS, EXCLUDED_PATHS, PROTECTED_PATHS } from "./_paths";
 
 const REFRESH_TOKEN_COOKIE = "refreshToken";
 const REFRESH_SECRET = new TextEncoder().encode(
-  process.env.JWT_REFRESH_SECRET!,
+  process.env.NEXT_PUBLIC_JWT_REFRESH_SECRET!,
 );
 
 export async function proxy(req: NextRequest) {
@@ -45,8 +45,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  return NextResponse.next();
-}
+ }
 
 export const config = {
   matcher: ["/:path*"],

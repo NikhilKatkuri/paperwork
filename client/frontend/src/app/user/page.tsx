@@ -1,7 +1,10 @@
-import { redirect } from "next/navigation";
+import UserHome from "@/features/user/components/pages/userHome";
+import React from "react";
 
-const page = () => {
-  redirect('/user/settings')
-}
+const Page = () => {
+  return (
+    <UserHome />
+  );
+};
 
-export default page;
+export default Page;

@@ -1,11 +1,7 @@
-import Dashboard from "@/features/user/components/layouts/Dashboard";
+import React from "react";
 
 const page = () => {
-  return (
-    <Dashboard>
-      <></>
-    </Dashboard>
-  );
+  <React.Fragment></React.Fragment>;
 };
 
 export default page;

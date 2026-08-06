@@ -1,12 +1,7 @@
-import Dashboard from "@/features/user/components/layouts/Dashboard";
-import EditProfile from "@/features/user/components/pages/edit-profile";
+import React from "react";
 
 const page = () => {
-  return (
-    <Dashboard>
-      <EditProfile />
-    </Dashboard>
-  );
+  <React.Fragment></React.Fragment>;
 };
 
 export default page;
