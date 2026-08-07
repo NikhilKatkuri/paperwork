@@ -45,7 +45,7 @@ export default function HorizontalScrollList() {
   };
 
   return (
-    <div className="rounded-md overflow-hidden">
+    <div className="rounded-md overflow-hidden mb-4">
       <div className="relative w-full group bg-slate-100 rounded-md ">
 
         {/* Left button */}

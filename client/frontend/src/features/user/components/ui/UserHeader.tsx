@@ -2,7 +2,7 @@ import Image from "next/image";
 
 function UserHeader() {
   return (
-    <header className="w-full py-4 flex items-center justify-between gap-4">
+    <header className="w-full py-4 flex items-center justify-between bg-theme-surface gap-4 sticky top-0 z-50">
       <div className="flex gap-2 items-center">
         <Image
           src="/paperwork_icon-vector-master.svg"
