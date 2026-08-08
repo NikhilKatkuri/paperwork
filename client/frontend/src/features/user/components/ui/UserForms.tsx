@@ -18,7 +18,7 @@ function UserForms() {
         <div
           className={cn(
             "grid",
-            viewAsRow ? "" : "grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4",
+            viewAsRow ? "" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4  gap-4",
           )}
         >
           {Array.from({ length: 100 }).map((_, index) => (

@@ -1,7 +1,7 @@
 import React from "react";
 
 const page = () => {
-  <React.Fragment></React.Fragment>;
+  return <div className="">settings</div>;
 };
 
 export default page;

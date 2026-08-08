@@ -9,13 +9,16 @@ function UserHeader() {
           alt="Paperwork Icon"
           height={32}
           width={32}
+          className="w-6 h-6 min-[44rem]:w-8 min-[44rem]:h-8"
         />
-        <p className="font-medium text-lg w-36 text-left max-[44rem]:hidden">Paper Work</p>
+        <p className="font-medium text-lg w-36 text-left max-[44rem]:hidden">
+          Paper Work
+        </p>
       </div>
       <div className="w-full">
         <label
           htmlFor="search-input"
-          className="group flex h-14 w-full cursor-text items-center overflow-hidden rounded-full bg-slate-100 px-4 focus-within:shadow-sm transition-all  focus-within:ring-brand-light"
+          className="group flex h-10 min-[44rem]:h-14 w-full cursor-text items-center overflow-hidden rounded-full bg-slate-100 px-4 focus-within:shadow-sm transition-all  focus-within:ring-brand-light"
         >
           <div className="flex items-center justify-center text-slate-500 group-focus-within:text-brand-light">
             <span className="material-symbols-outlined text-theme-on-surface select-none">
