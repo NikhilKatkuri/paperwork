@@ -1,19 +1,26 @@
- 
 import { cn } from "@/utils/cn";
- 
-function ViewFormsHeader({viewAsRow, setViewAsRow}:{viewAsRow: boolean, setViewAsRow: () => void}) { 
+
+function ViewFormsHeader({
+  viewAsRow,
+  setViewAsRow,
+}: {
+  viewAsRow: boolean;
+  setViewAsRow: () => void;
+}) {
   return (
-    <div className="w-full *:text-sm z-50 px-4 py-2  grid-cols-[1fr_0.5fr] grid md:grid-cols-2 items-center sticky top-22 bg-theme-surface">
+    <div className="w-full *:text-sm z-50 px-4 py-2  grid-cols-[1fr_0.5fr] grid md:grid-cols-2 items-center sticky top-16 md:top-22 bg-theme-surface">
       <div className="">
         <p className="font-medium">Recent forms</p>
       </div>
       <div
         className={cn(
           "grid gap-4 items-center justify-end max-md:grid-cols-[1fr_36px]",
-          viewAsRow ? "grid-cols-[1fr_36px] min-[900px]:grid-cols-[1fr_1fr_36px] xl:grid-cols-[1fr_1fr_160px]" : "grid-cols-[1fr_160px] gap-12",
+          viewAsRow
+            ? "grid-cols-[1fr_36px] min-[900px]:grid-cols-[1fr_1fr_36px] xl:grid-cols-[1fr_1fr_160px]"
+            : "grid-cols-[1fr_160px] gap-12",
         )}
       >
-        <div className={cn( viewAsRow ? "" :"text-right",)}>
+        <div className={cn(viewAsRow ? "" : "text-right")}>
           <p className="">Owned by me</p>
         </div>
         {viewAsRow ? (
