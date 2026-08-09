@@ -1,7 +1,7 @@
-import ResetPasswordPage from "@/auth/components/pages/ResetPasswordPage";
+import ResetPasswordPage from '@/auth/components/pages/ResetPasswordPage';
 
 function Page() {
-  return <ResetPasswordPage />;
+    return <ResetPasswordPage />;
 }
 
 export default Page;

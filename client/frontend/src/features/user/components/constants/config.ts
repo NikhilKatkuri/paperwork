@@ -1,14 +1,19 @@
 const LayoutConfig = {
-  layout: "w-full h-screen position-relative ",
+    layout: 'w-full h-screen position-relative ',
 };
 
-type LayoutContentType = "Edit_Profile" | "Account_Management" | "Notifications";
-const LayoutContent: LayoutContentType[] = ["Edit_Profile", "Account_Management", "Notifications"];
+type LayoutContentType =
+    'Edit_Profile' | 'Account_Management' | 'Notifications';
+const LayoutContent: LayoutContentType[] = [
+    'Edit_Profile',
+    'Account_Management',
+    'Notifications',
+];
 
 const LayoutContentMap: Record<LayoutContentType, string> = {
-  "Edit_Profile": "/user/settings/edit-profile",
-  "Account_Management": "/user/settings/account-management",
-  "Notifications": "/user/settings/notifications",
+    Edit_Profile: '/user/settings/edit-profile',
+    Account_Management: '/user/settings/account-management',
+    Notifications: '/user/settings/notifications',
 };
 
 export { LayoutConfig, LayoutContent, LayoutContentMap };

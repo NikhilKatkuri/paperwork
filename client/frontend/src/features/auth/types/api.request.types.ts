@@ -1,39 +1,39 @@
 interface SignUpRequestBody extends SignInRequestBody {
-  fullName: string;
-  avatarUrl?: string;
-  bio?: string;
+    fullName: string;
+    avatarUrl?: string;
+    bio?: string;
 }
 
 interface SignInRequestBody {
-  email: string;
-  password: string;
+    email: string;
+    password: string;
 }
 
 interface ChangePasswordRequest {
-  currentPassword: string;
-  newPassword: string;
+    currentPassword: string;
+    newPassword: string;
 }
 
 interface VerifyEmailRequest {
-  otp: string;
+    otp: string;
 }
 
 interface EmailCheckRequestBody {
-  email: string;
+    email: string;
 }
 
 type ForgotPasswordRequest = EmailCheckRequestBody;
 
 interface ResetPasswordRequest {
-  newPassword: string;
+    newPassword: string;
 }
 
 export type {
-  SignInRequestBody,
-  SignUpRequestBody,
-  ChangePasswordRequest,
-  VerifyEmailRequest,
-  ForgotPasswordRequest,
-  EmailCheckRequestBody,
-  ResetPasswordRequest,
+    SignInRequestBody,
+    SignUpRequestBody,
+    ChangePasswordRequest,
+    VerifyEmailRequest,
+    ForgotPasswordRequest,
+    EmailCheckRequestBody,
+    ResetPasswordRequest,
 };

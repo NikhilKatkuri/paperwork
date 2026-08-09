@@ -19,6 +19,7 @@ import { AutoBoundController } from '@/utils/AutoBoundClass';
 import { TokenPayload } from '../types/token.types';
 import { Profile } from '../types/profile.auth';
 import mongoose from 'mongoose';
+import { generateHSL, HSLtoString } from '../utils/randomprofiepicture';
 
 class AuthService extends AutoBoundController {
     constructor() {
@@ -42,8 +43,12 @@ class AuthService extends AutoBoundController {
                 );
 
                 const userId = newUser[0]!._id.toString();
+                const color = HSLtoString(generateHSL(fullName));
+                const avatarUrl = `randomuser:name=${encodeURIComponent(fullName)}&color=${encodeURIComponent(color)}`;
 
-                await ProfileModel.create([{ userId, fullName }], { session });
+                await ProfileModel.create([{ userId, fullName, avatarUrl }], {
+                    session,
+                });
 
                 await emailQueue.add(
                     'sendWelcomeEmail',

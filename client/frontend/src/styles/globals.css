@@ -1,195 +1,198 @@
-@import "tailwindcss";
-@import "./theme.css";
+@import 'tailwindcss';
+@import './theme.css';
 
 @theme inline {
-  /* Typography */
-  --font-sans:
-    var(--font-plus-jakarta), ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --text-xs: var(--font-size-xs);
-  --text-sm: var(--font-size-sm);
-  --text-base: var(--font-size-base);
-  --text-lg: var(--font-size-lg);
-  --text-xl: var(--font-size-xl);
-  --text-2xl: var(--font-size-2xl);
-  --text-3xl: var(--font-size-3xl);
-  --text-4xl: var(--font-size-4xl);
+    /* Typography */
+    --font-sans:
+        var(--font-plus-jakarta), ui-sans-serif, system-ui, -apple-system,
+        BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+        sans-serif;
+    --text-xs: var(--font-size-xs);
+    --text-sm: var(--font-size-sm);
+    --text-base: var(--font-size-base);
+    --text-lg: var(--font-size-lg);
+    --text-xl: var(--font-size-xl);
+    --text-2xl: var(--font-size-2xl);
+    --text-3xl: var(--font-size-3xl);
+    --text-4xl: var(--font-size-4xl);
 
-  /* Layout Base Colors */
-  --color-theme-surface: var(--theme-surface);
+    /* Layout Base Colors */
+    --color-theme-surface: var(--theme-surface);
 
-  --color-theme-on-surface: var(--theme-on-surface);
-  --color-theme-surface-hover: var(--theme-surface-hover);
+    --color-theme-on-surface: var(--theme-on-surface);
+    --color-theme-surface-hover: var(--theme-surface-hover);
 
-  --color-theme-grey-sm: color-mix(
-    in srgb,
-    var(--color-black),
-    transparent 95%
-  );
-  --color-theme-grey-base: color-mix(
-    in srgb,
-    var(--color-black),
-    transparent 90%
-  );
-  --color-theme-grey-lg: #e5e5e5;
-  --color-theme-grey-xl: #e5e0e0;
-  /* Core Brand Styling */
-  --color-brand-light: var(--brand-light);
-  --color-on-brand-light: var(--on-brand-light);
-  --color-brand: var(--brand);
-  --color-on-brand: var(--on-brand);
-  --color-brand-depth: var(--brand-depth);
-  --color-on-brand-depth: var(--on-brand-depth);
+    --color-theme-grey-sm: color-mix(
+        in srgb,
+        var(--color-black),
+        transparent 95%
+    );
+    --color-theme-grey-base: color-mix(
+        in srgb,
+        var(--color-black),
+        transparent 90%
+    );
+    --color-theme-grey-lg: #e5e5e5;
+    --color-theme-grey-xl: #e5e0e0;
+    /* Core Brand Styling */
+    --color-brand-light: var(--brand-light);
+    --color-on-brand-light: var(--on-brand-light);
+    --color-brand: var(--brand);
+    --color-on-brand: var(--on-brand);
+    --color-brand-depth: var(--brand-depth);
+    --color-on-brand-depth: var(--on-brand-depth);
 
-  /* Tooltip Configuration */
-  --color-theme-tooltip-surface: var(--theme-tooltip-surface);
-  --color-theme-tooltip-on-surface: var(--theme-tooltip-on-surface);
-  --radius-theme-tooltip: var(--theme-tooltip-radius);
+    /* Tooltip Configuration */
+    --color-theme-tooltip-surface: var(--theme-tooltip-surface);
+    --color-theme-tooltip-on-surface: var(--theme-tooltip-on-surface);
+    --radius-theme-tooltip: var(--theme-tooltip-radius);
 
-  /* Toast Configuration */
-  --radius-theme-toast: var(--theme-toast-radius);
-  --size-theme-toast-icon: var(--theme-toast-icon-size);
-  --text-theme-toast-actionable: var(--theme-toast-actionable-size);
+    /* Toast Configuration */
+    --radius-theme-toast: var(--theme-toast-radius);
+    --size-theme-toast-icon: var(--theme-toast-icon-size);
+    --text-theme-toast-actionable: var(--theme-toast-actionable-size);
 
-  --color-theme-toast-success-surface: var(--theme-toast-success-surface);
-  --color-theme-toast-success-on-surface: var(--theme-toast-success-on-surface);
-  --color-theme-toast-danger-surface: var(--theme-toast-danger-surface);
-  --color-theme-toast-danger-on-surface: var(--theme-toast-danger-on-surface);
-  --color-theme-toast-warn-surface: var(--theme-toast-warn-surface);
-  --color-theme-toast-warn-on-surface: var(--theme-toast-warn-on-surface);
-  --color-theme-toast-info-surface: var(--theme-toast-info-surface);
-  --color-theme-toast-info-on-surface: var(--theme-toast-info-on-surface);
+    --color-theme-toast-success-surface: var(--theme-toast-success-surface);
+    --color-theme-toast-success-on-surface: var(
+        --theme-toast-success-on-surface
+    );
+    --color-theme-toast-danger-surface: var(--theme-toast-danger-surface);
+    --color-theme-toast-danger-on-surface: var(--theme-toast-danger-on-surface);
+    --color-theme-toast-warn-surface: var(--theme-toast-warn-surface);
+    --color-theme-toast-warn-on-surface: var(--theme-toast-warn-on-surface);
+    --color-theme-toast-info-surface: var(--theme-toast-info-surface);
+    --color-theme-toast-info-on-surface: var(--theme-toast-info-on-surface);
 
-  /* Skeleton Mapping */
-  --color-theme-skeletion-surface: var(--theme-skeletion-surface);
-  --radius-theme-skeletion-text: var(--theme-skeletion-radius-text);
-  --radius-theme-skeletion-container: var(--theme-skeletion-radius-container);
+    /* Skeleton Mapping */
+    --color-theme-skeletion-surface: var(--theme-skeletion-surface);
+    --radius-theme-skeletion-text: var(--theme-skeletion-radius-text);
+    --radius-theme-skeletion-container: var(--theme-skeletion-radius-container);
 
-  /* Form Elements Mapping */
-  --color-theme-form-surface: var(--theme-form-surface);
-  --color-theme-form-surface-hover: var(--theme-form-surface-hover);
-  --color-theme-form-on-surface: var(--theme-form-on-surface);
-  --color-theme-form-container: var(--theme-form-container);
-  --color-theme-form-container-hover: var(--theme-form-container-hover);
-  --color-theme-form-on-container: var(--theme-form-on-container);
-  --color-theme-form-container-border: var(--theme-form-container-border);
-  --color-theme-form-container-active: var(--theme-form-container-active);
+    /* Form Elements Mapping */
+    --color-theme-form-surface: var(--theme-form-surface);
+    --color-theme-form-surface-hover: var(--theme-form-surface-hover);
+    --color-theme-form-on-surface: var(--theme-form-on-surface);
+    --color-theme-form-container: var(--theme-form-container);
+    --color-theme-form-container-hover: var(--theme-form-container-hover);
+    --color-theme-form-on-container: var(--theme-form-on-container);
+    --color-theme-form-container-border: var(--theme-form-container-border);
+    --color-theme-form-container-active: var(--theme-form-container-active);
 }
 
 body {
-  font-family: var(--font-sans);
-  font-size: var(--text-base);
-  color: var(--color-theme-on-surface);
-  background-color: var(--color-theme-surface);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    color: var(--color-theme-on-surface);
+    background-color: var(--color-theme-surface);
 }
 
 @theme {
-  --animate-slide-up: slide-up 0.3s ease-out;
-  --animate-slide-down: slide-down 0.3s ease-out;
-  --animate-slide-left: slide-left 0.3s ease-out;
-  --animate-slide-right: slide-right 0.3s ease-out;
-  --animate-scale-in: slide-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    --animate-slide-up: slide-up 0.3s ease-out;
+    --animate-slide-down: slide-down 0.3s ease-out;
+    --animate-slide-left: slide-left 0.3s ease-out;
+    --animate-slide-right: slide-right 0.3s ease-out;
+    --animate-scale-in: slide-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 100%);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
+    from {
+        opacity: 0;
+        transform: translate(-50%, 100%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
 }
 
 @keyframes slide-down {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -100%);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
+    from {
+        opacity: 0;
+        transform: translate(-50%, -100%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
 }
 
 @keyframes slide-left {
-  from {
-    opacity: 0;
-    transform: translateX(-40px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+    from {
+        opacity: 0;
+        transform: translateX(-40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 @keyframes slide-right {
-  from {
-    opacity: 0;
-    transform: translateX(40px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+    from {
+        opacity: 0;
+        transform: translateX(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 @keyframes slide-in {
-  from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.96);
-  }
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.96);
+    }
 
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .material-symbols-outlined {
-  font-family: "Material Symbols Outlined";
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
 
-  font-variation-settings:
-    "FILL" 0,
-    "wght" 300,
-    "GRAD" 0,
-    "opsz" 24;
+    font-variation-settings:
+        'FILL' 0,
+        'wght' 300,
+        'GRAD' 0,
+        'opsz' 24;
 }
 
 .material-symbols-outlined.material-filled {
-  font-variation-settings:
-    "FILL" 1,
-    "wght" 400,
-    "GRAD" 0,
-    "opsz" 24;
+    font-variation-settings:
+        'FILL' 1,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
 }
 
 @media (max-width: 768px) {
-  .material-symbols-outlined {
-    font-size: 20px;
-    font-variation-settings:
-      "FILL" 0,
-      "wght" 300,
-      "GRAD" 0,
-      "opsz" 20;
-  }
+    .material-symbols-outlined {
+        font-size: 20px;
+        font-variation-settings:
+            'FILL' 0,
+            'wght' 300,
+            'GRAD' 0,
+            'opsz' 20;
+    }
 
-  .material-symbols-outlined.material-filled {
-    font-variation-settings:
-      "FILL" 1,
-      "wght" 400,
-      "GRAD" 0,
-      "opsz" 20;
-  }
+    .material-symbols-outlined.material-filled {
+        font-variation-settings:
+            'FILL' 1,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 20;
+    }
 }

@@ -1,31 +1,31 @@
 interface BaseAuthResponse {
-  success: boolean;
-  message: string;
+    success: boolean;
+    message: string;
 }
 
 interface AuthResponse extends BaseAuthResponse {
-  accessToken: string;
+    accessToken: string;
 }
 
-interface SignInResponse  extends AuthResponse {
-  twoFactorRequired?: true;
+interface SignInResponse extends AuthResponse {
+    twoFactorRequired?: true;
 }
 
 type SignUpResponse = AuthResponse;
 type SignOutResponse = BaseAuthResponse;
 
 interface Profile {
-  readonly userId: string;
-  fullName: string;
-  avatarUrl?: string;
-  bio?: string;
+    readonly userId: string;
+    fullName: string;
+    avatarUrl?: string;
+    bio?: string;
 }
 
 interface ProfileResponse extends BaseAuthResponse {
-  data: Profile;
+    data: Profile;
 }
 interface EmailCheckResponse extends BaseAuthResponse {
-  exists: boolean;
+    exists: boolean;
 }
 
 type RefreshTokenResponse = AuthResponse;
@@ -36,17 +36,17 @@ type ForgotPasswordResponse = BaseAuthResponse;
 type ResetPasswordResponse = BaseAuthResponse;
 
 export type {
-  BaseAuthResponse,
-  SignInResponse,
-  SignUpResponse,
-  SignOutResponse,
-  EmailCheckResponse,
-  ProfileResponse,
-  Profile,
-  VerificationResponse,
-  VerifyEmailReponse,
-  ChangePasswordResponse,
-  ForgotPasswordResponse,
-  ResetPasswordResponse,
-  RefreshTokenResponse,
+    BaseAuthResponse,
+    SignInResponse,
+    SignUpResponse,
+    SignOutResponse,
+    EmailCheckResponse,
+    ProfileResponse,
+    Profile,
+    VerificationResponse,
+    VerifyEmailReponse,
+    ChangePasswordResponse,
+    ForgotPasswordResponse,
+    ResetPasswordResponse,
+    RefreshTokenResponse,
 };

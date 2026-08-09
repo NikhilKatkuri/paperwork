@@ -1,7 +1,7 @@
-import React from "react";
+import EditProfilePage from '@/features/settings/pages/EditProfilePage';
 
 const page = () => {
-  <React.Fragment></React.Fragment>;
+    return <EditProfilePage />;
 };
 
 export default page;

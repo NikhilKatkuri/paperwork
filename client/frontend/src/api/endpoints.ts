@@ -1,0 +1,27 @@
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+export interface EndpointConfig {
+    path: string;
+    method: HttpMethod;
+}
+
+export const endpoints = {
+    auth: {
+        signIn: { path: '/auth/sign-in', method: 'POST' },
+        signUp: { path: '/auth/sign-up', method: 'POST' },
+        signOut: { path: '/auth/sign-out', method: 'POST' },
+        refreshToken: { path: '/auth/refresh-token', method: 'POST' },
+        me: { path: '/auth/me', method: 'GET' },
+        sendVerification: { path: '/auth/send-verification', method: 'POST' },
+        verifyEmail: { path: '/auth/verify-email', method: 'POST' },
+        changePassword: { path: '/auth/change-password', method: 'POST' },
+        forgotPassword: { path: '/auth/forgot-password', method: 'POST' },
+        checkEmailExists: { path: '/auth/check-email', method: 'POST' },
+        resetPassword: (token: string): EndpointConfig => ({
+            path: `/auth/reset-password/${token}`,
+            method: 'POST',
+        }),
+    },
+    signature: {
+        cloudinary: { path: '/cloudinary/signature', method: 'GET' },
+    },
+} as const;

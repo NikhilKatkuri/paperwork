@@ -1,21 +1,32 @@
-import Sidebar from "../client/Sidebar";
+'use client';
+
+import { usePathname } from 'next/navigation';
+import Sidebar from '../client/Sidebar';
+import { cn } from '@/utils/cn';
 
 export default function SettingsLayout({
-  children,
+    children,
 }: {
-  children: React.ReactNode;
+    children: React.ReactNode;
 }) {
-  return (
-    <div className="">
-      <nav className="md:hidden h-16 w-full border-b border-theme-skeletion-surface px-4 flex items-center justify-center">
-        <p className="text-center">Settings</p>
-      </nav>
-      <div className="flex flex-1 items-center justify-center p-4 h-full">
-        <div className="flex  p-2 border border-theme-skeletion-surface rounded-2xl gap-4 h-96  max-w-4xl w-full ">
-          <Sidebar />
-          <div className="p-2">{children}</div>
+    const pathname = usePathname();
+    const lastSegment = pathname.split('/').filter(Boolean).at(-1);
+    const isMainSettingsPage = lastSegment === 'settings';
+
+    return (
+        <div className="flex w-full p-3 md:items-center md:justify-center md:p-4">
+            <div className="border-theme-skeletion-surface grid w-full max-w-4xl grid-cols-[18rem_1fr] gap-4 rounded-2xl border max-md:grid-cols-1 md:h-full md:max-h-180 md:p-2">
+                <Sidebar currentRoute={pathname} />
+
+                <div
+                    className={cn(
+                        'p-4 px-6 md:p-2',
+                        isMainSettingsPage && 'max-md:hidden'
+                    )}
+                >
+                    {children}
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }

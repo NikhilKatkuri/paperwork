@@ -1,13 +1,9 @@
-import Dashboard from "@/features/user/components/layouts/Dashboard";
+import Dashboard from '@/features/user/components/layouts/Dashboard';
 
 export default function UserLayout({
-  children,
+    children,
 }: Readonly<{
-  children: React.ReactNode;
+    children: React.ReactNode;
 }>) {
-  return (
-    <Dashboard>
-        {children} 
-    </Dashboard>
-  );
+    return <Dashboard>{children}</Dashboard>;
 }

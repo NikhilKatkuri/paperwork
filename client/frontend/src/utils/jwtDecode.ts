@@ -1,27 +1,38 @@
-import { jwtDecode as libJwtDecode } from "jwt-decode";
+import { jwtDecode as libJwtDecode } from 'jwt-decode';
 
 interface BaseDecodedToken {
-  exp: number;
-  iat: number;
+    exp: number;
+    iat: number;
 }
 
 interface BaseReturnType<T> {
-  decodedToken: T | null;
-  isExpired: boolean;
+    decodedToken: T | null;
+    isExpired: boolean;
+}
+
+export interface DecodedTokenWithMeta extends BaseDecodedToken {
+    userId: string;
+    email: string;
 }
 
 const jwtDecode = <T extends BaseDecodedToken>(
-  token: string,
+    token: string
 ): BaseReturnType<T> => {
-  try {
-    const decodedToken = libJwtDecode<T>(token);
-    const currentTime = Math.floor(Date.now() / 1000);
-    const isExpired = decodedToken.exp < currentTime;
+    try {
+        const decodedToken = libJwtDecode<T>(token);
 
-    return { decodedToken, isExpired };
-  } catch {
-    return { decodedToken: null, isExpired: true };
-  }
+        const currentTime = Math.floor(Date.now() / 1000);
+
+        return {
+            decodedToken,
+            isExpired: decodedToken.exp < currentTime,
+        };
+    } catch {
+        return {
+            decodedToken: null,
+            isExpired: true,
+        };
+    }
 };
 
 export default jwtDecode;

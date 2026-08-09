@@ -1,7 +1,7 @@
-import ChangePasswordPage from "@/auth/components/pages/ChangePasswordPage";
+import ChangePasswordPage from '@/auth/components/pages/ChangePasswordPage';
 
 function page() {
-  return <ChangePasswordPage />;
+    return <ChangePasswordPage />;
 }
 
 export default page;

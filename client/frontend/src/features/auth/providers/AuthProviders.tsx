@@ -1,159 +1,254 @@
-"use client";
+'use client';
 
 import {
-  createContext,
-  useContext,
-  ReactNode,
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-} from "react";
+    createContext,
+    useContext,
+    ReactNode,
+    useState,
+    useRef,
+    useEffect,
+    useCallback,
+} from 'react';
 
-import useSignIn from "@/auth/functions/SignIn";
-import useEmailCheckUp from "@/auth/functions/CheckEmail";
-import useSignUp from "../functions/SignUp";
-import useSignOut from "../functions/SignOut";
-import useRefreshToken from "../functions/RefreshToken";
-import useChangePassword from "../functions/ChangePassword";
-import useResetPassword from "../functions/ResetPassword";
-import useForgotPassword from "../functions/ForgotPassword";
-import api from "@/api/useApi";
+import useSignIn from '@/auth/functions/SignIn';
+import useEmailCheckUp from '@/auth/functions/CheckEmail';
+import useSignUp from '../functions/SignUp';
+import useSignOut from '../functions/SignOut';
+import useRefreshToken from '../functions/RefreshToken';
+import useChangePassword from '../functions/ChangePassword';
+import useResetPassword from '../functions/ResetPassword';
+import useForgotPassword from '../functions/ForgotPassword';
+import { http } from '@/api/http';
+import { getCachedProfile, loadProfile } from '../functions/loadProfile';
+import { PublicProfile } from '@/types';
+import jwtDecode, { DecodedTokenWithMeta } from '@/utils/jwtDecode';
 
 export function useAuthLogic() {
-  const signIn = useSignIn();
-  const signUp = useSignUp();
-  const signOut = useSignOut();
-  const emailCheck = useEmailCheckUp();
-  const refreshToken = useRefreshToken();
-  const changePassword = useChangePassword();
-  const resetPassword = useResetPassword();
-  const forgotPassword = useForgotPassword();
+    const signIn = useSignIn();
+    const signUp = useSignUp();
+    const signOut = useSignOut();
+    const emailCheck = useEmailCheckUp();
+    const refreshToken = useRefreshToken();
+    const changePassword = useChangePassword();
+    const resetPassword = useResetPassword();
+    const forgotPassword = useForgotPassword();
 
-  return {
-    signIn,
-    signUp,
-    signOut,
-    emailCheck,
-    refreshToken,
-    changePassword,
-    resetPassword,
-    forgotPassword,
-  };
+    return {
+        signIn,
+        signUp,
+        signOut,
+        emailCheck,
+        refreshToken,
+        changePassword,
+        resetPassword,
+        forgotPassword,
+    };
 }
 
 type AuthContextType = ReturnType<typeof useAuthLogic> & {
-  accessToken: string | null;
-  setAccessToken: (token: string | null) => void;
-  initializing: boolean;
+    accessToken: string | null;
+    setAccessToken: (token: string | null) => void;
+    initializing: boolean;
+    publicProfile: PublicProfile | null;
+    setPublicProfile: React.Dispatch<
+        React.SetStateAction<PublicProfile | null>
+    >;
+    decodedToken: DecodedTokenWithMeta | null;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function getExpiryMs(token: string): number | null {
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    if (!payload.exp) return null;
-    return payload.exp * 1000;
-  } catch {
-    return null;
-  }
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (!payload.exp) return null;
+        return payload.exp * 1000;
+    } catch {
+        return null;
+    }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const auth = useAuthLogic();
-  const { handleRefreshToken } = auth.refreshToken;
+    const auth = useAuthLogic();
+    const { handleRefreshToken } = auth.refreshToken;
 
-  const [accessToken, setAccessTokenState] = useState<string | null>(null);
-  const [initializing, setInitializing] = useState(true);
+    const [accessToken, setAccessTokenState] = useState<string | null>(null);
+    const [initializing, setInitializing] = useState(true);
 
-  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleRefreshTokenRef = useRef(handleRefreshToken);
-  const scheduleRefreshRef = useRef<(token: string) => void>(() => {});
+    const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const handleRefreshTokenRef = useRef(handleRefreshToken);
+    const isMountedRef = useRef(true);
 
-  useEffect(() => {
-    handleRefreshTokenRef.current = handleRefreshToken;
-  }, [handleRefreshToken]);
-
-  // Define scheduleRefresh safely using a stable callback
-  const scheduleRefresh = useCallback((token: string) => {
-    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-
-    const expiryMs = getExpiryMs(token);
-    if (!expiryMs) return;
-
-    const delay = expiryMs - Date.now() - 60 * 1000;
-
-    refreshTimerRef.current = setTimeout(
-      async () => {
-        const res = await handleRefreshTokenRef.current();
-        if (res.ok) {
-          setAccessTokenState(res.data.accessToken);
-          // Use the ref version to avoid closure hoisting issues
-          scheduleRefreshRef.current(res.data.accessToken);
-        } else {
-          setAccessTokenState(null);
-          api.setBearer("");
-        }
-      },
-      Math.max(delay, 0),
+    const [publicProfile, setPublicProfile] = useState<PublicProfile | null>(
+        null
     );
-  }, []);
 
-  // Keep scheduleRefreshRef updated with the latest function instance
-  useEffect(() => {
-    scheduleRefreshRef.current = scheduleRefresh;
-  }, [scheduleRefresh]);
+    const [decodedToken, setDecodedToken] =
+        useState<DecodedTokenWithMeta | null>(null);
 
-  const updateAccessToken = useCallback(
-    (token: string | null) => {
-      setAccessTokenState(token);
-      if (token) {
-        scheduleRefresh(token);
-      } else if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
-      }
-    },
-    [scheduleRefresh],
-  );
+    useEffect(() => {
+        handleRefreshTokenRef.current = handleRefreshToken;
+    }, [handleRefreshToken]);
 
-  useEffect(() => {
-    let isMounted = true;
+    const scheduleRefreshRef = useRef<(token: string) => void>(() => {});
 
-    handleRefreshTokenRef.current().then((res) => {
-      if (!isMounted) return;
-      if (res.ok) {
-        updateAccessToken(res.data.accessToken);
-      }
-      setInitializing(false);
-    });
+    const scheduleRefresh = useCallback((token: string) => {
+        if (refreshTimerRef.current) {
+            clearTimeout(refreshTimerRef.current);
+            refreshTimerRef.current = null;
+        }
 
-    return () => {
-      isMounted = false;
-      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    };
-  }, [updateAccessToken]);
+        const expiryMs = getExpiryMs(token);
+        if (!expiryMs) return;
 
-  return (
-    <AuthContext.Provider
-      value={{
-        ...auth,
-        accessToken,
-        setAccessToken: updateAccessToken,
-        initializing,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+        const delay = expiryMs - Date.now() - 60 * 1000;
+
+        refreshTimerRef.current = setTimeout(
+            async () => {
+                const res = await handleRefreshTokenRef.current();
+                if (!isMountedRef.current) return;
+
+                if (res.ok) {
+                    setAccessTokenState(res.data.accessToken);
+                    scheduleRefreshRef.current(res.data.accessToken);
+                } else {
+                    setAccessTokenState(null);
+                    http.setBearer('');
+                }
+            },
+            Math.max(delay, 0)
+        );
+    }, []);
+
+    useEffect(() => {
+        scheduleRefreshRef.current = scheduleRefresh;
+    }, [scheduleRefresh]);
+
+    const updateAccessToken = useCallback(
+        (token: string | null) => {
+            setAccessTokenState(token);
+            if (token) {
+                scheduleRefresh(token);
+            } else if (refreshTimerRef.current) {
+                clearTimeout(refreshTimerRef.current);
+                refreshTimerRef.current = null;
+            }
+        },
+        [scheduleRefresh]
+    );
+
+    useEffect(() => {
+        isMountedRef.current = true;
+
+        handleRefreshTokenRef.current().then((res) => {
+            if (!isMountedRef.current) return;
+            if (res.ok) {
+                updateAccessToken(res.data.accessToken);
+            }
+            setInitializing(false);
+        });
+
+        return () => {
+            isMountedRef.current = false;
+            if (refreshTimerRef.current) {
+                clearTimeout(refreshTimerRef.current);
+                refreshTimerRef.current = null;
+            }
+        };
+    }, [updateAccessToken]);
+
+    useEffect(() => {
+        function updateDecodedToken() {
+            if (!accessToken) {
+                http.setBearer('');
+                setDecodedToken(null);
+                return;
+            }
+
+            http.setBearer(accessToken);
+            console.log('Access token updated:', accessToken);
+            const { decodedToken: tokenData, isExpired } =
+                jwtDecode<DecodedTokenWithMeta>(accessToken);
+
+            if (!isExpired && tokenData) {
+                setDecodedToken(tokenData);
+            } else {
+                setDecodedToken(null);
+            }
+        }
+        updateDecodedToken();
+    }, [accessToken]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        function updateProfile() {
+            console.log('Updating profile for userId:', decodedToken?.userId);
+            if (!decodedToken?.userId) {
+                console.log(
+                    'No userId found in decoded token. Clearing public profile.'
+                );
+                setPublicProfile(null);
+                return;
+            }
+            console.log('Fetching profile for userId:', decodedToken.userId);
+            const cached = getCachedProfile();
+            if (cached) {
+                console.log(
+                    'Using cached profile for userId:',
+                    decodedToken.userId
+                );
+                setPublicProfile(cached);
+                return;
+            }
+            console.log(
+                'Loading profile from server for userId:',
+                decodedToken.userId
+            );
+            loadProfile().then((profile) => {
+                if (!cancelled && profile) {
+                    console.log(
+                        'Profile loaded from server for userId:',
+                        decodedToken.userId,
+                        profile
+                    );
+                    setPublicProfile(profile);
+                }
+            });
+        }
+        updateProfile();
+        return () => {
+            console.log(
+                'Cleaning up profile effect for userId:',
+                decodedToken?.userId
+            );
+            cancelled = true;
+        };
+    }, [decodedToken?.userId]);
+
+    return (
+        <AuthContext.Provider
+            value={{
+                ...auth,
+                accessToken,
+                setAccessToken: updateAccessToken,
+                initializing,
+                publicProfile,
+                setPublicProfile,
+                decodedToken,
+            }}
+        >
+            {children}
+        </AuthContext.Provider>
+    );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error(
-      "useAuth must be used within an AuthProvider execution tree",
-    );
-  }
-  return context;
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error(
+            'useAuth must be used within an AuthProvider execution tree'
+        );
+    }
+    return context;
 }

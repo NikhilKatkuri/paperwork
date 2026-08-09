@@ -150,7 +150,7 @@ class AuthController extends AutoBoundController {
             res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Profile retrieved successfully',
-                data: { profile },
+                profile,
             });
         } catch (error) {
             next(error);
@@ -174,7 +174,7 @@ class AuthController extends AutoBoundController {
             res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Profile updated successfully',
-                data: { profile },
+                profile,
             });
         } catch (error) {
             next(error);

@@ -1,7 +1,7 @@
-import { redirect } from 'next/navigation'
+import { redirect } from 'next/navigation';
 
 const page = () => {
-  redirect('/user/settings')
-}
+    redirect('/user/settings');
+};
 
-export default page
+export default page;

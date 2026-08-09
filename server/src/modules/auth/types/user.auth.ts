@@ -1,49 +1,49 @@
 import {
-  UserAccountDeactivationStatus,
-  UserAccountDeletedStatus,
-} from "@/modules/auth/constants/enums";
-import { Document } from "mongoose";
+    UserAccountDeactivationStatus,
+    UserAccountDeletedStatus,
+} from '@/modules/auth/constants/enums';
+import { Document } from 'mongoose';
 
 export interface Security {
-  accountDeletedStatus?: UserAccountDeletedStatus | undefined;
-  accountDeactivationStatus?: UserAccountDeactivationStatus | undefined;
-  twofactorEnabled?: boolean | undefined;
-  accountDeleteRequestedAt?: Date | undefined;
-  accountWillbeDeletedAt?: Date | undefined;
+    accountDeletedStatus?: UserAccountDeletedStatus | undefined;
+    accountDeactivationStatus?: UserAccountDeactivationStatus | undefined;
+    twofactorEnabled?: boolean | undefined;
+    accountDeleteRequestedAt?: Date | undefined;
+    accountWillbeDeletedAt?: Date | undefined;
 }
 
 export interface User extends Security {
-  email: string;
-  passwordHash: string;
-  isVerified: boolean;
-  resetToken?: string | undefined;
-  resetExpires?: Date | undefined;
+    email: string;
+    passwordHash: string;
+    isVerified: boolean;
+    resetToken?: string | undefined;
+    resetExpires?: Date | undefined;
 }
 
 export type UserDocument = User & Document;
 
 export type RequestMeta = {
-  ip: string | null;
-  location: {
-    city?: string;
-    region?: string;
-    country?: string;
-    ll?: [number, number];
-    timezone?: string;
-  } | null;
-  device: {
-    family?: string;
-    brand?: string;
-    model?: string;
-    type?: string;
-  } | null;
-  browser: {
-    family?: string;
-    version?: string;
-  } | null;
-  os: {
-    family?: string;
-    version?: string;
-  } | null;
-  userAgentRaw: string | null;
+    ip: string | null;
+    location: {
+        city?: string;
+        region?: string;
+        country?: string;
+        ll?: [number, number];
+        timezone?: string;
+    } | null;
+    device: {
+        family?: string;
+        brand?: string;
+        model?: string;
+        type?: string;
+    } | null;
+    browser: {
+        family?: string;
+        version?: string;
+    } | null;
+    os: {
+        family?: string;
+        version?: string;
+    } | null;
+    userAgentRaw: string | null;
 };

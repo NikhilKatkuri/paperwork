@@ -1,7 +1,7 @@
-import TwoFactorAuthPage from "@/auth/components/pages/TwoFactorAuthPage";
+import TwoFactorAuthPage from '@/auth/components/pages/TwoFactorAuthPage';
 
 const page = () => {
-  return <TwoFactorAuthPage/>;
+    return <TwoFactorAuthPage />;
 };
 
 export default page;

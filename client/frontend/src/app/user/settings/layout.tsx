@@ -1,9 +1,9 @@
-import SettingsLayout from "@/features/settings/components/layout";
+import SettingsLayout from '@/features/settings/components/layout';
 
 export default function UserLayout({
-  children,
+    children,
 }: Readonly<{
-  children: React.ReactNode;
+    children: React.ReactNode;
 }>) {
-  return <SettingsLayout>{children}</SettingsLayout>;
+    return <SettingsLayout>{children}</SettingsLayout>;
 }
