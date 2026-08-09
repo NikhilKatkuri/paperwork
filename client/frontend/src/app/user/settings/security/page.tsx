@@ -1,7 +1,8 @@
+import SecurityPage from '@/features/settings/pages/SecurityPage';
 import React from 'react';
 
-const page = () => {
-    <React.Fragment></React.Fragment>;
-};
+const page = () =>  {
+    return <SecurityPage/>
+}
 
 export default page;

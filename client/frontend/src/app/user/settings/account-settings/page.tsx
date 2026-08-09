@@ -1,7 +1,8 @@
+import AccountMangement from '@/features/settings/pages/AccountMangement';
 import React from 'react';
 
 const page = () => {
-    <React.Fragment></React.Fragment>;
+   return <AccountMangement />;
 };
 
 export default page;

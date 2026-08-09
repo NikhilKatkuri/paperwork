@@ -14,13 +14,13 @@ export default function SettingsLayout({
     const isMainSettingsPage = lastSegment === 'settings';
 
     return (
-        <div className="flex w-full p-3 md:items-center md:justify-center md:p-4">
-            <div className="border-theme-skeletion-surface grid w-full max-w-4xl grid-cols-[18rem_1fr] gap-4 rounded-2xl border max-md:grid-cols-1 md:h-full md:max-h-180 md:p-2">
+        <div className="flex w-full overflow-hidden p-3 md:items-center md:justify-center md:p-4">
+            <div className="border-theme-skeletion-surface grid w-full max-w-4xl grid-cols-[18rem_1fr] gap-4 rounded-2xl border max-md:mb-32 max-md:grid-cols-1 md:h-full md:max-h-180 md:p-2">
                 <Sidebar currentRoute={pathname} />
 
                 <div
                     className={cn(
-                        'p-4 px-6 md:p-2',
+                        'overflow-y-scroll p-4 px-6 md:overflow-hidden md:p-2',
                         isMainSettingsPage && 'max-md:hidden'
                     )}
                 >

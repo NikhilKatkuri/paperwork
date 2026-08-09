@@ -94,12 +94,12 @@ const EditProfilePage = memo(() => {
             <div className="flex w-full flex-wrap items-center justify-end gap-6">
                 <button
                     type="button"
-                    className="bg-theme-grey-lg hover:bg-brand-depth hover:text-on-brand-depth text-surface cursor-pointer rounded-xl p-2.5 px-4 text-sm font-semibold transition-all duration-200 ease-in-out"
+                    className="bg-theme-form-on-surface/10 hover:bg-theme-form-on-surface/90 text-theme-on-surface cursor-pointer rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 ease-in-out hover:text-white sm:px-8"
                 >
                     Cancel
                 </button>
                 <button
-                    type="button"
+                    type="submit"
                     onClick={() => {
                         updateProfile(
                             profile,
@@ -109,7 +109,7 @@ const EditProfilePage = memo(() => {
                         );
                     }}
                     disabled={loading}
-                    className="bg-brand-depth hover:bg-brand-depth/90 text-on-brand-depth cursor-pointer rounded-xl p-2.5 px-4 text-sm font-semibold transition-all duration-200 ease-in-out disabled:opacity-50"
+                    className="bg-brand-depth text-on-brand-depth hover:bg-brand-depth/90 cursor-pointer rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 disabled:opacity-50 sm:px-8"
                 >
                     {loading ? 'Saving...' : 'Save Changes'}
                 </button>

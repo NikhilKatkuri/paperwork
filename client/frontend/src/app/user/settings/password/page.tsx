@@ -1,7 +1,7 @@
-import React from 'react';
+import PasswordPage from '@/features/settings/pages/PasswordPage';
 
 const page = () => {
-    <React.Fragment></React.Fragment>;
+     return <PasswordPage/>
 };
 
 export default page;

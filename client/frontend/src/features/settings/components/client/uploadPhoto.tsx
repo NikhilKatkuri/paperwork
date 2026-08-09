@@ -58,7 +58,7 @@ export default function UploadPhoto({
             <h1 className="text-theme-on-surface/60 text-sm">Photo</h1>
 
             <div className="mt-5 flex items-center gap-6">
-                <div className="border-theme-on-surface/30 bg-theme-surface h-18 w-18 overflow-hidden rounded-full border">
+                <div className="border-theme-on-surface/30 bg-theme-surface h-18 aspect-square md:h-20 lg:h-24 overflow-hidden rounded-full border">
                     {imageSrc ? (
                         <Image
                             src={imageSrc}
@@ -97,7 +97,7 @@ export default function UploadPhoto({
                 <button
                     type="button"
                     onClick={openFilePicker}
-                    className="bg-theme-grey-lg text-surface hover:bg-brand-depth hover:text-on-brand-depth cursor-pointer rounded-xl p-2.5 px-4 text-sm font-semibold transition-all duration-200 ease-in-out"
+                    className="bg-theme-form-on-surface/10 hover:bg-theme-form-on-surface/90 text-theme-on-surface cursor-pointer rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 ease-in-out hover:text-white sm:px-8"
                 >
                     Change
                 </button>
