@@ -3,6 +3,7 @@
 import { cn } from '@/utils/cn';
 import { SidebarIntent } from '../../constants/config';
 import { useRouter } from 'next/navigation';
+import useSignOut from '@/auth/functions/SignOut';
 
 function shouldShowSidebar(pathname: string) {
     const segments = ['edit-profile', 'account', 'password', 'security'];
@@ -14,6 +15,7 @@ function shouldShowSidebar(pathname: string) {
 export default function Sidebar({ currentRoute }: { currentRoute: string }) {
     const router = useRouter();
     const showSidebar = shouldShowSidebar(currentRoute);
+    const { loading, handleSignOut } = useSignOut();
 
     return (
         <div
@@ -80,9 +82,11 @@ export default function Sidebar({ currentRoute }: { currentRoute: string }) {
                     )}
                     <button
                         type="button"
+                        onClick={handleSignOut}
+                        disabled={loading}
                         className="bg-theme-form-on-surface/10 hover:bg-theme-form-on-surface/90 text-theme-on-surface mt-2 cursor-pointer rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 ease-in-out hover:text-white sm:px-8"
                     >
-                        Logout
+                       {loading ? 'Signing out...' : 'Sign Out'}
                     </button>
                 </div>
             </div>

@@ -1,8 +1,10 @@
 'use client';
 import React, { useState } from 'react';
 import { COUNTRIES, LANGUAGES } from '../constants/enums';
+import { useAuth } from '@/providers';
 
 export default function AccountManagement() {
+    const {decodedToken} = useAuth();
     const [formData, setFormData] = useState({
         dateOfBirth: '',
         gender: '',
@@ -58,6 +60,7 @@ export default function AccountManagement() {
                                     type="email"
                                     id="email"
                                     name="email"
+                                    value={decodedToken?.email ?? ''}
                                     disabled
                                     className="text-theme-on-surface w-full border-none bg-transparent py-1 text-base font-medium focus:outline-none disabled:opacity-60"
                                 />

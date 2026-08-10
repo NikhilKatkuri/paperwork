@@ -14,17 +14,12 @@ type SignOutResult =
 function useSignOut() {
     const [loading, setLoading] = useState<boolean>(false);
 
-    async function handleSignOut(accessToken: string): Promise<SignOutResult> {
+    async function handleSignOut(): Promise<SignOutResult> {
         setLoading(true);
 
         try {
             const { path } = endpoints.auth.signOut;
-            const res = await http.post<SignOutResponse>(path, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            });
+            const res = await http.post<SignOutResponse>(path);
 
             if (res.status === 200 || res.status === 201) {
                 localStorage.removeItem(storage_buckets.profile);

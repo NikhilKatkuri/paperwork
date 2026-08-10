@@ -1,6 +1,5 @@
 'use client';
 
-import useSignOut from '@/auth/functions/SignOut';
 import { useAuth } from '@/providers';
 import { cn } from '@/utils/cn';
 import normalizeUrl, { NormalizedUrl } from '@/utils/profile';
@@ -68,9 +67,8 @@ function getHover(pathname: string) {
 export default function Sidebar() {
     const router = useRouter();
     const pathname = usePathname();
-    const { publicProfile, accessToken } = useAuth();
+    const { publicProfile } = useAuth();
     const profile: NormalizedUrl = normalizeUrl(publicProfile?.avatarUrl || '');
-    const { loading, handleSignOut } = useSignOut();
 
     return (
         <Wrapper>
@@ -86,11 +84,7 @@ export default function Sidebar() {
             />
 
             <div className="group flex flex-col items-center justify-center *:cursor-pointer *:**:transition-all *:**:duration-150 *:**:ease-in-out min-[44rem]:self-end">
-                <button
-                    onClick={() => handleSignOut(accessToken!)}
-                    disabled={loading}
-                    className="max-[44rem]:group-hover:bg-brand-light flex h-10 w-16 items-center justify-center rounded-full"
-                >
+                <button className="max-[44rem]:group-hover:bg-brand-light flex h-10 w-16 items-center justify-center rounded-full">
                     <div className="bg-brand aspect-square h-8 overflow-hidden rounded-full min-[44rem]:h-10">
                         {profile.type === 'random' ? (
                             <div

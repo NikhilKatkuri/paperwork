@@ -2,6 +2,8 @@ import axios, {
     AxiosInstance,
     AxiosRequestConfig,
     AxiosResponse,
+    InternalAxiosRequestConfig,
+    isCancel,
     Method,
 } from 'axios';
 
@@ -16,11 +18,18 @@ type ApiResponse<T> = {
     status: number;
 };
 
-type RequestConfig = Omit<AxiosRequestConfig, 'method' | 'url' | 'data'>;
+type TokenGetter = () => string | null;
+
+export interface RequestConfig extends Omit<
+    AxiosRequestConfig,
+    'method' | 'url' | 'data'
+> {
+    signal?: AbortSignal;
+}
 
 class HttpClient {
     private client: AxiosInstance;
-    private token = '';
+    private getToken: TokenGetter = () => null;
 
     constructor() {
         this.client = axios.create({
@@ -30,11 +39,26 @@ class HttpClient {
                 'Content-Type': 'application/json',
             },
         });
+
+        this.client.interceptors.request.use(
+            (config: InternalAxiosRequestConfig) => {
+                // Dynamically fetch the token at the EXACT moment the request is sent
+                const token = this.getToken();
+                if (token && config.headers) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                }
+                return config;
+            },
+            (error) => Promise.reject(error)
+        );
     }
 
-    setBearer(token: string): this {
-        this.token = token;
-        return this;
+    public registerTokenGetter(getter: TokenGetter) {
+        this.getToken = getter;
+    }
+
+    createAbortController(): AbortController {
+        return new AbortController();
     }
 
     private async request<T>(
@@ -43,23 +67,28 @@ class HttpClient {
         data?: unknown,
         config?: RequestConfig
     ): Promise<ApiResponse<T>> {
-        const response: AxiosResponse<T> = await this.client.request({
-            method,
-            url: path,
-            data,
-            headers: {
-                ...(this.token
-                    ? { Authorization: `Bearer ${this.token}` }
-                    : {}),
-                ...(config?.headers ?? {}),
-            },
-            ...config,
-        });
+        try {
+            const response: AxiosResponse<T> = await this.client.request({
+                method,
+                url: path,
+                data,
+                headers: {
+                    ...(config?.headers ?? {}),
+                },
+                signal: config?.signal,
+                ...config,
+            });
 
-        return {
-            status: response.status,
-            data: response.data,
-        } as ApiResponse<T>;
+            return {
+                status: response.status,
+                data: response.data,
+            };
+        } catch (error) {
+            if (isCancel(error)) {
+                throw new Error(`Request to ${path} was aborted`);
+            }
+            throw error;
+        }
     }
 
     get<T>(path: string, config?: RequestConfig): Promise<ApiResponse<T>> {

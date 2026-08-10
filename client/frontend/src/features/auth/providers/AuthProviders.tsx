@@ -90,6 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         handleRefreshTokenRef.current = handleRefreshToken;
     }, [handleRefreshToken]);
 
+    const tokenRef = useRef<string | null>(accessToken);
+    useEffect(() => {
+        tokenRef.current = accessToken;
+    }, [accessToken]);
+
     const scheduleRefreshRef = useRef<(token: string) => void>(() => {});
 
     const scheduleRefresh = useCallback((token: string) => {
@@ -113,7 +118,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     scheduleRefreshRef.current(res.data.accessToken);
                 } else {
                     setAccessTokenState(null);
-                    http.setBearer('');
                 }
             },
             Math.max(delay, 0)
@@ -158,14 +162,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [updateAccessToken]);
 
     useEffect(() => {
+        http.registerTokenGetter(() => tokenRef.current);
+    }, []);
+
+    useEffect(() => {
         function updateDecodedToken() {
             if (!accessToken) {
-                http.setBearer('');
                 setDecodedToken(null);
                 return;
             }
 
-            http.setBearer(accessToken);
             console.log('Access token updated:', accessToken);
             const { decodedToken: tokenData, isExpired } =
                 jwtDecode<DecodedTokenWithMeta>(accessToken);

@@ -1,5 +1,3 @@
-type Errors = Record<string, string>;
-
 /**
  * Validates a password string.
  * Returns an error string if invalid, or null if valid.
