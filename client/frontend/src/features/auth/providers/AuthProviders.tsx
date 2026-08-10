@@ -22,6 +22,7 @@ import { http } from '@/api/http';
 import { getCachedProfile, loadProfile } from '../functions/loadProfile';
 import { PublicProfile } from '@/types';
 import jwtDecode, { DecodedTokenWithMeta } from '@/utils/jwtDecode';
+import useTwoFactorAuth from '../functions/TwoFactorAuth';
 
 export function useAuthLogic() {
     const signIn = useSignIn();
@@ -32,7 +33,7 @@ export function useAuthLogic() {
     const changePassword = useChangePassword();
     const resetPassword = useResetPassword();
     const forgotPassword = useForgotPassword();
-
+    const twoFactorAuth = useTwoFactorAuth();
     return {
         signIn,
         signUp,
@@ -42,6 +43,7 @@ export function useAuthLogic() {
         changePassword,
         resetPassword,
         forgotPassword,
+        twoFactorAuth,
     };
 }
 
@@ -74,27 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const [accessToken, setAccessTokenState] = useState<string | null>(null);
     const [initializing, setInitializing] = useState(true);
+    const [publicProfile, setPublicProfile] = useState<PublicProfile | null>(
+        null
+    );
+    const [decodedToken, setDecodedToken] =
+        useState<DecodedTokenWithMeta | null>(null);
 
     const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const handleRefreshTokenRef = useRef(handleRefreshToken);
     const isMountedRef = useRef(true);
-
-    const [publicProfile, setPublicProfile] = useState<PublicProfile | null>(
-        null
-    );
-
-    const [decodedToken, setDecodedToken] =
-        useState<DecodedTokenWithMeta | null>(null);
-
-    useEffect(() => {
-        handleRefreshTokenRef.current = handleRefreshToken;
-    }, [handleRefreshToken]);
-
     const tokenRef = useRef<string | null>(accessToken);
-    useEffect(() => {
-        tokenRef.current = accessToken;
-    }, [accessToken]);
-
     const scheduleRefreshRef = useRef<(token: string) => void>(() => {});
 
     const scheduleRefresh = useCallback((token: string) => {
@@ -124,10 +115,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
     }, []);
 
-    useEffect(() => {
-        scheduleRefreshRef.current = scheduleRefresh;
-    }, [scheduleRefresh]);
-
     const updateAccessToken = useCallback(
         (token: string | null) => {
             setAccessTokenState(token);
@@ -142,15 +129,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     useEffect(() => {
+        handleRefreshTokenRef.current = handleRefreshToken;
+    }, [handleRefreshToken]);
+
+    useEffect(() => {
+        tokenRef.current = accessToken;
+    }, [accessToken]);
+
+    useEffect(() => {
+        scheduleRefreshRef.current = scheduleRefresh;
+    }, [scheduleRefresh]);
+
+    useEffect(() => {
         isMountedRef.current = true;
 
-        handleRefreshTokenRef.current().then((res) => {
-            if (!isMountedRef.current) return;
-            if (res.ok) {
-                updateAccessToken(res.data.accessToken);
+        async function initAuth() {
+            try {
+                const res = await handleRefreshTokenRef.current();
+                if (!isMountedRef.current) return;
+                if (res?.ok && res?.data?.accessToken) {
+                    updateAccessToken(res.data.accessToken);
+                } else {
+                    updateAccessToken(null);
+                }
+            } catch {
+                if (isMountedRef.current) {
+                    updateAccessToken(null);
+                }
+            } finally {
+                if (isMountedRef.current) {
+                    setInitializing(false);
+                }
             }
-            setInitializing(false);
-        });
+        }
+
+        initAuth();
 
         return () => {
             isMountedRef.current = false;
@@ -172,7 +185,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
-            console.log('Access token updated:', accessToken);
             const { decodedToken: tokenData, isExpired } =
                 jwtDecode<DecodedTokenWithMeta>(accessToken);
 
@@ -187,47 +199,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         let cancelled = false;
+        const userId = decodedToken?.userId;
 
         function updateProfile() {
-            console.log('Updating profile for userId:', decodedToken?.userId);
-            if (!decodedToken?.userId) {
-                console.log(
-                    'No userId found in decoded token. Clearing public profile.'
-                );
+            if (!userId) {
                 setPublicProfile(null);
                 return;
             }
-            console.log('Fetching profile for userId:', decodedToken.userId);
+
             const cached = getCachedProfile();
+
             if (cached) {
-                console.log(
-                    'Using cached profile for userId:',
-                    decodedToken.userId
-                );
                 setPublicProfile(cached);
                 return;
             }
-            console.log(
-                'Loading profile from server for userId:',
-                decodedToken.userId
-            );
+
             loadProfile().then((profile) => {
                 if (!cancelled && profile) {
-                    console.log(
-                        'Profile loaded from server for userId:',
-                        decodedToken.userId,
-                        profile
-                    );
                     setPublicProfile(profile);
                 }
             });
         }
         updateProfile();
         return () => {
-            console.log(
-                'Cleaning up profile effect for userId:',
-                decodedToken?.userId
-            );
             cancelled = true;
         };
     }, [decodedToken?.userId]);

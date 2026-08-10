@@ -4,7 +4,7 @@ import { COUNTRIES, LANGUAGES } from '../constants/enums';
 import { useAuth } from '@/providers';
 
 export default function AccountManagement() {
-    const {decodedToken} = useAuth();
+    const { decodedToken } = useAuth();
     const [formData, setFormData] = useState({
         dateOfBirth: '',
         gender: '',
@@ -26,10 +26,10 @@ export default function AccountManagement() {
     };
 
     return (
-        <div className="h-full w-full scrollbar-none overflow-y-auto rounded-xl s">
+        <div className="h-full w-full scrollbar-none overflow-y-auto rounded-xl px-2">
             <form
                 onSubmit={handleSubmit}
-                className="flex flex-col justify-between gap-6 "
+                className="flex flex-col justify-between gap-6"
             >
                 <div className="flex flex-col gap-6">
                     <div>
@@ -229,18 +229,18 @@ export default function AccountManagement() {
                         </div>
                     </div>
                 </div>
-  
+
                 <div className="flex w-full items-center justify-end gap-4 py-4 md:pt-6">
                     <button
                         type="button"
-                        className="bg-theme-form-on-surface/10 hover:bg-theme-form-on-surface/90 text-theme-on-surface cursor-pointer rounded-full p-4 px-7 sm:px-8 text-sm font-semibold transition-all duration-200 ease-in-out hover:text-white"
+                        className="bg-theme-form-on-surface/10 hover:bg-theme-form-on-surface/90 text-theme-on-surface cursor-pointer rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 ease-in-out hover:text-white sm:px-8"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
                         disabled={isSaving}
-                        className="bg-brand-depth text-on-brand-depth hover:bg-brand-depth/90 cursor-pointer rounded-full p-4 px-7 sm:px-8 text-sm font-semibold transition-all duration-200 disabled:opacity-50"
+                        className="bg-brand-depth text-on-brand-depth hover:bg-brand-depth/90 cursor-pointer rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 disabled:opacity-50 sm:px-8"
                     >
                         {isSaving ? 'Saving...' : 'Save Changes'}
                     </button>

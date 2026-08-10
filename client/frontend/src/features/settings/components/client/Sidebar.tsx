@@ -86,7 +86,7 @@ export default function Sidebar({ currentRoute }: { currentRoute: string }) {
                         disabled={loading}
                         className="bg-theme-form-on-surface/10 hover:bg-theme-form-on-surface/90 text-theme-on-surface mt-2 cursor-pointer rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 ease-in-out hover:text-white sm:px-8"
                     >
-                       {loading ? 'Signing out...' : 'Sign Out'}
+                        {loading ? 'Signing out...' : 'Sign Out'}
                     </button>
                 </div>
             </div>

@@ -112,6 +112,13 @@ authRouter.post(
     controller.checkEmailController
 );
 
+authRouter.get(
+    '/account',
+    actionLimiter,
+    protect,
+    userController.getAccountActions
+);
+
 authRouter.post(
     '/account/action',
     actionLimiter,

@@ -11,6 +11,20 @@ class UserController extends AutoBoundController {
         super();
     }
 
+    async getAccountActions(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { userId } = this.getContext(req);
+            const result = await UserServiceBoot.getAccountActions(userId);
+            res.status(StatusCodes.OK).json({
+                success: true,
+                data: result,
+                message: 'retrieved successfully',
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async accountActions(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId } = this.getContext(req);

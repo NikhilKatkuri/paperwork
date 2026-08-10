@@ -196,3 +196,18 @@ body {
             'opsz' 20;
     }
 }
+
+@keyframes shimmer {
+    0% {
+        background-position: 300% 0;
+    }
+    100% {
+        background-position: -300% 0;
+    }
+}
+
+.shimmer {
+    background: linear-gradient(60deg, #e2e8f049 0%, #f8fafc 50%, #e2e8f0 100%);
+    background-size: 300% 100%;
+    animation: shimmer 1.5s infinite linear;
+}

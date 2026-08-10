@@ -33,7 +33,7 @@ const EditProfilePage = memo(() => {
     }, [publicProfile, hydrated]);
 
     return (
-        <div className="flex h-auto flex-col gap-6 md:h-full">
+        <div className="flex h-auto flex-col gap-6 px-2 md:h-full">
             <div className="text-theme-on-surface h-full w-full flex-1 flex-col gap-6">
                 <h1 className="my-2 text-lg font-bold md:text-xl">
                     Edit Profile

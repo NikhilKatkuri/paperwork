@@ -16,8 +16,28 @@ export const endpoints = {
         changePassword: { path: '/auth/change-password', method: 'POST' },
         forgotPassword: { path: '/auth/forgot-password', method: 'POST' },
         checkEmailExists: { path: '/auth/check-email', method: 'POST' },
+        action: {
+            path: '/auth/account/action',
+            method: 'POST',
+            types: {
+                enableTwoFactor: 'enable-2fa',
+                disableTwoFactor: 'disable-2fa',
+            },
+        },
+        accountAction: {
+            path: '/auth/account/action',
+            method: 'POST',
+        },
+        account: {
+            path: '/auth/account',
+            method: 'GET',
+        },
         resetPassword: (token: string): EndpointConfig => ({
             path: `/auth/reset-password/${token}`,
+            method: 'POST',
+        }),
+        verifyTwoFactor: (otp: string): EndpointConfig => ({
+            path: `/auth/sign-in/2fa/${otp} `,
             method: 'POST',
         }),
     },

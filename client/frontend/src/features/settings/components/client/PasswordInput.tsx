@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import React, { useState } from 'react';
 
 interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -24,19 +24,19 @@ export default function PasswordInput({
             >
                 <div className="flex items-center justify-between">
                     <span className="text-theme-on-surface/60 text-xs">
-                    {label}
-                </span>
-                <button
-                    type="button"
-                    className="text-theme-on-surface/60 hover:text-theme-on-surface focus:outline-none"
-                    onClick={() => setIsVisible(!isVisible)}
-                >
-                    {isVisible ? 'Hide' : 'Show'}
-                </button>
+                        {label}
+                    </span>
+                    <button
+                        type="button"
+                        className="text-theme-on-surface/60 hover:text-theme-on-surface focus:outline-none"
+                        onClick={() => setIsVisible(!isVisible)}
+                    >
+                        {isVisible ? 'Hide' : 'Show'}
+                    </button>
                 </div>
                 <input
                     {...props}
-                    type={isVisible ? "text" : "password"}
+                    type={isVisible ? 'text' : 'password'}
                     id={id}
                     name={name}
                     autoComplete={id}

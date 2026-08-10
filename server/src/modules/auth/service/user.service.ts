@@ -217,6 +217,31 @@ class UserService {
             throw AppError.Internal('An unexpected error occurred');
         }
     }
+
+    async getAccountActions(userId: string) {
+        try {
+            const user = await UserModel.findById(userId)
+                .select(
+                    '+accountDeletedStatus +accountDeactivationStatus +twofactorEnabled'
+                )
+                .lean();
+
+            if (!user) {
+                throw AppError.NotFound('User not found');
+            }
+
+            return {
+                accountDeletedStatus: user.accountDeletedStatus,
+                accountDeactivationStatus: user.accountDeactivationStatus,
+                twofactorEnabled: user.twofactorEnabled,
+            };
+        } catch (error) {
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw AppError.Internal('An unexpected error occurred');
+        }
+    }
 }
 
 const UserServiceBoot = new UserService();

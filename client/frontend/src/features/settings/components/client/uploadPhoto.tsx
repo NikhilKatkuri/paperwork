@@ -58,7 +58,7 @@ export default function UploadPhoto({
             <h1 className="text-theme-on-surface/60 text-sm">Photo</h1>
 
             <div className="mt-5 flex items-center gap-6">
-                <div className="border-theme-on-surface/30 bg-theme-surface h-18 aspect-square md:h-20 lg:h-24 overflow-hidden rounded-full border">
+                <div className="border-theme-on-surface/30 bg-theme-surface aspect-square h-18 overflow-hidden rounded-full border md:h-20 lg:h-24">
                     {imageSrc ? (
                         <Image
                             src={imageSrc}

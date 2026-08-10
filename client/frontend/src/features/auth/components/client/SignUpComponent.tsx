@@ -6,7 +6,7 @@ import {
     validatePassword,
     validateString,
 } from '@/utils/validations';
-import { useSearchParams } from 'next/navigation';
+import { redirect, useSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -57,6 +57,11 @@ const SignUpClientComponent = () => {
         if (res.ok) {
             toast.success('Account created successfully!', ToastOptions);
             setAccessToken(res.data.accessToken);
+            toast.loading('Redirecting to dashboard...', ToastOptions);
+            setTimeout(() => {
+                toast.dismiss();
+                redirect('/user');
+            }, 2000);
         } else {
             toast.error(res.error, ToastOptions);
         }

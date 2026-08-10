@@ -7,6 +7,8 @@ import { http } from '@/api/http';
 import axios, { AxiosError } from 'axios';
 import { SignOutResponse } from '@/auth/types/api.response.types';
 import storage_buckets from '@/config';
+import { redirect } from 'next/navigation';
+import { toast } from 'sonner';
 
 type SignOutResult =
     { ok: true; data: SignOutResponse } | { ok: false; error: string };
@@ -24,7 +26,15 @@ function useSignOut() {
             if (res.status === 200 || res.status === 201) {
                 localStorage.removeItem(storage_buckets.profile);
                 localStorage.removeItem(storage_buckets.cloudinary);
-                return { ok: true, data: res.data as SignOutResponse };
+                toast.loading(
+                    'Your session has expired. Please sign in again to continue.',
+                    { duration: 2000, position: 'top-center' }
+                );
+                setTimeout(() => {
+                    toast.dismiss();
+                    redirect('/');
+                }, 500);
+                return { ok: true, data: res.data };
             }
 
             return { ok: false, error: 'Unexpected response from server.' };

@@ -1,7 +1,7 @@
 import PasswordPage from '@/features/settings/pages/PasswordPage';
 
 const page = () => {
-     return <PasswordPage/>
+    return <PasswordPage />;
 };
 
 export default page;

@@ -1,7 +1,7 @@
 import AccountMangement from '@/features/settings/pages/AccountMangement';
 
 const page = () => {
-   return <AccountMangement />;
+    return <AccountMangement />;
 };
 
 export default page;

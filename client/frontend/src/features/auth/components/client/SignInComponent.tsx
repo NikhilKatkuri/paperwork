@@ -7,7 +7,7 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const ToastOptions = {
-    duration: 4000,
+    duration: 2000,
     position: 'top-center',
 } as const;
 
@@ -65,6 +65,14 @@ const SignInClientComponent = () => {
             } else {
                 toast.success('Signed in successfully!', ToastOptions);
                 setAccessToken(res.data.accessToken);
+                toast.loading('Redirecting...', {
+                    ...ToastOptions,
+                    duration: 1000,
+                });
+                setTimeout(() => {
+                    toast.dismiss();
+                    redirect('/user');
+                }, 1500);
             }
         } else {
             toast.error(res.error, ToastOptions);
