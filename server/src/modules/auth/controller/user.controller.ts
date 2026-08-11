@@ -30,6 +30,7 @@ class UserController extends AutoBoundController {
             const { userId } = this.getContext(req);
             const data = req.body as AccountActionService;
             const result = await UserServiceBoot.account(data, userId);
+            this.clearCookie(res, 'refreshToken');
             res.status(StatusCodes.OK).json(result);
         } catch (error) {
             next(error);
