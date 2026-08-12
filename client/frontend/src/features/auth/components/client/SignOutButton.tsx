@@ -4,11 +4,11 @@ import { useAuth } from '@/providers';
 import { toast } from 'sonner';
 
 const SignOutButton = () => {
-    const { signOut, accessToken, setAccessToken } = useAuth();
+    const { signOut, setAccessToken } = useAuth();
     const { loading, handleSignOut } = signOut;
 
     const handleSubmit = async () => {
-        const result = await handleSignOut(accessToken ?? '');
+        const result = await handleSignOut();
         if (result.ok) {
             toast.success('Signed out successfully');
             setAccessToken(null);
