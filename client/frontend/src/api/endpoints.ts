@@ -32,6 +32,9 @@ export const endpoints = {
             path: '/auth/account',
             method: 'GET',
         },
+        sensitiveInfo:{
+            path: '/auth/account/personal',
+        },
         resetPassword: (token: string): EndpointConfig => ({
             path: `/auth/reset-password/${token}`,
             method: 'POST',

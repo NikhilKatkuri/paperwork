@@ -1,29 +1,113 @@
 'use client';
+
 import { useAuth } from '@/providers';
-import React, { useState } from 'react';
-import { COUNTRIES, LANGUAGES } from '../../constants/enums';
+import React, { useEffect, useState } from 'react';
+import { COUNTRIES, GENDERS, LANGUAGES } from '../../constants/enums';
+import { sensitiveData } from '@/types';
+import useUserPersonalInfo, {
+    useRetrievePersonalInfo,
+} from '../../functions/personalInfo';
+import { toast } from 'sonner';
 
-export default function PresonalInfoComponent() {
+export default function PersonalInfoComponent() {
     const { decodedToken } = useAuth();
-    const [formData, setFormData] = useState({
-        dateOfBirth: '',
-        gender: '',
-        country: '',
-        language: '',
-    });
-    const [isSaving, setIsSaving] = useState(false);
 
-    const handleChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-    ) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
-    };
+    const [gender, setGender] = useState<sensitiveData['gender']>('non-binary');
+    const [dob, setDob] = useState<string>('');
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const { saving, update } = useUserPersonalInfo();
+
+    const { loading, personalInfo, retrieve } = useRetrievePersonalInfo();
+
+    useEffect(() => {
+        retrieve();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        function setInitialValues() {
+            if (personalInfo?.gender) {
+                setGender(personalInfo.gender);
+            }
+
+            if (personalInfo?.dob) {
+                setDob(new Date(personalInfo.dob).toISOString().split('T')[0]);
+            } else {
+                setDob('');
+            }
+        }
+        setInitialValues();
+    }, [personalInfo]);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setIsSaving(true);
+
+        try {
+            const formData = new FormData(e.currentTarget);
+
+            const rawDob = formData.get('dateOfBirth') as string;
+
+            const country = formData.get('country') as sensitiveData['country'];
+
+            const language = formData.get(
+                'language'
+            ) as sensitiveData['language'];
+
+            const updatedData: Partial<sensitiveData> = {
+                dob: rawDob ? new Date(rawDob) : undefined,
+                gender,
+                country: country || undefined,
+                language: language || undefined,
+            };
+
+            const filteredData = Object.fromEntries(
+                Object.entries(updatedData).filter(
+                    ([, value]) => value !== undefined && value !== null
+                )
+            ) as Partial<sensitiveData>;
+
+            const res = await update(filteredData);
+
+            if (res.success) {
+                toast.success('Personal information updated successfully');
+            } else {
+                toast.error(res.message);
+            }
+        } catch (error) {
+            console.error('Error saving personal information:', error);
+
+            toast.error('Failed to update personal information');
+        }
     };
+
+    const handleReset = () => {
+        setGender(personalInfo?.gender ?? 'non-binary');
+        setDob(
+            personalInfo?.dob
+                ? new Date(personalInfo.dob).toISOString().split('T')[0]
+                : ''
+        );
+    };
+
+    if (loading || personalInfo === null) {
+        return (
+            <div
+                role="status"
+                aria-live="polite"
+                className="flex max-w-xl flex-col gap-6"
+            >
+                <span className="sr-only">Loading personal information…</span>
+
+                <div className="mt-4 grid grid-cols-1 gap-6">
+                    <div className="h-16 animate-pulse rounded-xl bg-gray-100" />
+                    <div className="h-16 animate-pulse rounded-xl bg-gray-100" />
+                    <div className="h-10 w-1/2 animate-pulse rounded-lg bg-gray-100" />
+                    <div className="h-16 animate-pulse rounded-xl bg-gray-100" />
+                    <div className="h-16 animate-pulse rounded-xl bg-gray-100" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-8">
@@ -34,99 +118,103 @@ export default function PresonalInfoComponent() {
                             <h2 className="text-md font-semibold md:text-lg">
                                 Your account
                             </h2>
+
                             <label
                                 htmlFor="email"
-                                className="border-theme-on-surface/40 focus-within:border-brand-depth/90 focus-within:ring-brand-depth/50 rounded-xl border p-3 transition-all duration-200 focus-within:ring-2"
+                                className="rounded-xl border border-gray-300 p-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500"
                             >
-                                <span className="text-theme-on-surface/60 block text-xs">
+                                <span className="block text-xs text-gray-500">
                                     Email
                                 </span>
+
                                 <input
                                     type="email"
                                     id="email"
-                                    name="email"
                                     value={decodedToken?.email ?? ''}
                                     disabled
-                                    className="text-theme-on-surface w-full border-none bg-transparent py-1 text-base font-medium focus:outline-none disabled:opacity-60"
+                                    className="w-full border-none bg-transparent py-1 text-base font-medium outline-none disabled:opacity-60"
                                 />
                             </label>
                         </div>
                     </section>
+
                     <section aria-label="Personal Information">
-                        <form onSubmit={handleSubmit}>
+                        <form onSubmit={handleSubmit} onReset={handleReset}>
                             <div className="grid w-full grid-cols-1 gap-4">
                                 <div>
                                     <h2 className="text-md font-semibold md:text-lg">
                                         Personal information
                                     </h2>
-                                    <p className="text-theme-on-surface/60 mt-0.5 text-xs">
+
+                                    <p className="mt-1 text-xs text-gray-500">
                                         Completely optional fields
                                     </p>
                                 </div>
-        
+
                                 <label
                                     htmlFor="dateOfBirth"
-                                    className="border-theme-on-surface/40 focus-within:border-brand-depth/90 focus-within:ring-brand-depth/50 rounded-xl border p-3 transition-all duration-200 focus-within:ring-2"
+                                    className="rounded-xl border border-gray-300 p-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500"
                                 >
-                                    <span className="text-theme-on-surface/60 block text-xs">
+                                    <span className="block text-xs text-gray-500">
                                         Date of Birth
                                     </span>
+
                                     <input
                                         type="date"
                                         id="dateOfBirth"
                                         name="dateOfBirth"
-                                        value={formData.dateOfBirth}
-                                        onChange={handleChange}
-                                        className="text-theme-on-surface w-full border-none bg-transparent py-1 text-base font-medium focus:outline-none"
+                                        value={dob}
+                                        className="w-full border-none bg-transparent py-1 text-base font-medium outline-none"
+                                        onChange={(e) => setDob(e.target.value)}
                                     />
                                 </label>
 
-                                {/* Gender Selection */}
                                 <fieldset className="grid gap-2">
-                                    <legend className="text-theme-on-surface/60 text-xs">
+                                    <legend className="text-xs text-gray-500">
                                         Gender
                                     </legend>
-                                    <div className="flex items-center gap-4 pt-1">
-                                        {['male', 'female', 'other'].map(
-                                            (option) => (
-                                                <label
-                                                    key={option}
-                                                    className="flex cursor-pointer items-center gap-2 text-sm capitalize"
-                                                >
-                                                    <input
-                                                        type="radio"
-                                                        name="gender"
-                                                        value={option}
-                                                        checked={
-                                                            formData.gender ===
-                                                            option
-                                                        }
-                                                        onChange={handleChange}
-                                                        className="accent-brand-depth h-4 w-4"
-                                                    />
-                                                    {option}
-                                                </label>
-                                            )
-                                        )}
+
+                                    <div className="flex flex-wrap items-center gap-4 pt-1">
+                                        {Object.values(GENDERS).map((value) => (
+                                            <label
+                                                key={value}
+                                                className="flex cursor-pointer items-center gap-2 text-sm capitalize"
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    name="gender"
+                                                    value={value}
+                                                    checked={gender === value}
+                                                    onChange={() =>
+                                                        setGender(value)
+                                                    }
+                                                    className="h-4 w-4 accent-blue-600"
+                                                />
+
+                                                {value}
+                                            </label>
+                                        ))}
                                     </div>
                                 </fieldset>
 
-                                {/* Country Select */}
                                 <label
                                     htmlFor="country"
-                                    className="border-theme-on-surface/40 focus-within:border-brand-depth/90 focus-within:ring-brand-depth/50 rounded-xl border p-3 transition-all duration-200 focus-within:ring-2"
+                                    className="rounded-xl border border-gray-300 p-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500"
                                 >
-                                    <span className="text-theme-on-surface/60 block text-xs">
+                                    <span className="block text-xs text-gray-500">
                                         Country/Region
                                     </span>
+
                                     <select
                                         id="country"
                                         name="country"
-                                        value={formData.country}
-                                        onChange={handleChange}
-                                        className="text-theme-on-surface w-full border-none bg-transparent py-1 text-base font-medium focus:outline-none"
+                                        defaultValue={
+                                            personalInfo?.country ?? ''
+                                        }
+                                        className="w-full border-none bg-transparent py-1 text-base font-medium outline-none"
                                     >
                                         <option value="">Select Country</option>
+
                                         {Object.keys(COUNTRIES).map(
                                             (countryKey) => (
                                                 <option
@@ -140,24 +228,26 @@ export default function PresonalInfoComponent() {
                                     </select>
                                 </label>
 
-                                {/* Language Select */}
                                 <label
                                     htmlFor="language"
-                                    className="border-theme-on-surface/40 focus-within:border-brand-depth/90 focus-within:ring-brand-depth/50 rounded-xl border p-3 transition-all duration-200 focus-within:ring-2"
+                                    className="rounded-xl border border-gray-300 p-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500"
                                 >
-                                    <span className="text-theme-on-surface/60 block text-xs">
+                                    <span className="block text-xs text-gray-500">
                                         Language
                                     </span>
+
                                     <select
                                         id="language"
                                         name="language"
-                                        value={formData.language}
-                                        onChange={handleChange}
-                                        className="text-theme-on-surface w-full border-none bg-transparent py-1 text-base font-medium focus:outline-none"
+                                        defaultValue={
+                                            personalInfo?.language ?? ''
+                                        }
+                                        className="w-full border-none bg-transparent py-1 text-base font-medium outline-none"
                                     >
                                         <option value="">
                                             Select Language
                                         </option>
+
                                         {LANGUAGES.map((lang) => (
                                             <option key={lang} value={lang}>
                                                 {lang}
@@ -166,19 +256,22 @@ export default function PresonalInfoComponent() {
                                     </select>
                                 </label>
                             </div>
+
                             <div className="flex w-full items-center justify-end gap-4 py-4 md:pt-6">
                                 <button
-                                    type="button"
-                                    className="bg-theme-form-on-surface/10 hover:bg-theme-form-on-surface/90 text-theme-on-surface cursor-pointer rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 ease-in-out hover:text-white sm:px-8"
+                                    type="reset"
+                                    disabled={saving}
+                                    className="cursor-pointer rounded-full bg-gray-100 px-7 py-4 text-sm font-semibold transition-all duration-200 hover:bg-gray-900 hover:text-white disabled:opacity-50 sm:px-8"
                                 >
                                     Cancel
                                 </button>
+
                                 <button
                                     type="submit"
-                                    disabled={isSaving}
-                                    className="bg-brand-depth text-on-brand-depth hover:bg-brand-depth/90 cursor-pointer rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 disabled:opacity-50 sm:px-8"
+                                    disabled={saving}
+                                    className="cursor-pointer rounded-full bg-blue-600 px-7 py-4 text-sm font-semibold text-white transition-all duration-200 hover:bg-blue-700 disabled:opacity-50 sm:px-8"
                                 >
-                                    {isSaving ? 'Saving...' : 'Save Changes'}
+                                    {saving ? 'Saving...' : 'Save Changes'}
                                 </button>
                             </div>
                         </form>
