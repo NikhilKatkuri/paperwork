@@ -4,7 +4,7 @@ import FormsModel from '@/modules/forms/schemas/schemas.forms';
 import SectionModel from '@/modules/forms/schemas/schemas.sections';
 import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
 import UserModel from '@/modules/auth/schemas/user.schema';
-import { FormCore } from '@/types/form/forms';
+import { FormCore, GetAllOptions } from '@/types/form/forms';
 import { emailQueue } from '@/queues';
 
 class FormsService {
@@ -311,14 +311,22 @@ class FormsService {
         }
     }
 
-    async getAll(userId: string) {
-        const forms = await FormsModel.find({ userId }).select('-__v').lean();
-        if (!forms) {
-            throw AppError.FormNotFound('No forms found for this user');
+    async getAll(userId: string, options: GetAllOptions) {
+        const { limit, page, lastUpdated } = options;
+        const skip = (page - 1) * limit;
+
+        const query: Record<string, any> = { userId };
+        if (lastUpdated) {
+            query.updatedAt = { $gt: lastUpdated };
         }
-        if (!forms.length) {
-            throw AppError.FormNotFound('No forms found for this user');
-        }
+        const forms = await FormsModel.find(query)
+            .select(
+                'title description isPublished isPrivate createdAt updatedAt'
+            )
+            .sort({ updatedAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
 
         return forms;
     }

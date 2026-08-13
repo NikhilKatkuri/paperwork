@@ -176,6 +176,11 @@ interface ResponseCore {
     };
 }
 
+interface GetAllOptions {
+    limit: number;
+    page: number;
+    lastUpdated?: Date;
+}
 export {
     QUESTION_TYPE,
     QuestionType,
@@ -193,4 +198,6 @@ export {
     AnswerEntry,
     ResponseCore,
     FormSettings,
+    GetAllOptions
 };
+

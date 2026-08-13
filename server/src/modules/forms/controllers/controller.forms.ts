@@ -161,7 +161,30 @@ class FormsController {
     async getAll(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId } = this.getRequestData(req);
-            const forms = await this.service.getAll(userId);
+            const limit = Math.min(
+                Math.max(parseInt(req.query.limit as string, 10) || 10, 1),
+                100
+            );
+
+            const page = Math.max(
+                parseInt(req.query.page as string, 10) || 1,
+                1
+            );
+
+            let lastUpdated: Date | undefined;
+            if (req.query.lastUpdated) {
+                const parsedDate = new Date(req.query.lastUpdated as string);
+                if (!isNaN(parsedDate.getTime())) {
+                    lastUpdated = parsedDate;
+                }
+            }
+
+            const forms = await this.service.getAll(userId, {
+                page,
+                limit,
+                lastUpdated
+            });
+            
             res.status(StatusCodes.OK).json({
                 success: true,
                 message: 'Forms retrieved successfully',
