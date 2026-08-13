@@ -32,7 +32,7 @@ export const endpoints = {
             path: '/auth/account',
             method: 'GET',
         },
-        sensitiveInfo:{
+        sensitiveInfo: {
             path: '/auth/account/personal',
         },
         resetPassword: (token: string): EndpointConfig => ({
@@ -46,5 +46,8 @@ export const endpoints = {
     },
     signature: {
         cloudinary: { path: '/cloudinary/signature', method: 'GET' },
+    },
+    forms: {
+        allForms: { path: '/forms', method: 'get' },
     },
 } as const;

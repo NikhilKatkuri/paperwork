@@ -1,9 +1,16 @@
 'use client';
 
+import { FormCore, Time } from '@/features/forms/types';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
 
-function FormsView({ viewAsRow }: { viewAsRow: boolean }) {
+function FormsView({
+    viewAsRow,
+    form,
+}: {
+    viewAsRow: boolean;
+    form?: FormCore & Time;
+}) {
     if (viewAsRow) {
         return (
             <Link
@@ -18,7 +25,9 @@ function FormsView({ viewAsRow }: { viewAsRow: boolean }) {
                             format_list_bulleted
                         </div>
                     </div>
-                    <p className="font-medium">Recent forms</p>
+                    <p className="font-medium">
+                        {form ? form.title : 'Recent forms'}
+                    </p>
                 </div>
                 <div
                     className={cn(
@@ -30,7 +39,7 @@ function FormsView({ viewAsRow }: { viewAsRow: boolean }) {
                         <p className="text-md">me</p>
                     </div>
                     <div className="max-[900px]:hidden">
-                        <p className="text-md">9:00 AM</p>
+                        <p className="text-md">     {form ? form.updatedAt.toString() : '9 AM'}</p>
                     </div>
 
                     <div className="flex items-center justify-end">
