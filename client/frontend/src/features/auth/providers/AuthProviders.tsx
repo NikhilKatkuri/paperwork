@@ -10,19 +10,20 @@ import {
     useCallback,
 } from 'react';
 
-import useSignIn from '@/auth/functions/SignIn';
-import useEmailCheckUp from '@/auth/functions/CheckEmail';
-import useSignUp from '../functions/SignUp';
-import useSignOut from '../functions/SignOut';
-import useRefreshToken from '../functions/RefreshToken';
-import useChangePassword from '../functions/ChangePassword';
-import useResetPassword from '../functions/ResetPassword';
-import useForgotPassword from '../functions/ForgotPassword';
+import useSignIn from '@/auth/api/SignIn';
+import useEmailCheckUp from '@/auth/api/CheckEmail';
+import useSignUp from '../api/SignUp';
+import useSignOut from '../api/SignOut';
+import useRefreshToken from '../api/RefreshToken';
+import useChangePassword from '../api/ChangePassword';
+import useResetPassword from '../api/ResetPassword';
+import useForgotPassword from '../api/ForgotPassword';
 import { http } from '@/api/http';
-import { getCachedProfile, loadProfile } from '../functions/loadProfile';
+import { getCachedProfile, loadProfile } from '../api/loadProfile';
 import { PublicProfile } from '@/types';
 import jwtDecode, { DecodedTokenWithMeta } from '@/utils/jwtDecode';
-import useTwoFactorAuth from '../functions/TwoFactorAuth';
+import useTwoFactorAuth from '../api/TwoFactorAuth';
+import { AuthContextType } from '../types';
 
 export function useAuthLogic() {
     const signIn = useSignIn();
@@ -47,18 +48,7 @@ export function useAuthLogic() {
     };
 }
 
-type AuthContextType = ReturnType<typeof useAuthLogic> & {
-    accessToken: string | null;
-    setAccessToken: (token: string | null) => void;
-    initializing: boolean;
-    publicProfile: PublicProfile | null;
-    setPublicProfile: React.Dispatch<
-        React.SetStateAction<PublicProfile | null>
-    >;
-    decodedToken: DecodedTokenWithMeta | null;
-};
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType<ReturnType<typeof useAuthLogic>> | undefined>(undefined);
 
 function getExpiryMs(token: string): number | null {
     try {

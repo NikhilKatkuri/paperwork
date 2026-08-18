@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import FormController from '../components/client/FormController';
 import PasswordInput from '../components/client/PasswordInput';
-import usePasswordChange from '../functions/passwordChange';
+import usePasswordChange from '../api/passwordChange';
 import { toast } from 'sonner';
 
 export default function PasswordPage() {

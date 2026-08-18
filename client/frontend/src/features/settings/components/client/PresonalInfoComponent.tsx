@@ -6,7 +6,7 @@ import { COUNTRIES, GENDERS, LANGUAGES } from '../../constants/enums';
 import { sensitiveData } from '@/types';
 import useUserPersonalInfo, {
     useRetrievePersonalInfo,
-} from '../../functions/personalInfo';
+} from '../../api/personalInfo';
 import { toast } from 'sonner';
 
 export default function PersonalInfoComponent() {

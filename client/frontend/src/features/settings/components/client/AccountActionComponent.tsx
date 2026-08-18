@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useAccountAction, {
     AccountActionService,
-} from '../../functions/accountAction';
+} from '../../api/accountAction';
 import PasswordModal from '@/components/ui/PasswordModal';
 import { toast } from 'sonner';
 

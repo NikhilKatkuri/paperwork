@@ -33,6 +33,6 @@
         ".next/dev/types/**/*.ts",
         "**/*.mts",
         "../../server/src/modules/auth/utils/randomprofiepicture.ts"
-    ],
+, "src/features/auth/types/api.response.ts"    ],
     "exclude": ["node_modules"]
 }

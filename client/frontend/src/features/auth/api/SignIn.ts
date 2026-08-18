@@ -1,22 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { SignInRequestBody } from '@/auth/types/api.request.types';
+import { ApiResponse, SignInRequestBody , SignInResponse } from '@/auth/types';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
 
 import axios, { AxiosError } from 'axios';
-import { SignInResponse } from '@/auth/types/api.response.types';
-
-type SignInResult =
-    { ok: true; data: SignInResponse } | { ok: false; error: string };
-
+ 
 function useSignIn() {
     const [loading, setLoading] = useState<boolean>(false);
 
     async function handleSignIn(
         credential: SignInRequestBody
-    ): Promise<SignInResult> {
+    ): Promise<ApiResponse<SignInResponse>> {
         setLoading(true);
 
         try {

@@ -4,7 +4,7 @@ import { memo, useEffect, useState } from 'react';
 import UploadPhoto from '../components/client/uploadPhoto';
 import { PublicProfile } from '@/types';
 import { useAuth } from '@/providers';
-import useProfileUpdate from '../functions/updateprofile';
+import useProfileUpdate from '../api/updateprofile';
 
 const EditProfilePage = memo(() => {
     const { publicProfile, setPublicProfile } = useAuth();

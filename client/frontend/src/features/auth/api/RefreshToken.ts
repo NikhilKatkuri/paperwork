@@ -1,16 +1,15 @@
 'use client';
 import { useState, useCallback } from 'react';
 import axios from 'axios';
-import { RefreshTokenResponse } from '@/auth/types/api.response.types';
+import { ApiResponse, RefreshTokenResponse } from '@/auth/types';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
-import { getErrorMessage } from '@/api/error';
-type RefreshTokenResult =
-    { ok: true; data: RefreshTokenResponse } | { ok: false; error: string };
+import { getErrorMessage } from '@/api/error'; 
+
 function useRefreshToken() {
     const [loading, setLoading] = useState(false);
     const handleRefreshToken =
-        useCallback(async (): Promise<RefreshTokenResult> => {
+        useCallback(async (): Promise<ApiResponse<RefreshTokenResponse>> => {
             setLoading(true);
             try {
                 const { path } = endpoints.auth.refreshToken;

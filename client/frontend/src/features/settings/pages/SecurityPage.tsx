@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import useAccountMetaOnly from '../functions/getAccount';
-import useAccountAction from '../functions/accountAction';
+import useAccountMetaOnly from '../api/getAccount';
+import useAccountAction from '../api/accountAction';
 import PasswordModal from '@/components/ui/PasswordModal';
 export default function SecurityPage() {
     const { loading: metaLoading, accountMeta } = useAccountMetaOnly();

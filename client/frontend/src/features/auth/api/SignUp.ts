@@ -1,35 +1,40 @@
 'use client';
 
+import { useState } from 'react';
+import { ApiResponse, SignUpRequestBody , SignUpResponse } from '@/auth/types'; 
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
-import { useState } from 'react';
-import { SignInResponse } from '../types/api.response.types';
-import { AxiosError, isAxiosError } from 'axios';
 
-export default function useTwoFactorAuth() {
+import axios, { AxiosError } from 'axios';
+ 
+function useSignUp() {
     const [loading, setLoading] = useState<boolean>(false);
 
-    async function handler(otp: string) {
+    async function handleSignUp(
+        credential: SignUpRequestBody
+    ): Promise<ApiResponse<SignUpResponse>> {
         setLoading(true);
 
         try {
-            const { path } = endpoints.auth.verifyTwoFactor(otp);
-            const res = await http.post(path);
-            if (res.status === 200) {
-                return { ok: true, data: res.data as SignInResponse };
+            const { path } = endpoints.auth.signUp;
+            const res = await http.post<SignUpResponse>(path, credential);
+
+            if (res.status === 200 || res.status === 201) {
+                return { ok: true, data: res.data as SignUpResponse };
             }
+
             return { ok: false, error: 'Unexpected response from server.' };
         } catch (e: unknown) {
             let msg = 'An unexpected error occurred. Please try again.';
 
-            if (isAxiosError(e)) {
+            if (axios.isAxiosError(e)) {
                 const err = e as AxiosError<{ message?: string }>;
 
                 if (err.response) {
                     const { status, data } = err.response;
 
-                    if (status === 401) {
-                        msg = 'Invalid email or password.';
+                    if (status === 409) {
+                        msg = 'An account with this email already exists.';
                     } else if (status >= 400 && status < 500 && data?.message) {
                         msg = data.message;
                     } else if (status >= 500) {
@@ -50,6 +55,8 @@ export default function useTwoFactorAuth() {
 
     return {
         loading,
-        handler,
+        handleSignUp,
     };
 }
+
+export default useSignUp;

@@ -5,18 +5,15 @@ import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
 
 import axios, { AxiosError } from 'axios';
-import { SignOutResponse } from '@/auth/types/api.response.types';
+import { SignOutResponse, ApiResponse } from '@/auth/types/';
 import storage_buckets from '@/config';
 import { redirect } from 'next/navigation';
 import { toast } from 'sonner';
 
-type SignOutResult =
-    { ok: true; data: SignOutResponse } | { ok: false; error: string };
-
 function useSignOut() {
     const [loading, setLoading] = useState<boolean>(false);
 
-    async function handleSignOut(): Promise<SignOutResult> {
+    async function handleSignOut(): Promise<ApiResponse<SignOutResponse>> {
         setLoading(true);
 
         try {

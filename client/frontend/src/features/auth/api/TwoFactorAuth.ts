@@ -1,44 +1,35 @@
 'use client';
 
-import { useState } from 'react';
-import { SignUpRequestBody } from '@/auth/types/api.request.types';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
+import { useState } from 'react';
+import { ApiResponse, SignInResponse } from '../types';
+import { AxiosError, isAxiosError } from 'axios';
 
-import axios, { AxiosError } from 'axios';
-import { SignUpResponse } from '@/auth/types/api.response.types';
-
-type SignUpResult =
-    { ok: true; data: SignUpResponse } | { ok: false; error: string };
-
-function useSignUp() {
+export default function useTwoFactorAuth() {
     const [loading, setLoading] = useState<boolean>(false);
 
-    async function handleSignUp(
-        credential: SignUpRequestBody
-    ): Promise<SignUpResult> {
+    async function handler(otp: string): Promise<ApiResponse<SignInResponse>> {
         setLoading(true);
 
         try {
-            const { path } = endpoints.auth.signUp;
-            const res = await http.post<SignUpResponse>(path, credential);
-
-            if (res.status === 200 || res.status === 201) {
-                return { ok: true, data: res.data as SignUpResponse };
+            const { path } = endpoints.auth.verifyTwoFactor(otp);
+            const res = await http.post(path);
+            if (res.status === 200) {
+                return { ok: true, data: res.data as SignInResponse };
             }
-
             return { ok: false, error: 'Unexpected response from server.' };
         } catch (e: unknown) {
             let msg = 'An unexpected error occurred. Please try again.';
 
-            if (axios.isAxiosError(e)) {
+            if (isAxiosError(e)) {
                 const err = e as AxiosError<{ message?: string }>;
 
                 if (err.response) {
                     const { status, data } = err.response;
 
-                    if (status === 409) {
-                        msg = 'An account with this email already exists.';
+                    if (status === 401) {
+                        msg = 'Invalid email or password.';
                     } else if (status >= 400 && status < 500 && data?.message) {
                         msg = data.message;
                     } else if (status >= 500) {
@@ -59,8 +50,6 @@ function useSignUp() {
 
     return {
         loading,
-        handleSignUp,
+        handler,
     };
 }
-
-export default useSignUp;

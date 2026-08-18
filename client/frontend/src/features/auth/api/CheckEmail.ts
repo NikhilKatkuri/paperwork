@@ -2,20 +2,16 @@
 
 import { useState } from 'react';
 import axios, { AxiosError } from 'axios';
-import { EmailCheckRequestBody } from '../types/api.request.types';
-import { EmailCheckResponse } from '../types/api.response.types';
+import { ApiResponse, EmailCheckRequestBody, EmailCheckResponse } from '../types';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
-
-export type EmailCheckResult =
-    { ok: true; data: EmailCheckResponse } | { ok: false; error: string };
 
 function useEmailCheckUp() {
     const [loading, setLoading] = useState<boolean>(false);
 
     async function handleEmailCheck(
         credential: EmailCheckRequestBody
-    ): Promise<EmailCheckResult> {
+    ): Promise<ApiResponse<EmailCheckResponse>> {
         setLoading(true);
 
         try {

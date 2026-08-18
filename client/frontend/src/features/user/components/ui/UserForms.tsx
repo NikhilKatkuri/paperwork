@@ -4,7 +4,7 @@ import FormsView from '../client/FormsView';
 import ViewFormsHeader from '../client/FormsHeader';
 import { useCallback, useEffect, useState } from 'react';
 import { cn } from '@/utils/cn';
-import useGetAllForms from '@/features/forms/functions/user/allForms';
+import useGetAllForms from '@/features/forms/api/user/allForms';
 import { toast } from 'sonner';
 import { FormCore, Time } from '@/features/forms/types';
 

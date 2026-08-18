@@ -1,27 +1,21 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { ForgotPasswordResponse } from '../types/api.response.types';
+import { ForgotPasswordResponse,  ForgotPasswordRequest, ApiResponse } from '../types';
+import axios, { AxiosError } from 'axios';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
 
-import axios, { AxiosError } from 'axios';
-import { ResetPasswordRequest } from '../types/api.request.types';
-
-type ResetPasswordResult =
-    { ok: true; data: ForgotPasswordResponse } | { ok: false; error: string };
-
-const useResetPassword = () => {
+const useForgotPassword = () => {
     const [loading, setLoading] = useState<boolean>(false);
 
-    const handleResetPassword = useCallback(
+    const handleForgotPassword = useCallback(
         async (
-            credentials: ResetPasswordRequest,
-            token: string
-        ): Promise<ResetPasswordResult> => {
+            credentials: ForgotPasswordRequest
+        ): Promise<ApiResponse<ForgotPasswordResponse>> => {
             setLoading(true);
             try {
-                const { path } = endpoints.auth.resetPassword(token);
+                const { path } = endpoints.auth.forgotPassword;
                 const res = await http.post<ForgotPasswordResponse>(
                     path,
                     credentials
@@ -64,7 +58,7 @@ const useResetPassword = () => {
         []
     );
 
-    return { loading, handleResetPassword };
+    return { loading, handleForgotPassword };
 };
 
-export default useResetPassword;
+export default useForgotPassword;

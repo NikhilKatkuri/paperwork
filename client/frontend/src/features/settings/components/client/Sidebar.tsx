@@ -3,7 +3,7 @@
 import { cn } from '@/utils/cn';
 import { SidebarIntent } from '../../constants/config';
 import { useRouter } from 'next/navigation';
-import useSignOut from '@/auth/functions/SignOut';
+import useSignOut from '@/auth/api/SignOut';
 
 function shouldShowSidebar(pathname: string) {
     const segments = ['edit-profile', 'account', 'password', 'security'];
