@@ -89,7 +89,7 @@ export default function PersonalInfoComponent() {
         );
     };
 
-    if (loading || personalInfo === null) {
+    if (loading) {
         return (
             <div
                 role="status"

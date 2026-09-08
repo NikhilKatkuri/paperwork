@@ -18,7 +18,7 @@ function useSignIn() {
         try {
             const { path } = endpoints.auth.signIn;
             const res = await http.post<SignInResponse>(path, credential);
-
+            console.log(res)
             if (res.status === 200) {
                 return { ok: true, data: res.data as SignInResponse };
             }

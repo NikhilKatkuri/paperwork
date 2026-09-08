@@ -135,7 +135,7 @@ export function useRetrievePersonalInfo() {
         setPersonalInfo(res.data.data);
         storeToCache(res.data.data);
       } else {
-        console.error(
+        console.log(
           'Failed to retrieve personal information:',
           res.data?.message
         );
