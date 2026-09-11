@@ -68,7 +68,11 @@ export default function HorizontalScrollList() {
                                 key={index}
                                 className="flex w-62 shrink-0 flex-col gap-3"
                             >
-                                <button className="h-48 w-full rounded-md bg-white transition-all duration-150 ease-in-out active:scale-95 active:rounded-xl" />
+                                <button className="h-48 w-full rounded-md bg-white transition-all duration-150 ease-in-out active:scale-95 active:rounded-xl">
+                                    <span className="material-symbols-outlined">
+                                        add
+                                    </span>
+                                </button>
                                 <p className="text-theme-on-surface/70 px-2 text-sm">
                                     Use this Template
                                 </p>
