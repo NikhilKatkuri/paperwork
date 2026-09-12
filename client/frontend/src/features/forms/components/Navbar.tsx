@@ -22,13 +22,13 @@ function Navbar() {
             </div>
             <div className="flex h-full items-center justify-center max-md:hidden">
                 <div className="grid h-full w-80 grid-cols-3 gap-1">
-                    <button className="active:bg-theme-form-container-active/10 border-theme-form-container-active h-full flex-1 rounded-t-md border-b transition-all ease-in-out">
+                    <button className="active:bg-theme-form-container-active/10 border-theme-form-container-active h-full flex-1 rounded-t-md border-b-3 transition-all ease-in-out">
                         Questions
                     </button>
-                    <button className="active:bg-theme-form-container-active/10 border-theme-form-container-active h-full flex-1 rounded-t-md border-b transition-all ease-in-out">
+                    <button className="active:bg-theme-form-container-active/10 border-theme-form-container-active h-full flex-1 rounded-t-md border-b-3 transition-all ease-in-out">
                         Responses
                     </button>
-                    <button className="active:bg-theme-form-container-active/10 border-theme-form-container-active h-full flex-1 rounded-t-md border-b transition-all ease-in-out">
+                    <button className="active:bg-theme-form-container-active/10 border-theme-form-container-active h-full flex-1 rounded-t-md border-b-3 transition-all ease-in-out">
                         Settings
                     </button>
                 </div>
