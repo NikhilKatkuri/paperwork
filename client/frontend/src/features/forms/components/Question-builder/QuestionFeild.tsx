@@ -8,6 +8,7 @@ import RichTextInput from './RichTextInput';
 import { QUESTION_TYPE, QuestionType, questionTypesMap } from './types';
 import QuestionTooling from './QuestionTooling';
 import AnswerTemplate from '../answer-builder/AnswerTemplate';
+import { cn } from '@/utils/cn';
 
 interface InputFieldProps {
     id: string;
@@ -53,7 +54,6 @@ export default function InputField({
 
     const currentOption = questionTypesMap[type];
 
-    // Only register as a sortable node for the real (non-overlay) instance
     const sortable = useSortable({ id, disabled: isOverlay });
     const {
         attributes,
@@ -132,7 +132,10 @@ export default function InputField({
             id={`question-${index}`}
             ref={isOverlay ? undefined : setNodeRef}
             style={style}
-            className="group/question-body bg-theme-form-container before:bg-theme-form-container-border/0 focus-within:before:bg-theme-form-container-border relative flex w-full flex-col rounded-xl p-3"
+            className={cn(
+                'group/question-body bg-theme-form-container before:bg-theme-form-container-border/0 focus-within:before:bg-theme-form-container-border relative flex w-full flex-col rounded-xl p-3',
+                'hover:before:bg-theme-form-container-border before:absolute before:top-0 before:left-0 before:z-10 before:h-full before:w-2 before:rounded-l-xl before:transition-all before:duration-200 before:ease-in-out'
+            )}
         >
             <div className="flex items-center justify-center">
                 <button
@@ -250,8 +253,8 @@ export default function InputField({
                     />
                 </div>
             )}
-            
-            <AnswerTemplate type={type}/>
+
+            <AnswerTemplate type={type} />
             <QuestionTooling
                 setIsRequired={() => setIsRequired(!isRequired)}
                 isRequired={isRequired}

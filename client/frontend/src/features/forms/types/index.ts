@@ -181,6 +181,8 @@ interface ResponseCore {
     };
 }
 
+export type Tabs = 'questions' | 'settings' | 'responses';
+
 export type {
     QUESTION_TYPE,
     QuestionType,

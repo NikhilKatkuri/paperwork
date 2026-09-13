@@ -1,6 +1,16 @@
-import Image from 'next/image';
+'use client';
 
-function Navbar() {
+import { cn } from '@/utils/cn';
+import Image from 'next/image';
+import { Tabs } from '../types';
+
+interface NavbarProps {
+    currMode: Tabs;
+    setMode: (mode: Tabs) => void;
+}
+const tabs: Tabs[] = ['questions', 'settings', 'responses'];
+
+function Navbar({ currMode, setMode }: NavbarProps) {
     return (
         <div className="border-theme-form-container-border/70 sticky top-0 h-16 w-full border-b px-2 py-4 md:grid md:h-32 md:grid-cols-1 md:grid-rows-2 md:p-4 md:px-6">
             <div className="flex items-center justify-between">
@@ -22,15 +32,24 @@ function Navbar() {
             </div>
             <div className="flex h-full items-center justify-center max-md:hidden">
                 <div className="grid h-full w-80 grid-cols-3 gap-1">
-                    <button className="active:bg-theme-form-container-active/10 border-theme-form-container-active h-full flex-1 rounded-t-md border-b-3 transition-all ease-in-out">
-                        Questions
-                    </button>
-                    <button className="active:bg-theme-form-container-active/10 border-theme-form-container-active h-full flex-1 rounded-t-md border-b-3 transition-all ease-in-out">
-                        Responses
-                    </button>
-                    <button className="active:bg-theme-form-container-active/10 border-theme-form-container-active h-full flex-1 rounded-t-md border-b-3 transition-all ease-in-out">
-                        Settings
-                    </button>
+                    {tabs.map((tab) => {
+                        return (
+                            <button
+                                key={tab}
+                                onClick={() =>
+                                    setMode(tab.toLowerCase() as Tabs)
+                                }
+                                className={cn(
+                                    'active:bg-theme-form-container-active/10 h-full flex-1 rounded-t-md border-b-3 transition-all ease-in-out',
+                                    'hover:bg-theme-form-container-active/10 hover:border-theme-form-container-active border-transparent',
+                                    currMode === tab.toLowerCase() &&
+                                        'bg-theme-form-container-active/10 border-theme-form-container-active'
+                                )}
+                            >
+                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
         </div>
