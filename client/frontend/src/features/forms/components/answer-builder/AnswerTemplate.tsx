@@ -3,6 +3,8 @@ import React from 'react';
 import { QuestionType } from '../../types';
 import OptionBuilder from './OptionBuilder';
 import { QUESTION_TYPE } from '../Question-builder/types';
+import ScaleBuilder from './ScaleBuilder';
+import RatingBuilder from './RatingBuilder';
 
 interface AnswerTemplateProps {
     type: QuestionType;
@@ -44,6 +46,12 @@ const AnswerTemplateObject: Record<Partial<QuestionType>, React.ReactNode> = {
 function AnswerTemplate({ type }: AnswerTemplateProps) {
     if(type === QUESTION_TYPE.CHOICE || type === QUESTION_TYPE.RADIO || type === QUESTION_TYPE.DROP_DOWN) {
         return <OptionBuilder type={type} />;
+    }
+    if(type === QUESTION_TYPE.RATING) {
+        return <RatingBuilder/>
+    }
+    if(type === QUESTION_TYPE.LINEAR_SCALE) {
+        return <ScaleBuilder/>
     }
     return <div>{AnswerTemplateObject[type]}</div>;
 }

@@ -250,6 +250,7 @@ export default function InputField({
                     />
                 </div>
             )}
+            
             <AnswerTemplate type={type}/>
             <QuestionTooling
                 setIsRequired={() => setIsRequired(!isRequired)}

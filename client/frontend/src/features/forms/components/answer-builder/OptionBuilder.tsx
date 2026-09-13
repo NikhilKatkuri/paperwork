@@ -69,8 +69,8 @@ function OptionBuilder({ type, onOptionsChange }: OptionBuilderProps) {
                             handleUpdateOption(index, e.target.value)
                         }
                         className="bg-theme-form-container text-theme-form-on-container/90 focus:border-theme-form-container-border w-full rounded-md px-2 py-1 text-sm focus:outline-none"
-                    />
-                    {/* Delete button: Visible only on hover to keep UI clean */}
+                    /> 
+                    
                     {options.length > 1 && (
                         <button
                             onClick={() => handleDeleteOption(option.id)}
