@@ -1,12 +1,24 @@
 'use client';
-import { DndContext, DragOverlay, closestCenter, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import {
+    DndContext,
+    DragOverlay,
+    closestCenter,
+    type DragEndEvent,
+    type DragStartEvent,
+} from '@dnd-kit/core';
+import {
+    SortableContext,
+    verticalListSortingStrategy,
+    arrayMove,
+} from '@dnd-kit/sortable';
 import { useState } from 'react';
-import InputFeild from './Question-ui/InputFeild';
-import MetaInputFeilds from './Question-ui/MetaInputFields';
+import InputFeild from './Question-builder/QuestionFeild';
+import MetaInputFeilds from './Question-builder/MetaInputFields';
 
 function QuestionsLayout() {
-    const [items, setItems] = useState(['1', '2', '3', '4', '5']);
+    const [items, setItems] = useState(() =>
+        new Array(20).fill(0).map((_, index) => `${index}`)
+    );
     const [activeId, setActiveId] = useState<string | null>(null);
 
     function handleDragStart(event: DragStartEvent) {
@@ -37,13 +49,22 @@ function QuestionsLayout() {
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
             >
-                <SortableContext items={items} strategy={verticalListSortingStrategy}>
+                <SortableContext
+                    items={items}
+                    strategy={verticalListSortingStrategy}
+                >
                     {items.map((id, index) => (
                         <InputFeild key={id} id={id} index={index} />
                     ))}
                 </SortableContext>
                 <DragOverlay>
-                    {activeId ? <InputFeild id={activeId} index={activeIndex} isOverlay /> : null}
+                    {activeId ? (
+                        <InputFeild
+                            id={activeId}
+                            index={activeIndex}
+                            isOverlay
+                        />
+                    ) : null}
                 </DragOverlay>
             </DndContext>
         </div>

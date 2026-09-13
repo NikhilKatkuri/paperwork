@@ -62,7 +62,7 @@ function RichTextInput({
     };
 
     return (
-        <div className="bg-theme-form-container group group hover:before:bg-theme-form-container-border/40 focus-within:before:bg-theme-form-container-active flex w-full flex-col rounded-xl p-3 transition-all duration-200 ease-in-out">
+        <div className="bg-theme-form-container group group-hover:before:bg-theme-form-container-border/40 focus-within:before:bg-theme-form-container-active flex w-full flex-col rounded-xl p-3 transition-all duration-200 ease-in-out">
             <div
                 ref={editorRef}
                 contentEditable

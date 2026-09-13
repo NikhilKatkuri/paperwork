@@ -5,42 +5,9 @@ import { createPortal } from 'react-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import RichTextInput from './RichTextInput';
-import Toggle from '../Toggle';
-
-export enum QUESTION_TYPE {
-    TEXT = 'TEXT',
-    PARAGRAPH = 'PARAGRAPH',
-    DATE = 'DATE',
-    TIME = 'TIME',
-    CHOICE = 'CHOICE',
-    RADIO = 'RADIO',
-    DROP_DOWN = 'DROP_DOWN',
-    LINEAR_SCALE = 'LINEAR_SCALE',
-    RATING = 'RATING',
-}
-
-export type QuestionType = (typeof QUESTION_TYPE)[keyof typeof QUESTION_TYPE];
-
-export const questionTypesMap = {
-    [QUESTION_TYPE.TEXT]: { label: 'Short Answer', icon: 'short_text' },
-    [QUESTION_TYPE.PARAGRAPH]: { label: 'Paragraph', icon: 'notes' },
-    [QUESTION_TYPE.DATE]: { label: 'Date', icon: 'calendar_today' },
-    [QUESTION_TYPE.TIME]: { label: 'Time', icon: 'schedule' },
-    [QUESTION_TYPE.CHOICE]: { label: 'Multiple Choice', icon: 'check_box' },
-    [QUESTION_TYPE.RADIO]: {
-        label: 'Single Choice',
-        icon: 'radio_button_checked',
-    },
-    [QUESTION_TYPE.DROP_DOWN]: {
-        label: 'Dropdown',
-        icon: 'arrow_drop_down_circle',
-    },
-    [QUESTION_TYPE.LINEAR_SCALE]: {
-        label: 'Linear Scale',
-        icon: 'linear_scale',
-    },
-    [QUESTION_TYPE.RATING]: { label: 'Rating', icon: 'star' },
-} as const;
+import { QUESTION_TYPE, QuestionType, questionTypesMap } from './types';
+import QuestionTooling from './QuestionTooling';
+import AnswerTemplate from '../answer-builder/AnswerTemplate';
 
 interface InputFieldProps {
     id: string;
@@ -57,11 +24,27 @@ export default function InputField({
 }: InputFieldProps) {
     const [type, setType] = useState<QuestionType>(initialType);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isRequired, setIsRequired] = useState(false);
+    const [showMoreOptions, setShowMoreOptions] = useState(false);
+    const [inputOptions, setInputOptions] = useState({
+        showHelpText: false,
+        showDescription: false,
+    });
+
+    const updateInputOptions = (option: keyof typeof inputOptions) => {
+        setInputOptions((prev) => ({
+            ...prev,
+            [option]: !prev[option],
+        }));
+        setShowMoreOptions(false);
+    };
+
     const [menuStyle, setMenuStyle] = useState<{
         top: number;
         left: number;
         width: number;
     }>({ top: 0, left: 0, width: 0 });
+
     const [mounted, setMounted] = useState(false);
 
     const wrapperRef = useRef<HTMLDivElement>(null);
@@ -149,7 +132,7 @@ export default function InputField({
             id={`question-${index}`}
             ref={isOverlay ? undefined : setNodeRef}
             style={style}
-            className="group bg-theme-form-container before:bg-theme-form-container-border/0 focus-within:before:bg-theme-form-container-border relative flex w-full flex-col rounded-xl p-3"
+            className="group/question-body bg-theme-form-container before:bg-theme-form-container-border/0 focus-within:before:bg-theme-form-container-border relative flex w-full flex-col rounded-xl p-3"
         >
             <div className="flex items-center justify-center">
                 <button
@@ -171,6 +154,7 @@ export default function InputField({
                         className="h-8"
                     />
                 </div>
+
                 <div
                     className="relative w-full max-md:mt-2 md:w-54"
                     ref={wrapperRef}
@@ -248,34 +232,34 @@ export default function InputField({
                         )}
                 </div>
             </div>
-            <div className="border-theme-form-container-border/70 mt-2 grid grid-rows-[0fr] border-t opacity-0 transition-all duration-300 ease-in-out group-focus-within:grid-rows-[1fr] group-focus-within:opacity-100 group-hover:grid-rows-[1fr] group-hover:opacity-100">
-                <div className="overflow-hidden">
-                    <div className="flex h-12 w-full items-center justify-end">
-                        <div className="border-theme-form-container-border/70 grid grid-cols-[40px_40px] border-r pl-3">
-                            <button
-                                tabIndex={-1}
-                                className="hover:bg-theme-form-container-hover focus-visible:bg-theme-form-container-hover flex h-10 w-10 items-center justify-center rounded-md group-focus-within:[tab-index:0] group-hover:[tab-index:0]"
-                            >
-                                <span className="material-symbols-outlined text-[20px]">
-                                    content_copy
-                                </span>
-                            </button>
-                            <button
-                                tabIndex={-1}
-                                className="hover:bg-theme-form-container-hover focus-visible:bg-theme-form-container-hover flex h-10 w-10 items-center justify-center rounded-md"
-                            >
-                                <span className="material-symbols-outlined text-[20px]">
-                                    delete
-                                </span>
-                            </button>
-                        </div>
-                        <div className="flex items-center gap-2 px-3">
-                            <p className="text-sm">Required</p>
-                            <Toggle />
-                        </div>
-                    </div>
+
+            {inputOptions.showHelpText && (
+                <div className="flex-1">
+                    <RichTextInput
+                        placeholder="Help text (optional)"
+                        className="h-8"
+                    />
                 </div>
-            </div>
+            )}
+
+            {inputOptions.showDescription && (
+                <div className="flex-1">
+                    <RichTextInput
+                        placeholder="Description (optional)"
+                        className="h-8"
+                    />
+                </div>
+            )}
+            <AnswerTemplate type={type}/>
+            <QuestionTooling
+                setIsRequired={() => setIsRequired(!isRequired)}
+                isRequired={isRequired}
+                showMoreOptions={showMoreOptions}
+                setShowMoreOptions={() => setShowMoreOptions(!showMoreOptions)}
+                updateInputOptions={(option: string) =>
+                    updateInputOptions(option as keyof typeof inputOptions)
+                }
+            />
         </div>
     );
 }
