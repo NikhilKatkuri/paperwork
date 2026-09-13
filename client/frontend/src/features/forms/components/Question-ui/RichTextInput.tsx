@@ -1,4 +1,5 @@
 'use client';
+import { cn } from '@/utils/cn';
 import { useRef, useEffect } from 'react';
 
 type TextSize = 'caption' | 'sm' | 'normal' | 'md' | 'heading' | 'display';
@@ -9,6 +10,7 @@ interface RichTextInputProps {
     value?: string;
     onChange?: (html: string) => void;
     allowLists?: boolean;
+    className?: string;
 }
 
 function RichTextInput({
@@ -16,6 +18,7 @@ function RichTextInput({
     placeholder,
     value,
     allowLists = false,
+    className = '',
     onChange,
 }: RichTextInputProps) {
     const editorRef = useRef<HTMLDivElement>(null);
@@ -59,12 +62,15 @@ function RichTextInput({
     };
 
     return (
-        <div className="bg-theme-form-container group group flex w-full flex-col rounded-xl p-3 transition-all duration-200 ease-in-out hover:before:bg-theme-form-container-border/40 focus-within:before:bg-theme-form-container-active">
+        <div className="bg-theme-form-container group group hover:before:bg-theme-form-container-border/40 focus-within:before:bg-theme-form-container-active flex w-full flex-col rounded-xl p-3 transition-all duration-200 ease-in-out">
             <div
                 ref={editorRef}
                 contentEditable
                 suppressContentEditableWarning
-                className={`${textSizes[textSize]} w-full font-medium outline-none empty:before:text-gray-400 empty:before:content-[attr(data-placeholder)] [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5`}
+                className={cn(
+                    `${textSizes[textSize]} w-full cursor-text font-medium outline-none empty:before:text-gray-400 empty:before:content-[attr(data-placeholder)] [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5`,
+                    className
+                )}
                 data-placeholder={placeholder}
                 onInput={() => onChange?.(editorRef.current?.innerHTML || '')}
             />
