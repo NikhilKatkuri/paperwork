@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { QuestionType } from '../../types';
+import { QuestionCore, QuestionType } from '../../types';
 import OptionBuilder from './OptionBuilder';
 import { QUESTION_TYPE } from '../Question-builder/types';
 import ScaleBuilder from './ScaleBuilder';
@@ -8,6 +8,8 @@ import RatingBuilder from './RatingBuilder';
 
 interface AnswerTemplateProps {
     type: QuestionType;
+    update: (patch: Partial<QuestionCore>) => void;
+    id: string;
 }
 
 function wrapper({ label, icon }: { label: string; icon?: string }) {
@@ -43,15 +45,15 @@ const AnswerTemplateObject: Record<Partial<QuestionType>, React.ReactNode> = {
     RATING: wrapper({ label: 'Rating answer text', icon: 'star' }),
 };
 
-function AnswerTemplate({ type }: AnswerTemplateProps) {
+function AnswerTemplate({ type, update, id }: AnswerTemplateProps) {
     if(type === QUESTION_TYPE.CHOICE || type === QUESTION_TYPE.RADIO || type === QUESTION_TYPE.DROP_DOWN) {
-        return <OptionBuilder type={type} />;
+            return <OptionBuilder id={id} type={type} onOptionsChange={(data)=> update({ options: data })} />;
     }
     if(type === QUESTION_TYPE.RATING) {
-        return <RatingBuilder/>
+        return <RatingBuilder id={id} onChange={(config) => update({ ratingConfig: config })} />
     }
     if(type === QUESTION_TYPE.LINEAR_SCALE) {
-        return <ScaleBuilder/>
+        return <ScaleBuilder id={id} />
     }
     return <div>{AnswerTemplateObject[type]}</div>;
 }

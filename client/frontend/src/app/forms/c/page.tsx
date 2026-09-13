@@ -1,10 +1,13 @@
-import FormCreatePageCreateLayout from '@/features/forms/components/layouts/FormCreatePageCreateLayout'
-import React from 'react'
+'use client';
+import FormCreatePageCreateLayout from '@/features/forms/components/layouts/FormCreatePageCreateLayout';
+import { FormCreateProvider } from '@/features/forms/providers/FormCreate';
 
 function page() {
-  return (
-    <FormCreatePageCreateLayout/>
-  )
+    return (
+        <FormCreateProvider>
+            <FormCreatePageCreateLayout />
+        </FormCreateProvider>
+    );
 }
 
-export default page
+export default page;

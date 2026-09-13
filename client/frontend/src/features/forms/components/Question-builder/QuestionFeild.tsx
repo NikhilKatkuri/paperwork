@@ -9,6 +9,8 @@ import { QUESTION_TYPE, QuestionType, questionTypesMap } from './types';
 import QuestionTooling from './QuestionTooling';
 import AnswerTemplate from '../answer-builder/AnswerTemplate';
 import { cn } from '@/utils/cn';
+import { useFormCreate } from '../../providers/FormCreate';
+import { QuestionCore } from '../../types';
 
 interface InputFieldProps {
     id: string;
@@ -17,28 +19,30 @@ interface InputFieldProps {
     isOverlay?: boolean;
 }
 
+const OVERLAY_FALLBACK: QuestionCore = {
+    index: 0,
+    type: QUESTION_TYPE.TEXT,
+    question: 'Untitled Question',
+    isRequired: false,
+    helpText: undefined,
+};
+
 export default function InputField({
     id,
     initialType = QUESTION_TYPE.TEXT,
     index = 0,
     isOverlay = false,
 }: InputFieldProps) {
-    const [type, setType] = useState<QuestionType>(initialType);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [isRequired, setIsRequired] = useState(false);
-    const [showMoreOptions, setShowMoreOptions] = useState(false);
-    const [inputOptions, setInputOptions] = useState({
-        showHelpText: false,
-        showDescription: false,
-    });
+    const [mounted, setMounted] = useState(false);
+    const { updateQuestion, questions } = useFormCreate();
 
-    const updateInputOptions = (option: keyof typeof inputOptions) => {
-        setInputOptions((prev) => ({
-            ...prev,
-            [option]: !prev[option],
-        }));
-        setShowMoreOptions(false);
+    const config = questions.get(id) ?? {
+        ...OVERLAY_FALLBACK,
+        type: initialType,
     };
+
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [showMoreOptions, setShowMoreOptions] = useState(false);
 
     const [menuStyle, setMenuStyle] = useState<{
         top: number;
@@ -46,13 +50,11 @@ export default function InputField({
         width: number;
     }>({ top: 0, left: 0, width: 0 });
 
-    const [mounted, setMounted] = useState(false);
-
     const wrapperRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    const currentOption = questionTypesMap[type];
+    const currentOption = questionTypesMap[config.type];
 
     const sortable = useSortable({ id, disabled: isOverlay });
     const {
@@ -73,10 +75,10 @@ export default function InputField({
           };
 
     useEffect(() => {
-        function updateMounted() {
+        function setMountedTrue() {
             setMounted(true);
         }
-        updateMounted();
+        setMountedTrue();
     }, []);
 
     const updatePosition = useCallback(() => {
@@ -155,6 +157,10 @@ export default function InputField({
                     <RichTextInput
                         placeholder="Untitled Question"
                         className="h-8"
+                        value={config.question}
+                        onChange={(value) =>
+                            updateQuestion(id, { question: value })
+                        }
                     />
                 </div>
 
@@ -203,7 +209,7 @@ export default function InputField({
                                     ) as QuestionType[]
                                 ).map((key) => {
                                     const option = questionTypesMap[key];
-                                    const isSelected = key === type;
+                                    const isSelected = key === config.type;
 
                                     return (
                                         <button
@@ -212,7 +218,10 @@ export default function InputField({
                                             role="option"
                                             aria-selected={isSelected}
                                             onClick={() => {
-                                                setType(key);
+                                                updateQuestion(id, {
+                                                    type: key,
+                                                });
+                                                setShowMoreOptions(false);
                                                 setIsDropdownOpen(false);
                                             }}
                                             className={`hover:bg-theme-form-container-hover flex h-10 w-full items-center gap-2 rounded-md p-2 text-left text-sm ${
@@ -236,33 +245,29 @@ export default function InputField({
                 </div>
             </div>
 
-            {inputOptions.showHelpText && (
+            {config.helpText !== undefined && (
                 <div className="flex-1">
                     <RichTextInput
                         placeholder="Help text (optional)"
                         className="h-8"
+                        value={config.helpText ?? ''}
+                        onChange={(value) =>
+                            updateQuestion(id, { helpText: value })
+                        }
                     />
                 </div>
             )}
 
-            {inputOptions.showDescription && (
-                <div className="flex-1">
-                    <RichTextInput
-                        placeholder="Description (optional)"
-                        className="h-8"
-                    />
-                </div>
-            )}
-
-            <AnswerTemplate type={type} />
+            <AnswerTemplate id={id} type={config.type} update={(patch) => updateQuestion(id, patch)} />
             <QuestionTooling
-                setIsRequired={() => setIsRequired(!isRequired)}
-                isRequired={isRequired}
+                id={id}
+                isRequired={config.isRequired ?? false}
                 showMoreOptions={showMoreOptions}
                 setShowMoreOptions={() => setShowMoreOptions(!showMoreOptions)}
-                updateInputOptions={(option: string) =>
-                    updateInputOptions(option as keyof typeof inputOptions)
+                updateConfig={(patch: Partial<QuestionCore>) =>
+                    updateQuestion(id, patch)
                 }
+                helpText={config.helpText}
             />
         </div>
     );

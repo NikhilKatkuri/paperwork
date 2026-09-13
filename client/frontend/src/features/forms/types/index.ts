@@ -14,7 +14,9 @@ type QuestionType = (typeof QUESTION_TYPE)[keyof typeof QUESTION_TYPE];
 
 type RatingIconType = 'STAR' | 'HEART' | 'THUMB_UP';
 
-type RatingScale = 5 | 10;
+// changing to number
+// type RatingScale = 5 | 10;
+type RatingScale = number;
 
 interface RatingConfig {
     icon: RatingIconType;
@@ -28,6 +30,8 @@ interface DependsOn {
     value: string;
 }
 
+// label or value must be changed
+// only one of them should be used for comparison
 interface Option {
     index: number;
     label: string;
@@ -200,5 +204,6 @@ export type {
     AnswerEntry,
     ResponseCore,
     FormSettings,
-    Time
+    Time,
+    RatingConfig
 };

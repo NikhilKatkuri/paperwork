@@ -1,58 +1,65 @@
 'use client';
 import { useState } from 'react';
 import { OptionType, QUESTION_TYPE } from '../Question-builder/types';
-
-const generateId = () => {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
-    } 
-    
-    return Math.random().toString(36).substring(2, 11);
-};
+import { generateId } from '../../utils';
+import { Option } from '../../types';
+import { useFormCreate } from '../../providers/FormCreate';
 
 const ICON_MAP: Record<OptionType, string> = {
     RADIO: 'radio_button_unchecked',
     CHOICE: 'check_box_outline_blank',
-    [QUESTION_TYPE.DROP_DOWN]: '',
+    DROP_DOWN: '',
 };
 
 interface OptionBuilderProps {
     type: OptionType;
-    onOptionsChange?: (options: { id: string; value: string }[]) => void;
+    onOptionsChange: (options: Option[]) => void;
+    id: string;
 }
 
-function OptionBuilder({ type, onOptionsChange }: OptionBuilderProps) {
-    const [options, setOptions] = useState(() => [
-        { id: generateId(), value: 'Option 1' },
-    ]);
+function OptionBuilder({ id, type, onOptionsChange }: OptionBuilderProps) {
+    const { questions } = useFormCreate();
+    const [options, setOptions] = useState<Option[]>(() => {
+        const question = questions.get(id);
+        if (question && question.options) {
+            return question.options;
+        }
+
+        return [{ index: 1, label: generateId(), value: 'Option 1' }];
+    });
 
     const handleAddOption = () => {
         const newOptions = [
             ...options,
-            { id: generateId(), value: `Option ${options.length + 1}` },
+            {
+                index: options.length + 1,
+                label: generateId(),
+                value: `Option ${options.length + 1}`,
+            },
         ];
         setOptions(newOptions);
-        onOptionsChange?.(newOptions);
+        onOptionsChange(newOptions);
     };
 
     const handleUpdateOption = (index: number, newValue: string) => {
-        const newOptions = [...options];
-        newOptions[index].value = newValue;
+        const newOptions = options.map((opt, i) =>
+            i === index ? { ...opt, value: newValue } : opt
+        );
         setOptions(newOptions);
-        onOptionsChange?.(newOptions);
+        onOptionsChange(newOptions);
     };
 
     const handleDeleteOption = (id: string) => {
-        const newOptions = options.filter((opt) => opt.id !== id);
+        const newOptions = options.filter((opt) => opt.label !== id);
         setOptions(newOptions);
-        onOptionsChange?.(newOptions);
+        onOptionsChange(newOptions);
     };
 
     return (
         <div className="grid w-full max-w-lg grid-cols-1 gap-2">
             {options.map((option, index) => (
                 <div
-                    key={option.id}
+                    key={option.label}
                     className="group flex h-10 items-center gap-2 pl-2"
                 >
                     {type === QUESTION_TYPE.DROP_DOWN ? (
@@ -69,11 +76,11 @@ function OptionBuilder({ type, onOptionsChange }: OptionBuilderProps) {
                             handleUpdateOption(index, e.target.value)
                         }
                         className="bg-theme-form-container text-theme-form-on-container/90 focus:border-theme-form-container-border w-full rounded-md px-2 py-1 text-sm focus:outline-none"
-                    /> 
-                    
+                    />
+
                     {options.length > 1 && (
                         <button
-                            onClick={() => handleDeleteOption(option.id)}
+                            onClick={() => handleDeleteOption(option.label)}
                             className="material-symbols-outlined rounded p-1 text-red-500 opacity-0 transition-all group-hover:opacity-100 hover:bg-red-50"
                             aria-label="Delete option"
                         >

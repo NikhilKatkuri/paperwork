@@ -49,5 +49,7 @@ export const endpoints = {
     },
     forms: {
         allForms: { path: '/forms', method: 'get' },
+        createForm: { path: '/forms', method: 'post' },
+        
     },
 } as const;

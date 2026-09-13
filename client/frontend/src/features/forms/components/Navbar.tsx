@@ -3,6 +3,7 @@
 import { cn } from '@/utils/cn';
 import Image from 'next/image';
 import { Tabs } from '../types';
+import { useFormCreate } from '../providers/FormCreate';
 
 interface NavbarProps {
     currMode: Tabs;
@@ -11,6 +12,8 @@ interface NavbarProps {
 const tabs: Tabs[] = ['questions', 'settings', 'responses'];
 
 function Navbar({ currMode, setMode }: NavbarProps) {
+    const { meta, handleMetaChange } = useFormCreate();
+
     return (
         <div className="border-theme-form-container-border/70 sticky top-0 h-16 w-full border-b px-2 py-4 md:grid md:h-32 md:grid-cols-1 md:grid-rows-2 md:p-4 md:px-6">
             <div className="flex items-center justify-between">
@@ -25,6 +28,13 @@ function Navbar({ currMode, setMode }: NavbarProps) {
                     <input
                         type="text"
                         placeholder="Untitled Form"
+                        value={meta.title}
+                        onChange={(e) =>
+                            handleMetaChange({
+                                value: e.target.value,
+                                key: 'title',
+                            })
+                        }
                         className="text-theme-form-on-surface focus:border-theme-form-container-active placeholder:text-theme-form-on-surface w-full flex-1 border-b border-transparent bg-transparent focus:outline-none lg:text-lg"
                     />
                 </div>

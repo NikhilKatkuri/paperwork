@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Navbar from '../Navbar';
 import QuestionsLayout from '../Questions';
 import Settings from '../Settings';
-import { Tabs } from '../../types';
+import { Tabs } from '../../types'; 
 
 function Render({ _case }: { _case: Tabs }) {
     switch (_case) {
@@ -19,6 +19,7 @@ function Render({ _case }: { _case: Tabs }) {
 
 function FormCreatePageCreateLayout() {
     const [mode, setMode] = useState<Tabs>('questions');
+
     return (
         <div className="flex h-screen w-full flex-col">
             <Navbar currMode={mode} setMode={setMode} />
