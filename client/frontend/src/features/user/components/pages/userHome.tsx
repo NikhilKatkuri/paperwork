@@ -1,4 +1,4 @@
-import UserForms from '../ui/UserForms';
+import UserForms from '../../../common/ui/UserForms';
 import UserHeader from '../ui/UserHeader';
 import UserTemplateList from '../ui/UserTemplateList';
 
