@@ -1,15 +1,15 @@
 'use client';
-import React from 'react';
-import { QuestionCore, QuestionType } from '../../types';
-import OptionBuilder from './OptionBuilder';
-import { QUESTION_TYPE } from '../Question-builder/types';
+import React from 'react'; 
+import OptionBuilder from './OptionBuilder'; 
 import ScaleBuilder from './ScaleBuilder';
 import RatingBuilder from './RatingBuilder';
+import { QUESTION_TYPE, QuestionType } from '../../common/types';
+import QuestionCore from '@/features/forms/types/question.type';
 
 interface AnswerTemplateProps {
     type: QuestionType;
     update: (patch: Partial<QuestionCore>) => void;
-    id: string;
+    id: number;
 }
 
 function wrapper({ label, icon }: { label: string; icon?: string }) {

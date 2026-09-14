@@ -1,9 +1,9 @@
 'use client';
-import { useState } from 'react';
-import { OptionType, QUESTION_TYPE } from '../Question-builder/types';
-import { generateId } from '../../utils';
-import { Option } from '../../types';
-import { useFormCreate } from '../../providers/FormCreate';
+import { useState } from 'react'; 
+import { generateId } from '../../../utils'; 
+import { useFormCreate } from '../../../providers/FormCreate';
+import { OptionType, QUESTION_TYPE } from '../../common/types';
+import { Option } from '@/features/forms/types/question.type';
 
 const ICON_MAP: Record<OptionType, string> = {
     RADIO: 'radio_button_unchecked',
@@ -14,7 +14,7 @@ const ICON_MAP: Record<OptionType, string> = {
 interface OptionBuilderProps {
     type: OptionType;
     onOptionsChange: (options: Option[]) => void;
-    id: string;
+    id: number;
 }
 
 function OptionBuilder({ id, type, onOptionsChange }: OptionBuilderProps) {
@@ -71,7 +71,7 @@ function OptionBuilder({ id, type, onOptionsChange }: OptionBuilderProps) {
                     )}
                     <input
                         type="text"
-                        value={option.value}
+                        value={option.label}
                         onChange={(e) =>
                             handleUpdateOption(index, e.target.value)
                         }

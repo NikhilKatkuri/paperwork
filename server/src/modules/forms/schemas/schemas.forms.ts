@@ -4,8 +4,8 @@ import mongoose, { Schema } from 'mongoose';
 
 const FormsSettingSchema = new Schema<FormSettings>(
     {
-        maxResponses: { type: Number, default: undefined },
-        maxResponsesPerUser: { type: Number, default: undefined },
+        maxResponses: { type: Number, min: 1, default: undefined },
+        maxResponsesPerUser: { type: Number, min: 1, default: undefined },
         closeDate: { type: Date, default: undefined },
         startDate: { type: Date, default: undefined },
         timeLimitPerResponse: { type: Number, default: undefined },
@@ -18,7 +18,15 @@ const FormsSettingSchema = new Schema<FormSettings>(
         progressBar: { type: Boolean, default: false },
 
         customConfirmationMessage: { type: String, default: undefined },
-        redirectUrl: { type: String, default: undefined },
+        redirectUrl: {
+            type: String,
+            default: undefined,
+            validate: {
+                validator: (v: string | undefined) =>
+                    !v || /^https?:\/\//.test(v),
+                message: 'redirectUrl must start with http:// or https://',
+            },
+        },
     },
     {
         _id: false,
@@ -30,9 +38,7 @@ const FormsSettingSchema = new Schema<FormSettings>(
 const formsSchema = new Schema<FormDocument>(
     {
         userId: { type: String, required: true, index: true },
-
-        title: { type: String, required: true },
-        description: { type: String, required: true },
+        name: { type: String, required: true, maxlength: 200 },
         isPrivate: { type: Boolean, default: false },
         isPublished: { type: Boolean, default: false },
         allowedDomains: { type: [String], default: undefined },

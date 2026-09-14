@@ -19,7 +19,7 @@ export const sectionSchema = z.object({
                 .string()
                 .min(1, 'Title is required')
                 .max(255, 'Title cannot exceed 255 characters'),
-            description: z.string().optional(),
+            description: z.string().max(5000, 'Description cannot exceed 5000 characters').optional(),
             defaultAction: z
                 .object({
                     actionType: z.enum(sectionActionEnum),

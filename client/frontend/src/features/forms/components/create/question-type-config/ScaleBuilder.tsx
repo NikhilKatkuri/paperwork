@@ -10,7 +10,7 @@ export interface ScaleConfig {
 
 interface ScaleBuilderProps {
     config?: ScaleConfig;
-    id: string;
+    id: number;
     onChange?: (config: ScaleConfig) => void;
 }
 

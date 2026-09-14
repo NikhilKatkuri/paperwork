@@ -18,7 +18,9 @@ const sectionActionSchema = new Schema<SectionAction & { sectionId?: string }>(
         },
         sectionId: {
             type: String,
-            required: false,
+            required: function (this: { actionType: string }) {
+                return this.actionType === 'GO_TO_SECTION';
+            },
         },
     },
     { _id: false }
@@ -36,10 +38,11 @@ const onAnswerSchema = new Schema<SectionDependsOn>(
 const sectionSchema = new Schema<SectionDocument>(
     {
         formId: { type: String, required: true, index: true },
+        index: { type: Number, required: true, min: 0 },
 
-        index: { type: Number, required: true },
-        title: { type: String, required: true },
-        description: { type: String, required: false },
+        title: { type: String, required: true, maxlength: 200 },
+        description: { type: String, required: false, maxlength: 1000 },
+
         onAnswer: { type: [onAnswerSchema], default: [] },
         defaultAction: { type: sectionActionSchema, required: false },
     },
@@ -48,14 +51,39 @@ const sectionSchema = new Schema<SectionDocument>(
     }
 );
 
-sectionSchema.index({ formId: 1, index: 1 });
-sectionSchema.set('toObject', {
-    transform: (_, ret) => {
-        Reflect.deleteProperty(ret, '__v');
-        return ret;
-    },
+sectionSchema.pre('validate', function (this: SectionDocument) {
+    const selfId = this._id?.toString();
+    if (!selfId) return;
+
+    if (
+        this.defaultAction?.actionType === 'GO_TO_SECTION' &&
+        this.defaultAction?.sectionId === selfId
+    ) {
+        throw new Error(
+            'A section cannot navigate to itself via defaultAction'
+        );
+    }
+    for (const rule of this.onAnswer ?? []) {
+        if (
+            rule.action?.actionType === 'GO_TO_SECTION' &&
+            rule.action?.sectionId === selfId
+        ) {
+            throw new Error('A section cannot navigate to itself via onAnswer');
+        }
+    }
 });
 
-const SectionModel = mongoose.model<SectionDocument>('Section', sectionSchema);
+sectionSchema.index({ formId: 1, index: 1 });
+
+const transform = (_doc: unknown, ret: Record<string, any>) => {
+    Reflect.deleteProperty(ret, '__v');
+    return ret;
+};
+sectionSchema.set('toObject', { transform });
+sectionSchema.set('toJSON', { transform });
+
+const SectionModel =
+    (mongoose.models.Section as mongoose.Model<SectionDocument>) ||
+    mongoose.model<SectionDocument>('Section', sectionSchema);
 
 export default SectionModel;

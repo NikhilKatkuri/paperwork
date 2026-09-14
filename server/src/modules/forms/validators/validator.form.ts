@@ -35,14 +35,10 @@ export const formSettingsSchema = z
 export const formSchema = z.object({
     body: z.object({
         data: z.object({
-            title: z
+            name: z
                 .string()
-                .min(1, 'Title is required')
-                .max(255, 'Title cannot exceed 255 characters'),
-            description: z
-                .string()
-                .min(1, 'Description is required')
-                .max(2000, 'Description cannot exceed 2000 characters'),
+                .min(1, 'name is required')
+                .max(255, 'name cannot exceed 255 characters'), 
             isPrivate: z.boolean().default(false),
             isPublished: z.boolean().default(false),
             allowedDomains: z.array(z.string()).optional(),
@@ -64,15 +60,10 @@ export const patchRequestFormSchema = z.object({
     }),
     body: z.object({
         data: z.object({
-            title: z
+            name: z
                 .string()
-                .min(1, 'Title is required')
-                .max(255, 'Title cannot exceed 255 characters')
-                .optional(),
-            description: z
-                .string()
-                .min(1, 'Description is required')
-                .max(2000, 'Description cannot exceed 2000 characters')
+                .min(1, 'name is required')
+                .max(255, 'name cannot exceed 255 characters')
                 .optional(),
             isPrivate: z.boolean().optional(),
             isPublished: z.boolean().optional(),

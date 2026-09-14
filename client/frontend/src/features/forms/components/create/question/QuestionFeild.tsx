@@ -3,20 +3,22 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import RichTextInput from './RichTextInput';
-import { QUESTION_TYPE, QuestionType, questionTypesMap } from './types';
-import QuestionTooling from './QuestionTooling';
-import AnswerTemplate from '../answer-builder/AnswerTemplate';
+import { CSS } from '@dnd-kit/utilities'; 
+import { QUESTION_TYPE, QuestionType, questionTypesMap } from '../../common/types';
+import QuestionTooling from './QuestionTooling'; 
 import { cn } from '@/utils/cn';
-import { useFormCreate } from '../../providers/FormCreate';
-import { QuestionCore } from '../../types';
+import QuestionCore from '@/features/forms/types/question.type';
+import { useFormCreate } from '@/features/forms/providers/FormCreate';
+import AnswerTemplate from '../question-type-config/AnswerTemplate';
+import RichTextInput from '../../common/RichTextInput';
+ 
 
 interface InputFieldProps {
-    id: string;
+    id: number;
     initialType?: QuestionType;
     index?: number;
     isOverlay?: boolean;
+    sectionIdx?: number;
 }
 
 const OVERLAY_FALLBACK: QuestionCore = {
@@ -25,6 +27,7 @@ const OVERLAY_FALLBACK: QuestionCore = {
     question: 'Untitled Question',
     isRequired: false,
     helpText: undefined,
+    sectionIdx: 0
 };
 
 export default function InputField({
@@ -261,6 +264,7 @@ export default function InputField({
             <AnswerTemplate id={id} type={config.type} update={(patch) => updateQuestion(id, patch)} />
             <QuestionTooling
                 id={id}
+                sectionIdx={0}
                 isRequired={config.isRequired ?? false}
                 showMoreOptions={showMoreOptions}
                 setShowMoreOptions={() => setShowMoreOptions(!showMoreOptions)}

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import Toggle from './Toggle';
+import Toggle from '../common/Toggle';
 
 export interface FormSettingsData {
     maxResponses?: number;

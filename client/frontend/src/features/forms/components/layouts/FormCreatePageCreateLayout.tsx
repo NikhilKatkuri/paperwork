@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Navbar from '../Navbar';
+import Navbar from '../create/Navbar';
 import QuestionsLayout from '../Questions';
-import Settings from '../Settings';
+import Settings from '../create/Settings';
 import { Tabs } from '../../types'; 
 
 function Render({ _case }: { _case: Tabs }) {

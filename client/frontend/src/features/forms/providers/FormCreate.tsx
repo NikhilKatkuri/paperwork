@@ -8,89 +8,127 @@ import {
     useState,
     type ReactNode,
 } from 'react';
-import { generateId } from '../utils';
-import { QuestionCore } from '../types';
-import { QUESTION_TYPE } from '../components/Question-builder/types';
 
-type meta = { title: string; description: string };
+import {
+    DEFAULT_FORM_CORE,
+    DEFAULT_QUESTION_CORE,
+    DEFAULT_SECTION_CORE,
+} from '../utils/default';
 
-export interface FormCreateContextValue {
-    meta: meta;
-    handleMetaChange: ({
-        key,
-        value,
-    }: {
-        key: keyof meta;
-        value: string;
-    }) => void;
-
-    handleAddQuestion: () => void;
-    duplicateQuestion: (id: string) => void;
-    deleteQuestion: (id: string) => void;
-    questions: Map<string, QuestionCore>;
-    setQuestions: React.Dispatch<
-        React.SetStateAction<Map<string, QuestionCore>>
-    >;
-    updateQuestion: (
-        id: string,
-        updatedQuestion: Partial<QuestionCore>
-    ) => void;
-    handleQuestionChange: <K extends keyof QuestionCore>(
-        id: string,
-        key: K,
-        value: QuestionCore[K]
-    ) => void;
-}
+import FormCore from '../types/form.type';
+import SectionCore, { defualtSectionCore } from '../types/section.type';
+import QuestionCore from '../types/question.type';
+import { FormCreateContextValue, QuestionsMap } from '../types';
+import { arrayMove } from '@dnd-kit/sortable';
 
 const FormCreateContext = createContext<FormCreateContextValue | undefined>(
     undefined
 );
 
 export function FormCreateProvider({ children }: { children: ReactNode }) {
-    const [meta, setMeta] = useState({
-        title: 'Untitled Form',
-        description: 'Form description',
-    });
+    /**
+     * form management
+     */
 
-    function handleMetaChange({
-        key,
-        value,
-    }: {
-        key: keyof meta;
-        value: string;
-    }) {
-        setMeta((data) => ({ ...data, [key]: value }));
-    }
+    const [form, setForm] = useState<FormCore>(DEFAULT_FORM_CORE);
 
-    const [questions, setQuestions] = useState<Map<string, QuestionCore>>(
-        () => {
-            const id = generateId();
-            return new Map([
-                [
-                    id,
-                    {
-                        index: 1,
-                        type: QUESTION_TYPE.TEXT,
-                        question: 'Untitled Question',
-                    },
-                ],
-            ]);
-        }
+    const handleFormChange = useCallback(
+        <k extends keyof FormCore>(key: k, value: FormCore[k]) => {
+            setForm((prev) =>
+                prev[key] === value ? prev : { ...prev, [key]: value }
+            );
+        },
+        []
     );
 
+    /**
+     * section management
+     */
+    const nextSectionIndexRef = useRef(1);
+
+    const [sections, setSections] = useState<defualtSectionCore>(() => {
+        return new Map<number, SectionCore>([[0, DEFAULT_SECTION_CORE]]);
+    });
+
+    const handleSectionsChange = useCallback(
+        <K extends keyof SectionCore>(
+            idx: number,
+            key: K,
+            value: SectionCore[K]
+        ) => {
+            setSections((prev) => {
+                const currSection = prev.get(idx);
+                if (!currSection) return prev;
+
+                const next = new Map(prev);
+                next.set(idx, { ...currSection, [key]: value });
+                return next;
+            });
+        },
+        []
+    );
+
+    const handleAddSection = useCallback(() => {
+        const key = nextSectionIndexRef.current++;
+        setSections((prev) => {
+            const next = new Map(prev);
+            next.set(key, {
+                ...DEFAULT_SECTION_CORE,
+                index: key + 1,
+            });
+            return next;
+        });
+    }, []);
+
+    const reorderSections = useCallback(
+        (activeKey: number, overKey: number) => {
+            setSections((prev) => {
+                const entries = Array.from(prev.entries()).sort(
+                    (a, b) => a[1].index - b[1].index
+                );
+                const activeIdx = entries.findIndex(([k]) => k === activeKey);
+                const overIdx = entries.findIndex(([k]) => k === overKey);
+                if (activeIdx === -1 || overIdx === -1) return prev;
+
+                const reordered = arrayMove(entries, activeIdx, overIdx);
+                const next = new Map(prev);
+                reordered.forEach(([key, section], i) =>
+                    next.set(key, { ...section, index: i })
+                );
+                return next;
+            });
+        },
+        []
+    );
+
+    /**
+     * question management
+     */
+
+    const nextQuestionIndexRef = useRef(1);
     const handleAddQuestionRef = useRef(false);
 
-    function handleAddQuestion() {
+    const [questions, setQuestions] = useState<QuestionsMap>(() => {
+        return new Map([[0, DEFAULT_QUESTION_CORE]]);
+    });
+
+    function countInSection(sectionIdx: number, map: QuestionsMap) {
+        let count = 0;
+        for (const q of map.values()) if (q.sectionIdx === sectionIdx) count++;
+        return count;
+    }
+
+    function handleAddQuestion(sectionIdx: number) {
         if (handleAddQuestionRef.current) return;
         handleAddQuestionRef.current = true;
 
-        const newId = generateId();
+        const newKey = nextQuestionIndexRef.current++;
         setQuestions((prev) => {
             const next = new Map(prev);
-            next.set(newId, {
-                index: prev.size + 1,
-                type: QUESTION_TYPE.TEXT,
-                question: 'Untitled Question',
+            next.set(newKey, {
+                ...DEFAULT_QUESTION_CORE,
+                index: countInSection(sectionIdx, prev),
+                sectionIdx,
             });
             return next;
         });
@@ -101,60 +139,110 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
     }
 
     function handleQuestionChange<K extends keyof QuestionCore>(
-        id: string,
+        idx: number,
         key: K,
         value: QuestionCore[K]
     ) {
         setQuestions((prev) => {
-            const question = prev.get(id);
-            if (!question) return prev;
+            const source = prev.get(idx);
+            if (!source) return prev;
 
             const next = new Map(prev);
-            next.set(id, { ...question, [key]: value });
+            next.set(idx, { ...source, [key]: value });
             return next;
         });
     }
 
-    function duplicateQuestion(id: string) {
-        const questionToDuplicate = questions.get(id);
-        if (!questionToDuplicate) return;
+    function duplicateQuestion(idx: number) {
+        const source = questions.get(idx);
+        if (!source) return;
 
-        const newId = generateId();
+        const newKey = nextQuestionIndexRef.current++;
+
         setQuestions((prev) => {
             const next = new Map(prev);
-            next.set(newId, {
-                ...questionToDuplicate,
-                index: prev.size + 1,
+            next.set(newKey, {
+                ...source,
+                index: countInSection(source.sectionIdx, prev),
             });
             return next;
         });
     }
 
-    function deleteQuestion(id: string) {
+    function deleteQuestion(idx: number) {
         setQuestions((prev) => {
             const next = new Map(prev);
-            next.delete(id);
+            next.delete(idx);
             return next;
         });
     }
 
     const updateQuestion = useCallback(
-        (id: string, patch: Partial<QuestionCore>) => {
+        (idx: number, patch: Partial<QuestionCore>) => {
             setQuestions((prev) => {
-                const question = prev.get(id);
+                const question = prev.get(idx);
                 if (!question) return prev;
                 const next = new Map(prev);
-                next.set(id, { ...question, ...patch });
+                next.set(idx, { ...question, ...patch });
                 return next;
             });
         },
         []
     );
+
+    const reorderQuestions = useCallback(
+        (sectionIdx: number, activeId: number, overId: number) => {
+            setQuestions((prev) => {
+                const inSection = Array.from(prev.entries()).filter(
+                    ([, section]) => section.sectionIdx === sectionIdx
+                );
+                const activeIndex = inSection.findIndex(
+                    ([id]) => id === activeId
+                );
+                const overIndex = inSection.findIndex(([id]) => id === overId);
+                if (activeIndex === -1 || overIndex === -1) return prev;
+
+                const reordered = arrayMove(inSection, activeIndex, overIndex);
+                const next = new Map(prev);
+                reordered.forEach(([id, question], index) => {
+                    next.set(id, { ...question, index });
+                });
+
+                return next;
+            });
+        },
+        []
+    );
+
+    // delete section and its questions
+    const deleteSection = useCallback(
+        (idx: number) => {
+            setSections((prev) => {
+                const next = new Map(prev);
+                next.delete(idx);
+                return next;
+            });
+
+            questions.forEach((question, questionIdx) => {
+                if (question.sectionIdx === idx) {
+                    deleteQuestion(questionIdx);
+                }
+            });
+        },
+        [questions]
+    );
+
     return (
         <FormCreateContext.Provider
             value={{
-                handleMetaChange,
-                meta,
+                form,
+                handleFormChange,
+
+                sections,
+                setSections,
+                handleSectionsChange,
+                handleAddSection,
+
                 handleAddQuestion,
                 duplicateQuestion,
                 deleteQuestion,
@@ -162,6 +250,9 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
                 setQuestions,
                 updateQuestion,
                 handleQuestionChange,
+                reorderQuestions,
+                reorderSections,
+                deleteSection,
             }}
         >
             {children}

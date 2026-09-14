@@ -12,7 +12,6 @@ const questionDependsOnSchema = new Schema(
 const optionSchema = new Schema(
     {
         index: { type: Number, required: true },
-        value: { type: String, required: true },
         label: { type: String, required: true, maxlength: 100 },
     },
     { _id: false }
@@ -29,6 +28,8 @@ export const questionEnum = [
     'DATE',
     'TIME',
 ] as const;
+
+const OPTION_BASED_TYPES = ['CHOICE', 'RADIO', 'DROP_DOWN'] as const;
 
 export const ratingIconEnum = ['STAR', 'HEART', 'THUMB_UP'] as const;
 export const fieldValidationRuleEnum = [
@@ -57,8 +58,9 @@ const ratingConfigSchema = new Schema(
         },
         scale: {
             type: Number,
-            enum: [5, 10],
             required: true,
+            min: 3,
+            max: 9,
             default: 5,
         },
         lowLabel: { type: String, required: false, maxlength: 50 },
@@ -87,10 +89,10 @@ const questionsSchema = new Schema<QuestionDocument>(
     {
         formId: { type: String, required: true, index: true },
         sectionId: { type: String, required: true, index: true },
-        index: { type: Number, required: true, default: 0 },
+        index: { type: Number, required: true, default: 0, min: 0 },
 
         type: { type: String, enum: questionEnum, required: true },
-        question: { type: String, required: true },
+        question: { type: String, required: true, maxlength: 500 },
 
         helpText: { type: String, default: '', maxlength: 500 },
 
@@ -107,13 +109,100 @@ const questionsSchema = new Schema<QuestionDocument>(
     }
 );
 
+function validateFieldValidationRule(rule: {
+    ruleType: (typeof fieldValidationRuleEnum)[number];
+    value?: unknown;
+    min?: number;
+    max?: number;
+    pattern?: string;
+}): string | null {
+    switch (rule.ruleType) {
+        case 'REGEX_MATCH':
+            if (!rule.pattern) return 'REGEX_MATCH requires a pattern';
+            break;
+        case 'NUMBER_GREATER_THAN':
+        case 'NUMBER_LESS_THAN':
+        case 'NUMBER_EQUAL_TO':
+            if (typeof rule.value !== 'number')
+                return `${rule.ruleType} requires a numeric value`;
+            break;
+        case 'NUMBER_BETWEEN':
+            if (rule.min === undefined || rule.max === undefined)
+                return 'NUMBER_BETWEEN requires both min and max';
+            if (rule.min >= rule.max)
+                return 'NUMBER_BETWEEN requires min to be less than max';
+            break;
+        case 'MAX_CHAR_COUNT':
+        case 'MIN_CHAR_COUNT':
+        case 'CHECKBOX_MIN_SELECT':
+        case 'CHECKBOX_MAX_SELECT':
+            if (typeof rule.value !== 'number' || rule.value < 0)
+                return `${rule.ruleType} requires a non-negative numeric value`;
+            break;
+        case 'DATE_IS_BEFORE':
+        case 'DATE_IS_AFTER':
+            if (!rule.value) return `${rule.ruleType} requires a value`;
+            break;
+        case 'EMAIL':
+        case 'URL':
+            break;
+        default:
+            return null;
+    }
+    return null;
+}
+
 questionsSchema.index({ formId: 1, sectionId: 1, index: 1 });
-questionsSchema.set('toObject', {
-    transform: (_, ret) => {
-        Reflect.deleteProperty(ret, '__v');
-        return ret;
-    },
+
+questionsSchema.pre('validate', function (this: QuestionDocument) {
+    const isOptionBased = (OPTION_BASED_TYPES as readonly string[]).includes(
+        this.type
+    );
+
+    if (isOptionBased && (!this.options || this.options.length === 0)) {
+        throw new Error(`${this.type} questions require at least one option`);
+    }
+    if (!isOptionBased && this.options && this.options.length > 0) {
+        throw new Error(
+            `options are only valid for ${OPTION_BASED_TYPES.join(', ')} questions`
+        );
+    }
+
+    if (this.type === 'RATING' && !this.ratingConfig) {
+        throw new Error('RATING questions require ratingConfig');
+    }
+    if (this.type !== 'RATING' && this.ratingConfig) {
+        throw new Error('ratingConfig is only valid for RATING questions');
+    }
+
+    if (this.options && this.options.length > 0) {
+        const indices = this.options.map((opt) => opt.index);
+        if (new Set(indices).size !== indices.length) {
+            throw new Error('options must have unique index values');
+        }
+    }
+
+    if (this.validationRule) {
+        const ruleError = validateFieldValidationRule(this.validationRule);
+        if (ruleError) throw new Error(ruleError);
+    }
+
+    if (
+        this.dependsOn?.questionId &&
+        this._id &&
+        this.dependsOn.questionId === this._id.toString()
+    ) {
+        throw new Error('A question cannot depend on itself');
+    }
 });
+
+const transform = (_doc: unknown, ret: any) => {
+    Reflect.deleteProperty(ret, '__v');
+    return ret;
+};
+
+questionsSchema.set('toObject', { transform });
+questionsSchema.set('toJSON', { transform });
 
 const QuestionsModel = mongoose.model<QuestionDocument>(
     'Question',

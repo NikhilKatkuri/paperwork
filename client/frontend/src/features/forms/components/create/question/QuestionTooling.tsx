@@ -1,8 +1,8 @@
 'use client';
 
-import { useFormCreate } from '../../providers/FormCreate';
-import { QuestionCore } from '../../types';
-import Toggle from '../Toggle';
+import { useFormCreate } from '@/features/forms/providers/FormCreate';
+import QuestionCore from '@/features/forms/types/question.type';
+import Toggle from '../../common/Toggle';
 
 interface QuestionToolingProps {
     isRequired: boolean;
@@ -10,7 +10,8 @@ interface QuestionToolingProps {
     showMoreOptions: boolean;
     setShowMoreOptions: (value: boolean) => void;
     updateConfig: (patch: Partial<QuestionCore>) => void;
-    id: string;
+    id: number;
+    sectionIdx: number;
 }
 
 function QuestionTooling({
@@ -36,7 +37,10 @@ function QuestionTooling({
                                 content_copy
                             </span>
                         </button>
-                        <button onClick={() => deleteQuestion(id)} className="hover:bg-theme-form-container-hover focus-visible:bg-theme-form-container-hover flex h-10 w-10 items-center justify-center rounded-md">
+                        <button
+                            onClick={() => deleteQuestion(id)}
+                            className="hover:bg-theme-form-container-hover focus-visible:bg-theme-form-container-hover flex h-10 w-10 items-center justify-center rounded-md"
+                        >
                             <span className="material-symbols-outlined text-[20px]">
                                 delete
                             </span>

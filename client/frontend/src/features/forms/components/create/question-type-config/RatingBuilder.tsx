@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useFormCreate } from '../../providers/FormCreate';
-import { RatingConfig } from '../../types';
+import { useFormCreate } from '../../../providers/FormCreate'; 
+import { RatingConfig } from '@/features/forms/types/question.type';
 
 type RateIcon = 'kid_star' | 'favorite' | 'thumb_up';
 
@@ -22,7 +22,7 @@ const ALL_ICONS = Object.keys(reverseSymbolMap) as RateIcon[];
 
 interface RateBuilderProps {
     config?: RatingConfig;
-    id: string;
+    id: number;
     onChange: (config: RatingConfig) => void;
 }
 
@@ -113,7 +113,7 @@ export default function RatingBuilder({
                                             );
                                             setOpenSymbolDialog(false);
                                         }}
-                                        className="material-symbols-outlined cursor-pointer text-[20px] text-theme-form-on-surface/60"
+                                        className="material-symbols-outlined text-theme-form-on-surface/60 cursor-pointer text-[20px]"
                                     >
                                         {glyph}
                                     </span>
@@ -148,9 +148,7 @@ export default function RatingBuilder({
                     <input
                         type="text"
                         value={rate.lowLabel ?? ''}
-                        onChange={(e) =>
-                            updateRate('lowLabel', e.target.value)
-                        }
+                        onChange={(e) => updateRate('lowLabel', e.target.value)}
                         placeholder="Label (optional)"
                         className="text-theme-form-on-surface focus:border-theme-form-on-surface/50 border-b border-dotted bg-transparent px-2 outline-none focus:border-solid"
                     />

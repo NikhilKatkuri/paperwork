@@ -1,83 +1,12 @@
-enum QUESTION_TYPE {
-    TEXT = 'TEXT',
-    PARAGRAPH = 'PARAGRAPH',
-    DATE = 'DATE',
-    TIME = 'TIME',
-    CHOICE = 'CHOICE',
-    RADIO = 'RADIO',
-    DROP_DOWN = 'DROP_DOWN',
-    LINEAR_SCALE = 'LINEAR_SCALE',
-    RATING = 'RATING',
-}
-
-type QuestionType = (typeof QUESTION_TYPE)[keyof typeof QUESTION_TYPE];
-
-type RatingIconType = 'STAR' | 'HEART' | 'THUMB_UP';
-
-// changing to number
-// type RatingScale = 5 | 10;
-type RatingScale = number;
-
-interface RatingConfig {
-    icon: RatingIconType;
-    scale: RatingScale;
-    lowLabel?: string;
-    highLabel?: string;
-}
-
-interface DependsOn {
-    questionId: string;
-    value: string;
-}
-
-// label or value must be changed
-// only one of them should be used for comparison
-interface Option {
-    index: number;
-    label: string;
-    value: string;
-}
-
-type BaseRule = { customErrorMessage?: string };
-
-type ValidationRule =
-    | (BaseRule & { ruleType: 'EMAIL' | 'URL' })
-    | (BaseRule & {
-          ruleType:
-              | 'NUMBER_GREATER_THAN'
-              | 'NUMBER_LESS_THAN'
-              | 'MAX_CHAR_COUNT'
-              | 'MIN_CHAR_COUNT'
-              | 'CHECKBOX_MIN_SELECT'
-              | 'CHECKBOX_MAX_SELECT';
-          value: number;
-      })
-    | (BaseRule & { ruleType: 'NUMBER_BETWEEN'; min: number; max: number })
-    | (BaseRule & { ruleType: 'REGEX_MATCH'; pattern: string });
-
-interface FieldValidationRule extends BaseRule {
-    ruleType: ValidationRule['ruleType'];
-    value?: number;
-    min?: number;
-    max?: number;
-    pattern?: string;
-}
-
-interface QuestionCore {
-    index: number;
-    type: QuestionType;
-    question: string;
-
-    helpText?: string;
-
-    options?: Option[];
-    dependsOn?: DependsOn;
-    ratingConfig?: RatingConfig;
-    validationRule?: FieldValidationRule;
-
-    placeholder?: string;
-    isRequired?: boolean;
-}
+import { QUESTION_TYPE } from '../components/common/types';
+import FormCore from './form.type';
+import QuestionCore, {
+    DependsOn,
+    FieldValidationRule,
+    Option,
+    RatingConfig,
+} from './question.type';
+import SectionCore, { defualtSectionCore } from './section.type';
 
 interface questionBase {
     index: string;
@@ -117,53 +46,6 @@ interface ScaleBased extends questionBase {
 
 type QuestionEntity = TextBased | RadioBased | ScaleBased;
 
-type SectionAction =
-    | { actionType: 'NEXT_SECTION' }
-    | { actionType: 'GO_TO_SECTION'; sectionId: string }
-    | { actionType: 'SUBMIT_FORM' };
-
-interface SectionDependsOn {
-    questionId: string;
-    value: string;
-    action: SectionAction;
-}
-
-interface SectionCore {
-    index: number;
-    title: string;
-    description?: string;
-    onAnswer?: SectionDependsOn[];
-    defaultAction?: SectionAction;
-}
-
-interface FormSettings {
-    maxResponses?: number;
-    maxResponsesPerUser?: number;
-    closeDate?: Date;
-    startDate?: Date;
-    timeLimitPerResponse?: number;
-
-    collectEmail?: boolean;
-
-    shuffleQuestions?: boolean;
-    allowEditResponse?: boolean;
-    saveAndContinueLater?: boolean;
-    progressBar?: boolean;
-
-    customConfirmationMessage?: string;
-    redirectUrl?: string;
-}
-
-interface FormCore {
-    title: string;
-    description: string;
-    isPrivate: boolean;
-    isPublished: boolean;
-    allowedDomains?: string[];
-    settings?: FormSettings;
-    responseCount?: number;
-}
-
 interface Time {
     updatedAt: Date;
     createdAt: Date;
@@ -185,25 +67,53 @@ interface ResponseCore {
     };
 }
 
+export type QuestionsMap = Map<number, QuestionCore>;
+
+interface FormCreateContextValue {
+    form: FormCore;
+    handleFormChange: <k extends keyof FormCore>(
+        key: k,
+        value: FormCore[k]
+    ) => void;
+
+    sections: defualtSectionCore;
+    setSections: React.Dispatch<React.SetStateAction<defualtSectionCore>>;
+    handleSectionsChange: <K extends keyof SectionCore>(
+        idx: number,
+        key: K,
+        value: SectionCore[K]
+    ) => void;
+    handleAddSection: () => void;
+
+    handleAddQuestion: (idx: number) => void;
+    duplicateQuestion: (idx: number) => void;
+    deleteQuestion: (idx: number) => void;
+    questions: QuestionsMap;
+    setQuestions: React.Dispatch<React.SetStateAction<QuestionsMap>>;
+    updateQuestion: (
+        idx: number,
+        updatedQuestion: Partial<QuestionCore>
+    ) => void;
+    handleQuestionChange: <K extends keyof QuestionCore>(
+        idx: number,
+        key: K,
+        value: QuestionCore[K]
+    ) => void;
+    reorderQuestions: (sectionIdx: number, activeId: number, overId: number) => void;
+
+    reorderSections: (activeId: number, overId: number) => void;
+    deleteSection: (sectionIdx: number) => void;
+}
+
 export type Tabs = 'questions' | 'settings' | 'responses';
 
 export type {
-    QUESTION_TYPE,
-    QuestionType,
-    DependsOn,
-    Option,
     TextBased,
     RadioBased,
     ScaleBased,
     QuestionEntity,
-    FormCore,
-    SectionCore,
-    SectionAction,
-    SectionDependsOn,
-    QuestionCore,
     AnswerEntry,
     ResponseCore,
-    FormSettings,
     Time,
-    RatingConfig
+    FormCreateContextValue,
 };

@@ -9,13 +9,11 @@ enum QUESTION_TYPE {
     LINEAR_SCALE = 'LINEAR_SCALE',
     RATING = 'RATING',
 }
-
 type QuestionType = (typeof QUESTION_TYPE)[keyof typeof QUESTION_TYPE];
 
+
 type RatingIconType = 'STAR' | 'HEART' | 'THUMB_UP';
-
-type RatingScale = 5 | 10;
-
+type RatingScale = 3 | 4 | 5 | 6 | 7 | 8 | 9 ;
 interface RatingConfig {
     icon: RatingIconType;
     scale: RatingScale;
@@ -31,7 +29,6 @@ interface DependsOn {
 interface Option {
     index: number;
     label: string;
-    value: string;
 }
 
 type BaseRule = { customErrorMessage?: string };
@@ -151,8 +148,7 @@ interface FormSettings {
 }
 
 interface FormCore {
-    title: string;
-    description: string;
+    name: string;
     isPrivate: boolean;
     isPublished: boolean;
     allowedDomains?: string[];

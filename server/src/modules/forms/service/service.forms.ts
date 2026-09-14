@@ -97,7 +97,7 @@ class FormsService {
                 'sendFormCreatedEmail',
                 {
                     formId: form._id.toString(),
-                    formName: form.title,
+                    formName: form.name,
                     email: user.email,
                 },
                 {
@@ -248,7 +248,7 @@ class FormsService {
                 [
                     {
                         ...cleanForm,
-                        title: `${cleanForm.title} (Copy)`,
+                        name: `${cleanForm.name} (Copy)`,
                         isPublished: false,
                         userId,
                     },

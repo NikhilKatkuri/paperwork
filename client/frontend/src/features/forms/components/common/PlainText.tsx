@@ -7,8 +7,8 @@ function PlainTextInput({
     onChange,
     placeholder,
 }: {
-    value: string;
-    onChange: (value: string) => void;
+    value?: string;
+    onChange?: (value: string) => void;
     placeholder: string;
 }) {
     const ref = useRef<HTMLTextAreaElement>(null);
@@ -24,7 +24,7 @@ function PlainTextInput({
         <textarea
             ref={ref}
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={onChange && ((e) => onChange(e.target.value))}
             placeholder={placeholder}
             rows={1}
             className={cn(
