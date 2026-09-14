@@ -80,27 +80,6 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
-    const reorderSections = useCallback(
-        (activeKey: number, overKey: number) => {
-            setSections((prev) => {
-                const entries = Array.from(prev.entries()).sort(
-                    (a, b) => a[1].index - b[1].index
-                );
-                const activeIdx = entries.findIndex(([k]) => k === activeKey);
-                const overIdx = entries.findIndex(([k]) => k === overKey);
-                if (activeIdx === -1 || overIdx === -1) return prev;
-
-                const reordered = arrayMove(entries, activeIdx, overIdx);
-                const next = new Map(prev);
-                reordered.forEach(([key, section], i) =>
-                    next.set(key, { ...section, index: i })
-                );
-                return next;
-            });
-        },
-        []
-    );
-
     /**
      * question management
      */
@@ -193,19 +172,32 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
     const reorderQuestions = useCallback(
         (sectionIdx: number, activeId: number, overId: number) => {
             setQuestions((prev) => {
-                const inSection = Array.from(prev.entries()).filter(
-                    ([, section]) => section.sectionIdx === sectionIdx
-                );
-                const activeIndex = inSection.findIndex(
+                const sectionQuestions = Array.from(prev.entries())
+                    .filter(([, q]) => q.sectionIdx === sectionIdx)
+                    .sort((a, b) => a[1].index - b[1].index);
+
+                const activeIndex = sectionQuestions.findIndex(
                     ([id]) => id === activeId
                 );
-                const overIndex = inSection.findIndex(([id]) => id === overId);
+                const overIndex = sectionQuestions.findIndex(
+                    ([id]) => id === overId
+                );
+
                 if (activeIndex === -1 || overIndex === -1) return prev;
 
-                const reordered = arrayMove(inSection, activeIndex, overIndex);
+                const reordered = arrayMove(
+                    sectionQuestions,
+                    activeIndex,
+                    overIndex
+                );
+
                 const next = new Map(prev);
+
                 reordered.forEach(([id, question], index) => {
-                    next.set(id, { ...question, index });
+                    next.set(id, {
+                        ...question,
+                        index,
+                    });
                 });
 
                 return next;
@@ -230,6 +222,58 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
             });
         },
         [questions]
+    );
+
+    const reorderSections = useCallback(
+        (activeKey: number, overKey: number) => {
+            const entries = Array.from(sections.entries()).sort(
+                (a, b) => a[1].index - b[1].index
+            );
+
+            const activeIndex = entries.findIndex(([key]) => key === activeKey);
+            const overIndex = entries.findIndex(([key]) => key === overKey);
+
+            if (activeIndex === -1 || overIndex === -1) return;
+
+            const reordered = arrayMove(entries, activeIndex, overIndex);
+
+            // old section -> new section mapping
+            const sectionMap = new Map<number, number>();
+            reordered.forEach(([oldSectionId], newSectionId) => {
+                sectionMap.set(oldSectionId, newSectionId);
+            });
+
+            // Update sections
+            setSections(() => {
+                const next = new Map();
+                reordered.forEach(([, section], newIndex) => {
+                    next.set(newIndex, {
+                        ...section,
+                        index: newIndex,
+                    });
+                });
+                return next;
+            });
+
+            // Update every question's sectionIdx
+            setQuestions((prev) => {
+                const next = new Map(prev);
+
+                next.forEach((question, id) => {
+                    const newSectionIdx = sectionMap.get(question.sectionIdx);
+
+                    if (newSectionIdx !== undefined) {
+                        next.set(id, {
+                            ...question,
+                            sectionIdx: newSectionIdx,
+                        });
+                    }
+                });
+
+                return next;
+            });
+        },
+        [sections]
     );
 
     return (

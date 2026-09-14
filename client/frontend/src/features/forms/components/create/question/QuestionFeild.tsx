@@ -18,7 +18,7 @@ interface InputFieldProps {
     initialType?: QuestionType;
     index?: number;
     isOverlay?: boolean;
-    sectionIdx?: number;
+    sectionIdx: number;
 }
 
 const OVERLAY_FALLBACK: QuestionCore = {
@@ -34,6 +34,7 @@ export default function InputField({
     id,
     initialType = QUESTION_TYPE.TEXT,
     index = 0,
+    sectionIdx = 0,
     isOverlay = false,
 }: InputFieldProps) {
     const [mounted, setMounted] = useState(false);
@@ -134,12 +135,12 @@ export default function InputField({
 
     return (
         <div
-            id={`question-${index}`}
+            id={`section-${sectionIdx}:question-${index}`}
             ref={isOverlay ? undefined : setNodeRef}
             style={style}
             className={cn(
-                'group/question-body bg-theme-form-container before:bg-theme-form-container-border/0 focus-within:before:bg-theme-form-container-border relative flex w-full flex-col rounded-xl p-3',
-                'hover:before:bg-theme-form-container-border before:absolute before:top-0 before:left-0 before:z-10 before:h-full before:w-2 before:rounded-l-xl before:transition-all before:duration-200 before:ease-in-out'
+                'floating-toolbar-selector group/question-body bg-theme-form-container before:bg-theme-form-container-border/0 focus-within:before:bg-theme-form-container-border relative flex w-full flex-col rounded-xl p-3',
+                'hover:before:bg-theme-form-container-border before:absolute before:top-0 before:left-0 before:z-50 before:h-full before:w-2 before:rounded-l-xl before:transition-all before:duration-200 before:ease-in-out'
             )}
         >
             <div className="flex items-center justify-center">

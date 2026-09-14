@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import Navbar from '../create/Navbar';
-import QuestionsLayout from '../Questions';
+import FormLayout from '../form';
 import Settings from '../create/Settings';
 import { Tabs } from '../../types'; 
 
 function Render({ _case }: { _case: Tabs }) {
     switch (_case) {
         case 'questions':
-            return <QuestionsLayout />;
+            return <FormLayout />;
         case 'settings':
             return <Settings />;
         case 'responses':
