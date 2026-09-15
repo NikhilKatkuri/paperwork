@@ -4,6 +4,8 @@ import {
     createContext,
     useCallback,
     useContext,
+    useEffect,
+    useMemo,
     useRef,
     useState,
     type ReactNode,
@@ -20,6 +22,9 @@ import SectionCore, { defualtSectionCore } from '../types/section.type';
 import QuestionCore from '../types/question.type';
 import { FormCreateContextValue, QuestionsMap } from '../types';
 import { arrayMove } from '@dnd-kit/sortable';
+import { FormDB } from '@/lib/db';
+import formRepository from '../repositories/formRepository';
+import { debounce } from '@/features/common/utils';
 
 const FormCreateContext = createContext<FormCreateContextValue | undefined>(
     undefined
@@ -276,6 +281,80 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
         [sections]
     );
 
+    const [activeFormID, setActiveFormID] = useState<string | null>(null);
+
+    /**
+     * form Loading
+     * load form from DB when activeFormID changes
+     */
+    useEffect(() => {
+        async function loadFormFromDB() {
+            if (!activeFormID) return;
+            try {
+                const formData = await formRepository.get(activeFormID);
+                if (!formData) return;
+                const { sections, questions, ...rest } = formData;
+
+                setForm({
+                    name: rest.name,
+                    isPrivate: rest.isPrivate,
+                    isPublished: rest.isPublished,
+                    allowedDomains: rest.allowedDomains ?? [],
+                    settings: { ...rest.settings },
+                    responseCount: rest.responseCount ?? 0,
+                } satisfies Required<FormCore>);
+
+                setSections(new Map(sections.map((s, idx) => [idx, s])));
+                setQuestions(new Map(questions.map((q, idx) => [idx, q])));
+            } catch (error) {
+                console.error('Error loading form from DB:', error);
+            }
+        }
+        loadFormFromDB();
+    }, [activeFormID]);
+
+    /**
+     * form Saving
+     * save form to DB with debounce
+     */
+    const debouncedUpdate = useMemo(
+        () =>
+            debounce<FormDB>(async (formData: FormDB) => {
+                await formRepository.update(formData._id, formData);
+            }, 1000),
+        []
+    );
+
+    useEffect(() => {
+        async function prepareForm() {
+            if (!activeFormID) return;
+            let formData: FormDB = {
+                ...form,
+                sections: Array.from(sections.values()),
+                questions: Array.from(questions.values()),
+                _id: '',
+                version: 0,
+                isDirty: false,
+                createdAt: 0,
+                updatedAt: 0,
+            };
+
+            const db = await formRepository.get(activeFormID);
+
+            formData = {
+                ...db,
+                ...formData,
+                _id: activeFormID,
+                version: Date.now(),
+                isDirty: true,
+                updatedAt: Date.now(),
+            };
+
+            debouncedUpdate(formData);
+        }
+        prepareForm();
+    }, [activeFormID, debouncedUpdate, form, questions, sections]);
+
     return (
         <FormCreateContext.Provider
             value={{
@@ -297,6 +376,7 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
                 reorderQuestions,
                 reorderSections,
                 deleteSection,
+                setActiveFormID,
             }}
         >
             {children}

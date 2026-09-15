@@ -1,13 +1,9 @@
 'use client';
-import FormCreatePageCreateLayout from '@/features/forms/components/layouts/FormCreatePageCreateLayout';
-import { FormCreateProvider } from '@/features/forms/providers/FormCreate';
+
+import { notFound } from 'next/navigation';
 
 function page() {
-    return (
-        <FormCreateProvider>
-            <FormCreatePageCreateLayout />
-        </FormCreateProvider>
-    );
+    notFound();
 }
 
 export default page;

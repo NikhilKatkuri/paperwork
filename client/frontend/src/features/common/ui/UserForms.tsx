@@ -6,10 +6,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { cn } from '@/utils/cn';
 import useGetAllForms from '@/features/forms/api/user/allForms';
 import { toast } from 'sonner';
-import { Time } from '@/features/forms/types';
-import FormCore from '@/features/forms/types/form.type';
+import { FormDB } from '@/lib/db';
 
-type T = FormCore & Time;
+type T = FormDB;
 
 function UserForms() {
     const [viewAsRow, setViewAsRow] = useState(true);

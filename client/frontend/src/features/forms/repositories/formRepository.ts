@@ -62,7 +62,7 @@ class FormRepository {
     // Update only part of a form
     async update(
         uid: string,
-        updates: Partial<Omit<FormDB, 'uid'>>
+        updates: Partial<FormDB>
     ): Promise<void> {
         await db.forms.update(uid, {
             ...updates,

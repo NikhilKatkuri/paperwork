@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Navbar from '../create/Navbar';
 import FormLayout from '../form';
 import Settings from '../create/Settings';
-import { Tabs } from '../../types'; 
+import { Tabs } from '../../types';
+import { useParams } from 'next/navigation';
+import { useFormCreate } from '../../providers/FormCreate';
 
 function Render({ _case }: { _case: Tabs }) {
     switch (_case) {
@@ -19,7 +21,17 @@ function Render({ _case }: { _case: Tabs }) {
 
 function FormCreatePageCreateLayout() {
     const [mode, setMode] = useState<Tabs>('questions');
+    const { id } = useParams();
 
+    const { setActiveFormID } = useFormCreate();
+    useEffect(() => {
+        function updateFormId() {
+            if (!id || typeof id !== 'string') return;
+            setActiveFormID(id);
+        }
+        updateFormId();
+    }, [id, setActiveFormID]);
+    
     return (
         <div className="flex h-screen w-full flex-col">
             <Navbar currMode={mode} setMode={setMode} />

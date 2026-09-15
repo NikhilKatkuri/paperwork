@@ -24,8 +24,8 @@ interface QuestionDB extends QuestionCore {
 }
 
 export interface FormDB extends FormCore, TimeStamp {
-    sections: SectionDB[];
-    questions: QuestionDB[];
+    sections: SectionCore[];
+    questions: QuestionCore[];
 }
 
 class PaperworkDB extends Dexie {

@@ -1,12 +1,11 @@
 'use client';
 import { useState } from 'react';
-import { FormSettings, FormCore } from '../types';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
+import FormCore, { FormSettings } from '../types/form.type';
 
 interface createFormData extends Partial<FormSettings> {
-    title: string;
-    description: string;
+    name: string;
     isPrivate: boolean;
     isPublished: boolean;
 }

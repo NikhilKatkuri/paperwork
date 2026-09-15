@@ -1,20 +1,29 @@
 'use client';
-
-import { FormCore, Time } from '@/features/forms/types';
+ 
+import { FormDB } from '@/lib/db';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
+
+function toDateString(date: number): string {
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    });
+}
 
 function FormsView({
     viewAsRow,
     form,
 }: {
     viewAsRow: boolean;
-    form?: FormCore & Time;
+    form?: FormDB;
 }) {
     if (viewAsRow) {
         return (
             <Link
-                href={'/'}
+                href={'/forms/c/' + (form ? form._id : '')}
                 className={cn(
                     'hover:bg-brand-light grid h-14 w-full cursor-pointer grid-cols-[1fr_0.5fr] items-center rounded-md border border-transparent px-4 transition-all duration-150 ease-in-out *:text-sm md:grid-cols-2'
                 )}
@@ -26,7 +35,7 @@ function FormsView({
                         </div>
                     </div>
                     <p className="font-medium">
-                        {form ? form.title : 'Recent forms'}
+                        {form ? form.name : 'Recent forms'}
                     </p>
                 </div>
                 <div
@@ -39,7 +48,7 @@ function FormsView({
                         <p className="text-md">me</p>
                     </div>
                     <div className="max-[900px]:hidden">
-                        <p className="text-md">     {form ? form.updatedAt.toString() : '9 AM'}</p>
+                        <p className="text-md">     {form ? toDateString(form.updatedAt) : '9 AM'}</p>
                     </div>
 
                     <div className="flex items-center justify-end">

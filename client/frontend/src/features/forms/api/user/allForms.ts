@@ -1,77 +1,84 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
-import { useState } from 'react';
-import { Time } from '../../types';
 import storageService from '@/providers/StorageService';
-import FormCore from '../../types/form.type';
+import formRepository from '../../repositories/formRepository';
+import { FormDB } from '@/lib/db';
 
-interface baseResponse {
+interface BaseResponse {
     success: boolean;
     message: string;
 }
 
-type Response =
-    | (baseResponse & { success: false })
-    | (baseResponse & {
+type ApiResponse =
+    | (BaseResponse & { success: false })
+    | (BaseResponse & {
           success: true;
-          data: { forms: FormCore[] };
+          data: { forms: FormDB[] };
       });
 
 const CACHE_KEY = 'all_forms_cache';
-type T = FormCore & Time;
+
 export default function useGetAllForms() {
     const [loading, setLoading] = useState(false);
 
-    async function handler(forceRefresh = false) {
-        setLoading(true);
+    const handler = useCallback(
+        async (forceRefresh = false): Promise<FormDB[]> => {
+            setLoading(true);
 
-        try {
-            // 1. Check local storage first (unless forcing a fresh network request)
-            const cachedForms = storageService.get<T[]>(CACHE_KEY);
+            try {
+                const localForms = (await formRepository.getAll()) ?? [];
 
-            if (cachedForms && !forceRefresh) {
-                setLoading(false);
-                return cachedForms; // Return cached response instantly
-            }
+                if (!forceRefresh) {
+                    const cachedForms = storageService.get<FormDB[]>(CACHE_KEY);
+                    if (cachedForms) {
+                        return mergeUniqueForms(localForms, cachedForms);
+                    }
+                }
 
-            // 2. Fetch fresh data from API
-            const { path } = endpoints.forms.allForms;
-            const res = await http.get<Response>(path);
+                const { path } = endpoints.forms.allForms;
+                const res = await http.get<ApiResponse>(path);
 
-            if (res.data.success) {
-                const forms = res.data.data.forms as T[];
+                if (res.data.success) {
+                    const apiForms = res.data.data.forms;
 
-                // 3. Persist the latest forms list to local storage
-                storageService.set(CACHE_KEY, forms);
+                    storageService.set(CACHE_KEY, apiForms);
 
-                return forms;
-            }
+                    return mergeUniqueForms(localForms, apiForms);
+                }
 
-            throw new Error(res.data.message);
-        } catch (e) {
-            // 4. Fallback: If network request fails, return cached data if available
-            const fallbackCache = storageService.get<FormCore[]>(CACHE_KEY);
-            if (fallbackCache) {
-                console.warn(
-                    '[useGetAllForms] Network failed. Serving stale cache fallback.'
+                throw new Error(res.data.message || 'Failed to fetch forms');
+            } catch (e) {
+                const fallbackCache = storageService.get<FormDB[]>(CACHE_KEY);
+                if (fallbackCache) {
+                    console.warn(
+                        '[useGetAllForms] Serving stale cache fallback.'
+                    );
+                    const localForms = (await formRepository.getAll()) ?? [];
+                    return mergeUniqueForms(localForms, fallbackCache);
+                }
+
+                if (e instanceof Error) throw e;
+                throw new Error(
+                    'Failed to load forms! Please try again later.'
                 );
-                return fallbackCache;
+            } finally {
+                setLoading(false);
             }
+        },
+        []
+    );
 
-            if (e instanceof Error) {
-                throw e;
-            }
+    return { loading, handler };
+}
 
-            throw new Error('Failed to load forms! Please try again later.');
-        } finally {
-            setLoading(false);
-        }
-    }
+function mergeUniqueForms(local: FormDB[], remote: FormDB[]): FormDB[] {
+    const map = new Map<string, FormDB>();
 
-    return {
-        loading,
-        handler,
-    };
+    remote.forEach((f) => f._id && map.set(f._id, f));
+    local.forEach((f) => f._id && map.set(f._id, f));
+
+    return Array.from(map.values());
 }
