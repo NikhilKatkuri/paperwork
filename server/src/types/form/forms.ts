@@ -1,3 +1,5 @@
+import { Document } from 'mongoose';
+
 enum QUESTION_TYPE {
     TEXT = 'TEXT',
     PARAGRAPH = 'PARAGRAPH',
@@ -11,9 +13,8 @@ enum QUESTION_TYPE {
 }
 type QuestionType = (typeof QUESTION_TYPE)[keyof typeof QUESTION_TYPE];
 
-
 type RatingIconType = 'STAR' | 'HEART' | 'THUMB_UP';
-type RatingScale = 3 | 4 | 5 | 6 | 7 | 8 | 9 ;
+type RatingScale = 3 | 4 | 5 | 6 | 7 | 8 | 9;
 interface RatingConfig {
     icon: RatingIconType;
     scale: RatingScale;
@@ -29,6 +30,11 @@ interface DependsOn {
 interface Option {
     index: number;
     label: string;
+}
+
+interface Options {
+    correctAnswer?: number | number[];
+    options: Option[];
 }
 
 type BaseRule = { customErrorMessage?: string };
@@ -63,7 +69,7 @@ interface QuestionCore {
 
     helpText?: string;
 
-    options?: Option[];
+    optionsConfig?: Options;
     dependsOn?: DependsOn;
     ratingConfig?: RatingConfig;
     validationRule?: FieldValidationRule;
@@ -115,6 +121,11 @@ type SectionAction =
     | { actionType: 'GO_TO_SECTION'; sectionId: string }
     | { actionType: 'SUBMIT_FORM' };
 
+interface SectionActionUnion {
+    actionType: 'NEXT_SECTION' | 'GO_TO_SECTION' | 'SUBMIT_FORM';
+    sectionId?: string;
+}
+
 interface SectionDependsOn {
     questionId: string;
     value: string;
@@ -156,6 +167,14 @@ interface FormCore {
     responseCount?: number;
 }
 
+interface SectionEntity extends SectionCore, Document {}
+interface QuestionCoreEntity extends QuestionCore, Document {}
+
+interface FormEntity extends FormCore, Document {
+    sections?: SectionEntity[];
+    questions?: QuestionCoreEntity[];
+}
+
 interface AnswerEntry {
     questionId: string;
     values: string[];
@@ -194,6 +213,7 @@ export {
     AnswerEntry,
     ResponseCore,
     FormSettings,
-    GetAllOptions
+    GetAllOptions,
+    FormEntity,
+    SectionActionUnion,
 };
-

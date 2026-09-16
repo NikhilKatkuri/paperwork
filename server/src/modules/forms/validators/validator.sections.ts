@@ -1,8 +1,12 @@
 import { z } from 'zod';
-import { sectionActionEnum } from '@/modules/forms/schemas/schemas.sections';
-export const zodObjectId = z
-    .string()
-    .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Database ID format');
+
+import {
+    sectionActionSchema,
+    sectionDataSchema,
+    zodObjectId,
+} from './validator.common';
+
+export { zodObjectId } from './validator.common';
 
 export const getSectionSchema = z.object({
     params: z.object({
@@ -13,48 +17,26 @@ export const getSectionSchema = z.object({
 
 export const sectionSchema = z.object({
     body: z.object({
-        data: z.object({
-            index: z.number().min(0, 'Index must be a non-negative integer'),
-            title: z
-                .string()
-                .min(1, 'Title is required')
-                .max(255, 'Title cannot exceed 255 characters'),
-            description: z.string().max(5000, 'Description cannot exceed 5000 characters').optional(),
-            defaultAction: z
-                .object({
-                    actionType: z.enum(sectionActionEnum),
-                    sectionId: zodObjectId.optional(),
-                })
-                .optional(),
-            onAnswer: z
-                .array(
-                    z.object({
-                        questionId: zodObjectId,
-                        value: z.string().min(1, 'Value is required'),
-                        action: z.object({
-                            actionType: z.enum(sectionActionEnum),
-                            sectionId: zodObjectId.optional(),
-                        }),
-                    })
-                )
-                .optional(),
+        data: sectionDataSchema.extend({
+            defaultAction: sectionActionSchema.optional(),
         }),
     }),
 });
 
 export const createSectionSchema = sectionSchema;
-export const updateSectionSchema = sectionSchema.partial();
-export const orderSectionSchema = z.object({
-    params: z.object({
-        formId: zodObjectId,
+export const updateSectionSchema = z.object({
+    body: z.object({
+        data: sectionDataSchema.partial(),
     }),
+});
+
+export const orderSectionSchema = z.object({
+    params: z.object({ formId: zodObjectId }),
     body: z.object({
         data: z.array(
             z.object({
                 sectionId: zodObjectId,
-                index: z
-                    .number()
-                    .min(0, 'Index must be a non-negative integer'),
+                index: z.number().int().nonnegative(),
             })
         ),
     }),

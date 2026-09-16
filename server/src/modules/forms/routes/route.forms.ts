@@ -2,15 +2,8 @@ import express from 'express';
 import FormsController from '@/modules/forms/controllers/controller.forms';
 import protect from '@/middleware/protect';
 import validate from '@/middleware/validate';
-import {
-    formSchema,
-    getFormSchema,
-    patchRequestFormSchema,
-    putRequestFormSchema,
-} from '@/modules/forms/validators/validator.form';
 import sectionRouter from '@/modules/forms/routes/route.sections';
 import questionsRouter from './route.questions';
-
 import fillRouter from './route.fill';
 import {
     createFormsInnerLimiter,
@@ -18,6 +11,7 @@ import {
     limiter,
     lowLimiter,
 } from '@/middleware/limiter';
+import { formSchema, getFormSchema, patchRequestFormSchema, putRequestFormSchema } from '../validators/validator.form';
 
 const formsRouter = express.Router({ mergeParams: true });
 
@@ -39,6 +33,8 @@ formsRouter.put(
     validate(putRequestFormSchema),
     controller.put
 );
+
+formsRouter.put('/:formId/bulk', limiter, protect, controller.bulkPut);
 
 formsRouter.patch(
     '/:formId',
@@ -92,11 +88,13 @@ formsRouter.use(
     protect,
     sectionRouter
 );
+
 formsRouter.use(
     '/:formId/sections/:sectionId/questions',
     createFormsInnerLimiter,
     protect,
     questionsRouter
 );
+
 formsRouter.use('/:formId/fill', lowLimiter, protect, fillRouter);
 export default formsRouter;

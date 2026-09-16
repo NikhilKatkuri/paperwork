@@ -93,6 +93,26 @@ class FormsController {
         }
     }
 
+    async bulkPut(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { userId, formId } = this.getRequestData(req);
+
+            const form = await this.service.bulkPut(
+                req.body.data,
+                userId,
+                formId
+            );
+
+            return res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Form updated successfully',
+                data: form,
+            });
+        } catch (error) {
+            return next(error);
+        }
+    }
+
     async patch(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId, formId, bodyData } = this.getRequestData(req);
@@ -182,9 +202,9 @@ class FormsController {
             const forms = await this.service.getAll(userId, {
                 page,
                 limit,
-                lastUpdated
+                lastUpdated,
             });
-            
+
             res.status(StatusCodes.OK).json({
                 success: true,
                 message: 'Forms retrieved successfully',

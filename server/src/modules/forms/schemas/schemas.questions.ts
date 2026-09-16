@@ -85,6 +85,14 @@ const fieldValidationRuleSchema = new Schema(
     { _id: false }
 );
 
+const optionConfigSchema = new Schema(
+    {
+        correctAnswer: { type: String, required: false },
+        options: { type: [optionSchema], required: true, default: [] },
+    },
+    { _id: false }
+);
+
 const questionsSchema = new Schema<QuestionDocument>(
     {
         formId: { type: String, required: true, index: true },
@@ -96,7 +104,7 @@ const questionsSchema = new Schema<QuestionDocument>(
 
         helpText: { type: String, default: '', maxlength: 500 },
 
-        options: { type: [optionSchema], default: undefined },
+        optionsConfig:{ type: optionConfigSchema, default: undefined },
         dependsOn: { type: questionDependsOnSchema, default: undefined },
         ratingConfig: { type: ratingConfigSchema, default: undefined },
         validationRule: { type: fieldValidationRuleSchema, default: undefined },
@@ -159,10 +167,10 @@ questionsSchema.pre('validate', function (this: QuestionDocument) {
         this.type
     );
 
-    if (isOptionBased && (!this.options || this.options.length === 0)) {
+    if (isOptionBased && (!this.optionsConfig?.options || this.optionsConfig.options.length === 0)) {
         throw new Error(`${this.type} questions require at least one option`);
     }
-    if (!isOptionBased && this.options && this.options.length > 0) {
+    if (!isOptionBased && this.optionsConfig?.options && this.optionsConfig.options.length > 0) {
         throw new Error(
             `options are only valid for ${OPTION_BASED_TYPES.join(', ')} questions`
         );
@@ -175,8 +183,8 @@ questionsSchema.pre('validate', function (this: QuestionDocument) {
         throw new Error('ratingConfig is only valid for RATING questions');
     }
 
-    if (this.options && this.options.length > 0) {
-        const indices = this.options.map((opt) => opt.index);
+    if (this.optionsConfig?.options && this.optionsConfig.options.length > 0) {
+        const indices = this.optionsConfig.options.map((opt) => opt.index);
         if (new Set(indices).size !== indices.length) {
             throw new Error('options must have unique index values');
         }

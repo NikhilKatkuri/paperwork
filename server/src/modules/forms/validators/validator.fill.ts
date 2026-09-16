@@ -1,5 +1,5 @@
 import z from 'zod';
-import { zodObjectId } from './validator.form';
+import { zodObjectId } from './validator.common';
 
 export const fillFormSchema = z.object({
     params: z.object({

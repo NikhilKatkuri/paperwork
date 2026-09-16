@@ -4,80 +4,11 @@ import FormsModel from '@/modules/forms/schemas/schemas.forms';
 import SectionModel from '@/modules/forms/schemas/schemas.sections';
 import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
 import UserModel from '@/modules/auth/schemas/user.schema';
-import { FormCore, GetAllOptions } from '@/types/form/forms';
+import { FormCore, FormEntity, GetAllOptions } from '@/types/form/forms';
 import { emailQueue } from '@/queues';
+import fieldsValidator from '../validators/validator.feilds';
 
 class FormsService {
-    private allowedSettingsFields = [
-        'maxResponses',
-        'maxResponsesPerUser',
-        'closeDate',
-        'startDate',
-        'timeLimitPerResponse',
-        'collectEmail',
-        'shuffleQuestions',
-        'allowEditResponse',
-        'saveAndContinueLater',
-        'progressBar',
-        'customConfirmationMessage',
-        'redirectUrl',
-    ];
-
-    private allowedFormFields = [
-        'title',
-        'description',
-        'isPrivate',
-        'isPublished',
-        'allowedDomains',
-        'settings',
-    ];
-
-    private filterSafeFields<T extends Partial<FormCore>>(data: T): T {
-        const safeData = {} as T;
-
-        this.allowedFormFields.forEach((field) => {
-            const key = field as keyof FormCore;
-            const value = data[key];
-
-            if (value === undefined) return;
-
-            if (key === 'settings' && typeof value === 'object') {
-                safeData.settings = Object.fromEntries(
-                    Object.entries(value).filter(([sKey]) =>
-                        this.allowedSettingsFields.includes(sKey)
-                    )
-                );
-            } else {
-                (safeData as any)[key] = value;
-            }
-        });
-
-        return safeData;
-    }
-
-    private filterFields(
-        data: any,
-        allowedFields: string[],
-        allowedSettings: string[]
-    ) {
-        const filtered: any = {};
-
-        for (const key of allowedFields) {
-            if (data[key] === undefined) continue;
-
-            if (key === 'settings' && typeof data[key] === 'object') {
-                filtered.settings = Object.fromEntries(
-                    Object.entries(data[key]).filter(([sKey]) =>
-                        allowedSettings.includes(sKey)
-                    )
-                );
-            } else {
-                filtered[key] = data[key];
-            }
-        }
-        return filtered;
-    }
-
     async create(data: FormCore, userId: string) {
         const { settings, ...rest } = data;
         const safeSettings = settings ?? {};
@@ -160,10 +91,101 @@ class FormsService {
         if (Object.keys(updateData).length === 0)
             throw AppError.BadRequest('No update data provided');
 
-        form.set(this.filterSafeFields(updateData));
+        form.set(fieldsValidator.getSafeFormData(updateData));
         await form.save();
 
         return form.toObject();
+    }
+
+    async bulkPut(updateData: FormEntity, userId: string, formId: string) {
+        const { sections = [], questions = [], ...rest } = updateData;
+
+        const safeFormData = fieldsValidator.getSafeFormData(rest);
+
+        const safeSections = sections.map((section) => ({
+            _id: section._id,
+            formId,
+            ...fieldsValidator.getSafeSectionData(section),
+        }));
+
+        const safeQuestions = questions.map((question) => ({
+            _id: question._id,
+            formId,
+            ...fieldsValidator.getSafeQuestionData(question),
+        }));
+
+        const session = await mongoose.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                const form = await FormsModel.findOneAndUpdate(
+                    { _id: formId, userId },
+                    { $set: safeFormData }, 
+                    { new: true, session }
+                );
+
+                if (!form) {
+                    throw AppError.FormNotFound('Form not found');
+                }
+
+                const sectionIds = safeSections.map((s) => s._id);
+
+                await SectionModel.deleteMany(
+                    {
+                        formId,
+                        ...(sectionIds.length && { _id: { $nin: sectionIds } }),
+                    },
+                    { session }
+                );
+
+                if (safeSections.length) {
+                    await SectionModel.bulkWrite(
+                        safeSections.map((section) => ({
+                            updateOne: {
+                                filter: { _id: section._id, formId },
+                                update: { $set: section },
+                                upsert: true,
+                            },
+                        })),
+                        { session }
+                    );
+                }
+
+                const questionIds = safeQuestions.map((q) => q._id);
+
+                await QuestionsModel.deleteMany(
+                    {
+                        formId,
+                        ...(questionIds.length && {
+                            _id: { $nin: questionIds },
+                        }),
+                    },
+                    { session }
+                );
+
+                if (safeQuestions.length) {
+                    await QuestionsModel.bulkWrite(
+                        safeQuestions.map((question) => ({
+                            updateOne: {
+                                filter: { _id: question._id, formId },
+                                update: { $set: question },
+                                upsert: true,
+                            },
+                        })),
+                        { session }
+                    );
+                }
+            });
+
+            return await FormsModel.findOne({ _id: formId, userId })
+                .select('-__v')
+                .lean();
+        } catch (error) {
+            if (error instanceof AppError) throw error;
+            throw AppError.Internal('Failed to update form and its components');
+        } finally {
+            await session.endSession();
+        }
     }
 
     async patch(updateData: Partial<FormCore>, userId: string, formId: string) {
@@ -174,11 +196,7 @@ class FormsService {
         if (Object.keys(updateData).length === 0)
             throw AppError.BadRequest('No update data provided');
 
-        const filteredUpdate = this.filterFields(
-            updateData,
-            this.allowedFormFields,
-            this.allowedSettingsFields
-        );
+        const filteredUpdate = fieldsValidator.getSafeFormData(updateData);
 
         if (filteredUpdate.settings) {
             filteredUpdate.settings = {
