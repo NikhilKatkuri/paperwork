@@ -4,7 +4,6 @@ import {
     fieldValidationRuleEnum,
     ratingIconEnum,
 } from '../schemas/schemas.questions';
-import { sectionActionEnum } from '../schemas/schemas.sections';
 
 export const zodObjectId = z
     .string()
@@ -23,7 +22,7 @@ export const formSettingsSchema = z
         saveAndContinueLater: z.boolean().default(false),
         progressBar: z.boolean().default(false),
         customConfirmationMessage: z.string().max(1000).nullable().optional(),
-        redirectUrl: z.string().url().nullable().optional(),
+        redirectUrl: z.string().nullable().optional(),
     })
     .strict();
 
@@ -94,7 +93,7 @@ export const validationRuleSchema = z.object({
     customErrorMessage: z.string().max(200).optional(),
 });
 
-export const questionBaseSchema = z.object({
+export const QuestionBaseSchema = z.object({
     question: z.string().min(1).max(1000),
     helpText: z.string().max(500).optional(),
     dependsOn: dependsOnSchema.optional(),
@@ -116,21 +115,21 @@ const questionTypes = [
 ] as const;
 
 export const questionDataSchema = z.discriminatedUnion('type', [
-    questionBaseSchema.extend({ type: z.literal('TEXT') }),
-    questionBaseSchema.extend({ type: z.literal('PARAGRAPH') }),
-    questionBaseSchema.extend({ type: z.literal('DATE') }),
-    questionBaseSchema.extend({ type: z.literal('TIME') }),
-    questionBaseSchema.extend({
+    QuestionBaseSchema.extend({ type: z.literal('TEXT') }),
+    QuestionBaseSchema.extend({ type: z.literal('PARAGRAPH') }),
+    QuestionBaseSchema.extend({ type: z.literal('DATE') }),
+    QuestionBaseSchema.extend({ type: z.literal('TIME') }),
+    QuestionBaseSchema.extend({
         type: z.enum(questionTypes.slice(4, 7)),
         optionsConfig: optionsConfigSchema,
     }),
-    questionBaseSchema.extend({
+    QuestionBaseSchema.extend({
         type: z.enum(questionTypes.slice(7)),
         ratingConfig: ratingConfigSchema,
     }),
 ]);
 
-const indexedQuestionBaseSchema = questionBaseSchema.extend({
+const indexedQuestionBaseSchema = QuestionBaseSchema.extend({
     _id: zodObjectId,
     index: z.number().int().nonnegative(),
 });
@@ -161,5 +160,3 @@ export const questionTypesWithIndexSchema = z.discriminatedUnion('type', [
         ratingConfig: ratingConfigSchema,
     }),
 ]);
-
-export { sectionActionEnum };

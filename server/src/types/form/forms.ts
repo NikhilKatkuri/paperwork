@@ -78,7 +78,7 @@ interface QuestionCore {
     isRequired?: boolean;
 }
 
-interface questionBase {
+interface QuestionBase {
     index: string;
 
     question: string;
@@ -92,7 +92,7 @@ interface questionBase {
     isRequired?: boolean;
 }
 
-interface TextBased extends questionBase {
+interface TextBased extends QuestionBase {
     type:
         | QUESTION_TYPE.TEXT
         | QUESTION_TYPE.PARAGRAPH
@@ -102,13 +102,13 @@ interface TextBased extends questionBase {
     ratingConfig?: never;
 }
 
-interface RadioBased extends questionBase {
+interface RadioBased extends QuestionBase {
     type: QUESTION_TYPE.CHOICE | QUESTION_TYPE.RADIO | QUESTION_TYPE.DROP_DOWN;
     options: Option[];
     ratingConfig?: never;
 }
 
-interface ScaleBased extends questionBase {
+interface ScaleBased extends QuestionBase {
     type: QUESTION_TYPE.LINEAR_SCALE | QUESTION_TYPE.RATING;
     options?: never;
     ratingConfig: RatingConfig;
