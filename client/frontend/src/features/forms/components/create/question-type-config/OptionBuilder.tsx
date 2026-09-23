@@ -1,6 +1,5 @@
 'use client';
-import { useState } from 'react'; 
-import { generateId } from '../../../utils'; 
+import { useState } from 'react';
 import { useFormCreate } from '../../../providers/FormCreate';
 import { OptionType, QUESTION_TYPE } from '../../common/types';
 import { Option } from '@/features/forms/types/question.type';
@@ -17,24 +16,27 @@ interface OptionBuilderProps {
     id: number;
 }
 
-function OptionBuilder({ id, type, onOptionsChange }: OptionBuilderProps) {
+function OptionBuilder({
+    id,
+    type,
+    onOptionsChange,
+}: Readonly<OptionBuilderProps>) {
     const { questions } = useFormCreate();
     const [options, setOptions] = useState<Option[]>(() => {
         const question = questions.get(id);
-        if (question && question.options) {
+        if (question?.options) {
             return question.options;
         }
 
-        return [{ index: 1, label: generateId(), value: 'Option 1' }];
+        return [{ index: 1, label:"Option 1"}];
     });
 
     const handleAddOption = () => {
-        const newOptions = [
+        const newOptions: Option[] = [
             ...options,
             {
                 index: options.length + 1,
-                label: generateId(),
-                value: `Option ${options.length + 1}`,
+                label: `Option ${options.length + 1}`
             },
         ];
         setOptions(newOptions);

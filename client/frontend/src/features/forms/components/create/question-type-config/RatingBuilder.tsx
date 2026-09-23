@@ -30,7 +30,7 @@ export default function RatingBuilder({
     config = { icon: 'HEART', scale: 5 },
     onChange,
     id,
-}: RateBuilderProps) {
+}: Readonly<RateBuilderProps>) {
     const { questions } = useFormCreate();
 
     // Single source of truth — no local mirror of ratingConfig.

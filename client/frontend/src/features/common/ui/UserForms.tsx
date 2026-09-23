@@ -18,7 +18,6 @@ function UserForms() {
     const loadForms = useCallback(async () => {
         try {
             const res = (await handler()) as T[];
-            console.log('Forms loaded:', res);
             setData(res);
         } catch (e) {
             if (e instanceof Error) {
@@ -53,20 +52,23 @@ function UserForms() {
                             : 'grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4'
                     )}
                 >
-                    {data && data!.length > 0 
-                        ? data.map((form, index) => (
-                              <FormsView
-                                  key={index}
-                                  viewAsRow={viewAsRow}
-                                  form={form}
-                              />
-                          ))
-                        : 
-                        <div className="flex h-full w-full flex-col items-center justify-center py-8 gap-2 flex-1 text-center text-theme-on-surface/80">
+                    {data && data!.length > 0 ? (
+                        data.map((form) => (
+                            <FormsView
+                                key={form._id}
+                                viewAsRow={viewAsRow}
+                                form={form}
+                            />
+                        ))
+                    ) : (
+                        <div className="text-theme-on-surface/80 flex h-full w-full flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
                             <h1 className="font-semibold">No forms yet</h1>
-                            <p>Select a blank form or choose another template above to get started</p>
-                        </div> 
-                        }
+                            <p>
+                                Select a blank form or choose another template
+                                above to get started
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </>

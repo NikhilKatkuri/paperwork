@@ -25,12 +25,47 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { FormDB } from '@/lib/db';
 import formRepository from '../repositories/formRepository';
 import { debounce } from '@/features/common/utils';
+import { syncQueueRepository } from '../lib/sync-queue.repository';
+import { SyncQueueDB } from '../lib/sync-queue.db';
+import { generateId } from '../utils';
 
 const FormCreateContext = createContext<FormCreateContextValue | undefined>(
     undefined
 );
 
-export function FormCreateProvider({ children }: { children: ReactNode }) {
+async function queueChangedFields(oldForm: FormDB, newForm: FormDB) {
+    const operations: SyncQueueDB[] = [];
+
+    const compare = (path: string, oldValue: unknown, newValue: unknown) => {
+        if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+            operations.push({
+                id: generateId(),
+                formId: newForm._id,
+                operation: 'update',
+                path,
+                value: newValue,
+                createdAt: Date.now(),
+                synced: false,
+            });
+        }
+    };
+
+    compare('name', oldForm.name, newForm.name);
+    compare('isPrivate', oldForm.isPrivate, newForm.isPrivate);
+    compare('isPublished', oldForm.isPublished, newForm.isPublished);
+    compare('allowedDomains', oldForm.allowedDomains, newForm.allowedDomains);
+    compare('settings', oldForm.settings, newForm.settings);
+    compare('sections', oldForm.sections, newForm.sections);
+    compare('questions', oldForm.questions, newForm.questions);
+
+    if (operations.length) {
+        await syncQueueRepository.bulkUpsert(operations);
+    }
+}
+
+export function FormCreateProvider({
+    children,
+}: Readonly<{ children: ReactNode }>) {
     /**
      * form management
      */
@@ -102,7 +137,7 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
         return count;
     }
 
-    function handleAddQuestion(sectionIdx: number) {
+    const handleAddQuestion = useCallback((sectionIdx: number) => {
         if (handleAddQuestionRef.current) return;
         handleAddQuestionRef.current = true;
 
@@ -120,7 +155,7 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
         setTimeout(() => {
             handleAddQuestionRef.current = false;
         }, 300);
-    }
+    }, []);
 
     function handleQuestionChange<K extends keyof QuestionCore>(
         idx: number,
@@ -137,21 +172,24 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
         });
     }
 
-    function duplicateQuestion(idx: number) {
-        const source = questions.get(idx);
-        if (!source) return;
+    const duplicateQuestion = useCallback(
+        (idx: number) => {
+            const source = questions.get(idx);
+            if (!source) return;
 
-        const newKey = nextQuestionIndexRef.current++;
+            const newKey = nextQuestionIndexRef.current++;
 
-        setQuestions((prev) => {
-            const next = new Map(prev);
-            next.set(newKey, {
-                ...source,
-                index: countInSection(source.sectionIdx, prev),
+            setQuestions((prev) => {
+                const next = new Map(prev);
+                next.set(newKey, {
+                    ...source,
+                    index: countInSection(source.sectionIdx, prev),
+                });
+                return next;
             });
-            return next;
-        });
-    }
+        },
+        [questions]
+    );
 
     function deleteQuestion(idx: number) {
         setQuestions((prev) => {
@@ -295,6 +333,7 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
                 if (!formData) return;
                 const { sections, questions, ...rest } = formData;
 
+                console.log('Loaded form from DB:', formData);
                 setForm({
                     name: rest.name,
                     isPrivate: rest.isPrivate,
@@ -304,8 +343,12 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
                     responseCount: rest.responseCount ?? 0,
                 } satisfies Required<FormCore>);
 
-                setSections(new Map(sections.map((s, idx) => [idx, s])));
-                setQuestions(new Map(questions.map((q, idx) => [idx, q])));
+                if (sections && sections.length > 0) {
+                    setSections(new Map(sections.map((s, idx) => [idx, s])));
+                }
+                if (questions && questions.length > 0) {
+                    setQuestions(new Map(questions.map((q, idx) => [idx, q])));
+                }
             } catch (error) {
                 console.error('Error loading form from DB:', error);
             }
@@ -328,22 +371,13 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         async function prepareForm() {
             if (!activeFormID) return;
-            let formData: FormDB = {
+            const db = await formRepository.get(activeFormID);
+            if (!db) return;
+            const formData: FormDB = {
+                ...db,
                 ...form,
                 sections: Array.from(sections.values()),
                 questions: Array.from(questions.values()),
-                _id: '',
-                version: 0,
-                isDirty: false,
-                createdAt: 0,
-                updatedAt: 0,
-            };
-
-            const db = await formRepository.get(activeFormID);
-
-            formData = {
-                ...db,
-                ...formData,
                 _id: activeFormID,
                 version: Date.now(),
                 isDirty: true,
@@ -351,34 +385,52 @@ export function FormCreateProvider({ children }: { children: ReactNode }) {
             };
 
             debouncedUpdate(formData);
+
+            await queueChangedFields(db, formData);
         }
         prepareForm();
     }, [activeFormID, debouncedUpdate, form, questions, sections]);
 
+    const value = useMemo(
+        () => ({
+            form,
+            handleFormChange,
+
+            sections,
+            setSections,
+            handleSectionsChange,
+            handleAddSection,
+
+            handleAddQuestion,
+            duplicateQuestion,
+            deleteQuestion,
+            questions,
+            setQuestions,
+            updateQuestion,
+            handleQuestionChange,
+            reorderQuestions,
+            reorderSections,
+            deleteSection,
+            setActiveFormID,
+        }),
+        [
+            form,
+            handleFormChange,
+            sections,
+            handleSectionsChange,
+            handleAddSection,
+            handleAddQuestion,
+            duplicateQuestion,
+            questions,
+            updateQuestion,
+            reorderQuestions,
+            reorderSections,
+            deleteSection,
+        ]
+    );
+
     return (
-        <FormCreateContext.Provider
-            value={{
-                form,
-                handleFormChange,
-
-                sections,
-                setSections,
-                handleSectionsChange,
-                handleAddSection,
-
-                handleAddQuestion,
-                duplicateQuestion,
-                deleteQuestion,
-                questions,
-                setQuestions,
-                updateQuestion,
-                handleQuestionChange,
-                reorderQuestions,
-                reorderSections,
-                deleteSection,
-                setActiveFormID,
-            }}
-        >
+        <FormCreateContext.Provider value={value}>
             {children}
         </FormCreateContext.Provider>
     );

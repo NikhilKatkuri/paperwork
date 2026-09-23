@@ -11,7 +11,7 @@ interface NavbarProps {
 }
 const tabs: Tabs[] = ['questions', 'settings', 'responses'];
 
-function Navbar({ currMode, setMode }: NavbarProps) {
+function Navbar({ currMode, setMode }: Readonly<NavbarProps>) {
     const { form, handleFormChange: patch } = useFormCreate();
 
     return (
@@ -28,7 +28,7 @@ function Navbar({ currMode, setMode }: NavbarProps) {
                     <input
                         type="text"
                         placeholder="Untitled Form"
-                        value={form.name}
+                        value={form?.name ?? ''}
                         onChange={(e) => patch('name', e.target.value)}
                         className="text-theme-form-on-surface focus:border-theme-form-container-active placeholder:text-theme-form-on-surface w-full flex-1 border-b border-transparent bg-transparent focus:outline-none lg:text-lg"
                     />

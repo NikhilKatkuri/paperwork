@@ -30,7 +30,7 @@ export default function useGetAllForms() {
 
             try {
                 const localForms = (await formRepository.getAll()) ?? [];
-
+                console.log('Local forms:', localForms);
                 if (!forceRefresh) {
                     const cachedForms = storageService.get<FormDB[]>(CACHE_KEY);
                     if (cachedForms) {
@@ -41,12 +41,16 @@ export default function useGetAllForms() {
                 const { path } = endpoints.forms.allForms;
                 const res = await http.get<ApiResponse>(path);
 
+                console.log('API response:', res);
                 if (res.data.success) {
                     const apiForms = res.data.data.forms;
-
                     storageService.set(CACHE_KEY, apiForms);
 
-                    return mergeUniqueForms(localForms, apiForms);
+                    const mergedForms = mergeUniqueForms(localForms, apiForms);
+                    mergedForms.forEach(async (element) => {
+                        await formRepository.save(element);
+                    });
+                    return mergedForms;
                 }
 
                 throw new Error(res.data.message || 'Failed to fetch forms');

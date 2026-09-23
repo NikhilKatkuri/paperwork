@@ -16,10 +16,11 @@ function toDateString(date: number): string {
 function FormsView({
     viewAsRow,
     form,
-}: {
+}: Readonly<{
     viewAsRow: boolean;
     form?: FormDB;
-}) {
+}>) {
+    if(!form) return null;
     if (viewAsRow) {
         return (
             <Link
@@ -35,7 +36,7 @@ function FormsView({
                         </div>
                     </div>
                     <p className="font-medium">
-                        {form ? form.name : 'Recent forms'}
+                        {form.name ? form.name : 'Untitled Form'}
                     </p>
                 </div>
                 <div
@@ -48,7 +49,7 @@ function FormsView({
                         <p className="text-md">me</p>
                     </div>
                     <div className="max-[900px]:hidden">
-                        <p className="text-md">     {form ? toDateString(form.updatedAt) : '9 AM'}</p>
+                        <p className="text-md"> {form ? toDateString(form.updatedAt) : '9 AM'}</p>
                     </div>
 
                     <div className="flex items-center justify-end">

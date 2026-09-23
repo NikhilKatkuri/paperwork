@@ -12,12 +12,12 @@ interface TimeStamp {
     updatedAt: number;
 }
 
-interface SectionDB extends SectionCore {
+export interface SectionDB extends SectionCore {
     _id: string;
     formId: string;
 }
 
-interface QuestionDB extends QuestionCore {
+export interface QuestionDB extends QuestionCore {
     _id: string;
     formId: string;
     sectionId: string;
@@ -30,7 +30,7 @@ export interface FormDB extends FormCore, TimeStamp {
 
 class PaperworkDB extends Dexie {
     forms!: Table<FormDB, string>;
-
+    
     constructor() {
         super('PaperworkDB');
 

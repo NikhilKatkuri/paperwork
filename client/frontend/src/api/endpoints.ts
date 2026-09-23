@@ -50,6 +50,7 @@ export const endpoints = {
     forms: {
         allForms: { path: '/forms', method: 'get' },
         createForm: { path: '/forms', method: 'post' },
-        
+        updateForm: { path: '/forms', method: 'put' },
+        deleteForm: { path: '/forms', method: 'delete' }
     },
 } as const;

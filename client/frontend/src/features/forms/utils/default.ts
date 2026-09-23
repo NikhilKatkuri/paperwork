@@ -22,7 +22,7 @@ const DEFAULT_FORM_SETTINGS: FormSettings = {
 };
 
 const DEFAULT_FORM_CORE: FormCore = {
-    name: 'Untitled form',
+    name: `Untitled form`,
     isPrivate: false,
     isPublished: false,
     allowedDomains: undefined,
