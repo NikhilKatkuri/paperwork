@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+
+import { useEffect, useState } from 'react';
 import { useFormCreate } from '../../../providers/FormCreate';
 import { OptionType, QUESTION_TYPE } from '../../common/types';
 import { Option } from '@/features/forms/types/question.type';
@@ -22,37 +23,82 @@ function OptionBuilder({
     onOptionsChange,
 }: Readonly<OptionBuilderProps>) {
     const { questions } = useFormCreate();
+
+    // 1. Derive or initialize state correctly
     const [options, setOptions] = useState<Option[]>(() => {
         const question = questions.get(id);
-        if (question?.options) {
-            return question.options;
-        }
-
-        return [{ index: 1, label:"Option 1"}];
+        return question?.options && question.options.length > 0
+            ? question.options
+            : [{ index: 1, label: 'Option 1' }];
     });
 
+    // 2. Keep local options in sync if question ID changes
+    useEffect(() => {
+        function syncOptions() {
+            const question = questions.get(id);
+            if (question?.options) {
+                setOptions(question.options);
+            }
+        }
+        syncOptions();
+    }, [id, questions]);
+
+    const handleUpdateOption = (targetIndex: number, value: string) => {
+        // Split by commas and remove empty values
+        const parts = value
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean);
+
+        // Normal typing (no comma)
+        if (parts.length <= 1) {
+            const newOptions = options.map((opt, i) =>
+                i === targetIndex ? { ...opt, label: value } : opt
+            );
+
+            setOptions(newOptions);
+            onOptionsChange(newOptions);
+            return;
+        }
+
+        // Comma-separated input → create multiple options
+        const newOptions = [
+            ...options.slice(0, targetIndex),
+            ...parts.map((label, i) => ({
+                index: targetIndex + i + 1,
+                label,
+            })),
+            ...options.slice(targetIndex + 1),
+        ].map((opt, i) => ({
+            ...opt,
+            index: i + 1,
+        }));
+
+        setOptions(newOptions);
+        onOptionsChange(newOptions);
+    };
+
     const handleAddOption = () => {
+        const nextIndex = options.length + 1;
         const newOptions: Option[] = [
             ...options,
             {
-                index: options.length + 1,
-                label: `Option ${options.length + 1}`
+                index: nextIndex,
+                label: `Option ${nextIndex}`,
             },
         ];
         setOptions(newOptions);
         onOptionsChange(newOptions);
     };
 
-    const handleUpdateOption = (index: number, newValue: string) => {
-        const newOptions = options.map((opt, i) =>
-            i === index ? { ...opt, value: newValue } : opt
-        );
-        setOptions(newOptions);
-        onOptionsChange(newOptions);
-    };
+    // 3. Delete by array index instead of label matching
+    const handleDeleteOption = (targetIndex: number) => {
+        if (options.length <= 1) return; // Guard clause
 
-    const handleDeleteOption = (id: string) => {
-        const newOptions = options.filter((opt) => opt.label !== id);
+        const newOptions = options
+            .filter((_, i) => i !== targetIndex)
+            .map((opt, i) => ({ ...opt, index: i + 1 })); // Re-index remaining options
+
         setOptions(newOptions);
         onOptionsChange(newOptions);
     };
@@ -61,7 +107,8 @@ function OptionBuilder({
         <div className="grid w-full max-w-lg grid-cols-1 gap-2">
             {options.map((option, index) => (
                 <div
-                    key={option.label}
+                    // 4. Stable key using index prevents cursor focus loss on re-render
+                    key={`option-${id}-${index}`}
                     className="group flex h-10 items-center gap-2 pl-2"
                 >
                     {type === QUESTION_TYPE.DROP_DOWN ? (
@@ -82,7 +129,8 @@ function OptionBuilder({
 
                     {options.length > 1 && (
                         <button
-                            onClick={() => handleDeleteOption(option.label)}
+                            type="button"
+                            onClick={() => handleDeleteOption(index)}
                             className="material-symbols-outlined rounded p-1 text-red-500 opacity-0 transition-all group-hover:opacity-100 hover:bg-red-50"
                             aria-label="Delete option"
                         >
@@ -93,6 +141,7 @@ function OptionBuilder({
             ))}
 
             <button
+                type="button"
                 onClick={handleAddOption}
                 className="flex h-10 w-fit items-center gap-2 rounded px-2 transition-colors hover:bg-gray-100"
             >
@@ -105,8 +154,7 @@ function OptionBuilder({
                 )}
 
                 <p className="text-theme-form-on-container/70 pl-2 text-sm">
-                    Add Option or{' '}
-                    <span className="text-blue-600 hover:underline">{`add "other"`}</span>
+                    Add Option
                 </p>
             </button>
         </div>

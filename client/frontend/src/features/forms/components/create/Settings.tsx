@@ -1,5 +1,8 @@
-import { useState, type ReactNode } from 'react';
+'use client';
+
+import { useEffect, useState, type ReactNode } from 'react';
 import Toggle from '../common/Toggle';
+import { useFormCreate } from '../../providers/FormCreate';
 
 export interface FormSettingsData {
     maxResponses?: number;
@@ -36,7 +39,7 @@ interface IconProps {
     className?: string;
 }
 
-function Icon({ name, className = '' }: IconProps) {
+function Icon({ name, className = '' }: Readonly<IconProps>) {
     return (
         <span
             className={`material-symbols-outlined leading-none ${className}`}
@@ -54,7 +57,7 @@ interface RowProps {
     children: ReactNode;
 }
 
-function Row({ icon, title, hint, children }: RowProps) {
+function Row({ icon, title, hint, children }: Readonly<RowProps>) {
     return (
         <div className="flex items-start justify-between gap-6 py-4">
             <div className="flex min-w-0 gap-3">
@@ -83,7 +86,7 @@ function NumberField({
     onChange,
     placeholder,
     suffix,
-}: NumberFieldProps) {
+}: Readonly<NumberFieldProps>) {
     return (
         <div className="flex items-center gap-2">
             <input
@@ -110,11 +113,13 @@ interface DateFieldProps {
     onChange: (value: string | undefined) => void;
 }
 
-function DateField({ value, onChange }: DateFieldProps) {
+function DateField({ value, onChange }: Readonly<DateFieldProps>) {
+    const formattedValue = value ? value.slice(0, 16) : '';
+
     return (
         <input
             type="datetime-local"
-            value={value ?? ''}
+            value={formattedValue}
             onChange={(e) =>
                 onChange(e.target.value === '' ? undefined : e.target.value)
             }
@@ -128,7 +133,7 @@ interface SectionTitleProps {
     children: ReactNode;
 }
 
-function SectionTitle({ children, index }: SectionTitleProps) {
+function SectionTitle({ children, index }: Readonly<SectionTitleProps>) {
     return (
         <div className="flex items-baseline gap-3">
             <span className="text-[12.5px] italic">{index}</span>
@@ -138,23 +143,86 @@ function SectionTitle({ children, index }: SectionTitleProps) {
 }
 
 export interface FormSettingsProps {
-    initialSettings?: FormSettingsData;
     onSave?: (settings: FormSettingsData) => void;
 }
 
-export default function FormSettings({
-    initialSettings,
-    onSave,
-}: FormSettingsProps) {
-    const [settings, setSettings] = useState<FormSettingsData>({
-        ...DEFAULT_SETTINGS,
-        ...initialSettings,
+/** Helper to transform ISO strings to Date objects for the provider */
+function toProviderPayload(settings: FormSettingsData) {
+    return {
+        ...settings,
+        startDate: settings.startDate
+            ? new Date(settings.startDate)
+            : undefined,
+        closeDate: settings.closeDate
+            ? new Date(settings.closeDate)
+            : undefined,
+    };
+}
+
+export default function FormSettings({ onSave }: Readonly<FormSettingsProps>) {
+    const { form, handleFormChange } = useFormCreate();
+
+    const [settings, setSettings] = useState<FormSettingsData>(() => {
+        return {
+            ...DEFAULT_SETTINGS,
+        };
     });
 
+    // Sync when initial hydration occurs
+    useEffect(() => {
+        function sync() {
+            if (form?.settings) {
+                const formSettings = form.settings as Record<string, unknown>;
+
+                const parseDate = (val: unknown): string | undefined => {
+                    if (!val) return undefined;
+                    if (val instanceof Date) return val.toISOString();
+                    if (typeof val === 'string') return val;
+                    return undefined;
+                };
+
+                const safeSettings = Object.keys(DEFAULT_SETTINGS).reduce(
+                    (acc, key) => {
+                        const typedKey = key as keyof FormSettingsData;
+                        const val = formSettings[typedKey];
+
+                        if (
+                            typedKey === 'startDate' ||
+                            typedKey === 'closeDate'
+                        ) {
+                            acc[typedKey] = parseDate(val) as never;
+                        } else {
+                            acc[typedKey] = (val ??
+                                DEFAULT_SETTINGS[typedKey]) as never;
+                        }
+
+                        return acc;
+                    },
+                    {} as FormSettingsData
+                );
+
+                setSettings((prev) => ({
+                    ...prev,
+                    ...safeSettings,
+                }));
+            }
+        }
+        sync();
+    }, [form?.settings]);
+
     function set<K extends keyof FormSettingsData>(key: K) {
-        return (value: FormSettingsData[K]) =>
-            setSettings((s) => ({ ...s, [key]: value }));
+        return (value: FormSettingsData[K]) => {
+            setSettings((prev) => ({
+                ...prev,
+                [key]: value,
+            }));
+        };
     }
+
+    const handleSave = () => {
+        handleFormChange('settings', toProviderPayload(settings));
+        onSave?.(settings);
+    };
 
     return (
         <div className="mx-auto flex h-full w-full scrollbar-none flex-col items-center gap-4 overflow-y-scroll py-3 max-md:px-3 lg:max-w-3xl">
@@ -275,7 +343,6 @@ export default function FormSettings({
                         </div>
                     </section>
 
-                    {/* Form behavior */}
                     <section>
                         <SectionTitle index="04">Behavior</SectionTitle>
                         <div className="divide-theme-form-container-border mt-1 divide-y">
@@ -322,7 +389,8 @@ export default function FormSettings({
                                     </p>
                                     <textarea
                                         value={
-                                            settings.customConfirmationMessage
+                                            settings.customConfirmationMessage ??
+                                            ''
                                         }
                                         onChange={(e) =>
                                             set('customConfirmationMessage')(
@@ -347,11 +415,11 @@ export default function FormSettings({
                                     </p>
                                     <input
                                         type="url"
-                                        value={settings.redirectUrl}
+                                        value={settings.redirectUrl ?? ''}
                                         onChange={(e) =>
                                             set('redirectUrl')(e.target.value)
                                         }
-                                        placeholder="https://example.co m/thank-you"
+                                        placeholder="https://example.com/thank-you"
                                         className="border-theme-form-container-border mt-2 w-full rounded-md border px-3 py-2 text-[13.5px] focus:outline-none"
                                     />
                                 </div>
@@ -363,7 +431,7 @@ export default function FormSettings({
                 <div className="border-theme-form-container-border mt-12 flex justify-end border-t pt-6">
                     <button
                         type="button"
-                        onClick={() => onSave?.(settings)}
+                        onClick={handleSave}
                         className="rounded-md bg-[#2F4858] px-4 py-2 text-[13.5px] font-medium text-white transition-colors"
                     >
                         Save changes

@@ -45,7 +45,7 @@ const AnswerTemplateObject: Record<Partial<QuestionType>, React.ReactNode> = {
     RATING: wrapper({ label: 'Rating answer text', icon: 'star' }),
 };
 
-function AnswerTemplate({ type, update, id }: AnswerTemplateProps) {
+function AnswerTemplate({ type, update, id }: Readonly<AnswerTemplateProps>) {
     if(type === QUESTION_TYPE.CHOICE || type === QUESTION_TYPE.RADIO || type === QUESTION_TYPE.DROP_DOWN) {
             return <OptionBuilder id={id} type={type} onOptionsChange={(data)=> update({ options: data })} />;
     }

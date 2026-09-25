@@ -21,7 +21,7 @@ function QuestionTooling({
     setShowMoreOptions,
     updateConfig,
     id,
-}: QuestionToolingProps) {
+}: Readonly<QuestionToolingProps>) {
     const { duplicateQuestion, deleteQuestion } = useFormCreate();
 
     return (

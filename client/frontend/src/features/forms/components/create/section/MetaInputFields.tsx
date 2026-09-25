@@ -8,7 +8,7 @@ interface MetaInputFeildsProps {
     sectionIdx: number;
 }
 
-function MetaInputFeilds({ sectionIdx }: MetaInputFeildsProps) {
+function MetaInputFeilds({ sectionIdx }: Readonly<MetaInputFeildsProps>) {
     const { sections, handleSectionsChange } = useFormCreate();
 
     const meta = sections.get(sectionIdx);

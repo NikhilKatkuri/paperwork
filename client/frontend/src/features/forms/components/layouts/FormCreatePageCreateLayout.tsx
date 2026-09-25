@@ -8,7 +8,7 @@ import { Tabs } from '../../types';
 import { useParams } from 'next/navigation';
 import { useFormCreate } from '../../providers/FormCreate';
 
-function Render({ _case }: { _case: Tabs }) {
+function Render({ _case }: Readonly<{ _case: Tabs }>) {
     switch (_case) {
         case 'questions':
             return <FormLayout />;
@@ -36,7 +36,7 @@ function FormCreatePageCreateLayout() {
         <div className="flex h-screen w-full flex-col">
             <Navbar currMode={mode} setMode={setMode} />
             <div className="bg-theme-form-surface min-h-0 w-full flex-1">
-                {Render({ _case: mode })}
+                <Render _case={mode} />
             </div>
         </div>
     );

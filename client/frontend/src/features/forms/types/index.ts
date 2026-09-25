@@ -84,7 +84,7 @@ interface FormCreateContextValue {
         value: SectionCore[K]
     ) => void;
     handleAddSection: () => void;
-
+    updateSectionData:(idx:number, PartialSectionCore: Partial<SectionCore>)=>void;
     handleAddQuestion: (idx: number) => void;
     duplicateQuestion: (idx: number) => void;
     deleteQuestion: (idx: number) => void;

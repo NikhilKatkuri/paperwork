@@ -36,7 +36,7 @@ export default function InputField({
     index = 0,
     sectionIdx = 0,
     isOverlay = false,
-}: InputFieldProps) {
+}: Readonly<InputFieldProps>) {
     const [mounted, setMounted] = useState(false);
     const { updateQuestion, questions } = useFormCreate();
 

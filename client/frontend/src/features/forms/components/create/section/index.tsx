@@ -18,18 +18,19 @@ import { CSS } from '@dnd-kit/utilities';
 
 import { useFormCreate } from '@/features/forms/providers/FormCreate';
 import InputField from '../question/QuestionFeild';
+import SectionController from './SectionController';
 
 interface SectionProps {
     sectionIdx: number;
 }
 
-function Section({ sectionIdx }: SectionProps) {
+function Section({ sectionIdx }: Readonly<SectionProps>) {
     const { questions, reorderQuestions, sections } = useFormCreate();
 
     const [activeQuestionId, setActiveQuestionId] = useState<number | null>(
         null
     );
- 
+
     const {
         attributes,
         listeners,
@@ -46,7 +47,7 @@ function Section({ sectionIdx }: SectionProps) {
         transition,
         opacity: isDragging ? 0.6 : 1,
     };
- 
+
     function handleQuestionDragStart(event: DragStartEvent) {
         setActiveQuestionId(event.active.id as number);
     }
@@ -82,7 +83,7 @@ function Section({ sectionIdx }: SectionProps) {
             style={sectionStyle}
             id={`section-${sectionIdx}`}
             className="floating-toolbar-area flex w-full flex-col gap-4 rounded-xl"
-        > 
+        >
             <div className="w-full">
                 {sections.size > 1 && (
                     <div
@@ -102,7 +103,7 @@ function Section({ sectionIdx }: SectionProps) {
 
                 <MetaInputFeilds sectionIdx={sectionIdx} />
             </div>
- 
+
             <DndContext
                 collisionDetection={closestCenter}
                 onDragStart={handleQuestionDragStart}
@@ -133,6 +134,7 @@ function Section({ sectionIdx }: SectionProps) {
                     )}
                 </DragOverlay>
             </DndContext>
+            <SectionController size={sections.size} idx={sectionIdx} />
         </section>
     );
 }

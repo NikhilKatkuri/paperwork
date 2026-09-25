@@ -69,7 +69,6 @@ export function FormCreateProvider({
     /**
      * form management
      */
-
     const [form, setForm] = useState<FormCore>(DEFAULT_FORM_CORE);
 
     const handleFormChange = useCallback(
@@ -110,20 +109,36 @@ export function FormCreateProvider({
 
     const handleAddSection = useCallback(() => {
         const key = nextSectionIndexRef.current++;
+
         setSections((prev) => {
             const next = new Map(prev);
+
             next.set(key, {
                 ...DEFAULT_SECTION_CORE,
-                index: key + 1,
+                index: key,
             });
+
             return next;
         });
     }, []);
 
+    const updateSectionData = useCallback(
+        (idx: number, PartialSectionCore: Partial<SectionCore>) => {
+            setSections((prev) => {
+                const currSection = prev.get(idx);
+                if (!currSection) return prev;
+
+                const next = new Map(prev);
+                next.set(idx, { ...currSection, ...PartialSectionCore });
+                return next;
+            });
+        },
+        []
+    );
+
     /**
      * question management
      */
-
     const nextQuestionIndexRef = useRef(1);
     const handleAddQuestionRef = useRef(false);
 
@@ -191,13 +206,28 @@ export function FormCreateProvider({
         [questions]
     );
 
-    function deleteQuestion(idx: number) {
+    const deleteQuestion = useCallback((questionId: number) => {
         setQuestions((prev) => {
+            const target = prev.get(questionId);
+            if (!target) return prev;
+
             const next = new Map(prev);
-            next.delete(idx);
+            next.delete(questionId);
+
+            const remaining = [...next.entries()]
+                .filter(([, q]) => q.sectionIdx === target.sectionIdx)
+                .sort((a, b) => a[1].index - b[1].index);
+
+            remaining.forEach(([id, question], index) => {
+                next.set(id, {
+                    ...question,
+                    index,
+                });
+            });
+
             return next;
         });
-    }
+    }, []);
 
     const updateQuestion = useCallback(
         (idx: number, patch: Partial<QuestionCore>) => {
@@ -249,78 +279,142 @@ export function FormCreateProvider({
         []
     );
 
-    // delete section and its questions
-    const deleteSection = useCallback(
-        (idx: number) => {
-            setSections((prev) => {
-                const next = new Map(prev);
-                next.delete(idx);
-                return next;
+    const deleteSection = useCallback((sectionId: number) => {
+        setSections((prev) => {
+            const entries = [...prev.entries()]
+                .filter(([id]) => id !== sectionId)
+                .sort((a, b) => a[1].index - b[1].index);
+
+            const next = new Map<number, SectionCore>();
+
+            entries.forEach(([, section], newIndex) => {
+                next.set(newIndex, {
+                    ...section,
+                    index: newIndex,
+                });
             });
 
-            questions.forEach((question, questionIdx) => {
-                if (question.sectionIdx === idx) {
-                    deleteQuestion(questionIdx);
-                }
+            nextSectionIndexRef.current = next.size;
+
+            return next;
+        });
+
+        setQuestions((prev) => {
+            const next = new Map<number, QuestionCore>();
+
+            prev.forEach((question, id) => {
+                if (question.sectionIdx === sectionId) return;
+
+                next.set(id, {
+                    ...question,
+                    sectionIdx:
+                        question.sectionIdx > sectionId
+                            ? question.sectionIdx - 1
+                            : question.sectionIdx,
+                });
             });
-        },
-        [questions]
-    );
+
+            const grouped = new Map<number, [number, QuestionCore][]>();
+
+            next.forEach((question, id) => {
+                const arr = grouped.get(question.sectionIdx) ?? [];
+                arr.push([id, question]);
+                grouped.set(question.sectionIdx, arr);
+            });
+
+            grouped.forEach((list) => {
+                list.sort((a, b) => a[1].index - b[1].index);
+
+                list.forEach(([id, question], order) => {
+                    next.set(id, {
+                        ...question,
+                        index: order,
+                    });
+                });
+            });
+
+            return next;
+        });
+    }, []);
 
     const reorderSections = useCallback(
         (activeKey: number, overKey: number) => {
-            const entries = Array.from(sections.entries()).sort(
-                (a, b) => a[1].index - b[1].index
-            );
+            setSections((prevSections) => {
+                const entries = [...prevSections.entries()].sort(
+                    (a, b) => a[1].index - b[1].index
+                );
 
-            const activeIndex = entries.findIndex(([key]) => key === activeKey);
-            const overIndex = entries.findIndex(([key]) => key === overKey);
+                const activeIndex = entries.findIndex(
+                    ([id]) => id === activeKey
+                );
+                const overIndex = entries.findIndex(([id]) => id === overKey);
 
-            if (activeIndex === -1 || overIndex === -1) return;
+                if (activeIndex === -1 || overIndex === -1) return prevSections;
 
-            const reordered = arrayMove(entries, activeIndex, overIndex);
+                const reordered = arrayMove(entries, activeIndex, overIndex);
 
-            // old section -> new section mapping
-            const sectionMap = new Map<number, number>();
-            reordered.forEach(([oldSectionId], newSectionId) => {
-                sectionMap.set(oldSectionId, newSectionId);
-            });
+                const sectionMap = new Map<number, number>();
+                const nextSections = new Map<number, SectionCore>();
 
-            // Update sections
-            setSections(() => {
-                const next = new Map();
                 reordered.forEach(([, section], newIndex) => {
-                    next.set(newIndex, {
+                    sectionMap.set(section.index, newIndex);
+
+                    nextSections.set(newIndex, {
                         ...section,
                         index: newIndex,
                     });
                 });
-                return next;
-            });
 
-            // Update every question's sectionIdx
-            setQuestions((prev) => {
-                const next = new Map(prev);
+                nextSectionIndexRef.current = nextSections.size;
 
-                next.forEach((question, id) => {
-                    const newSectionIdx = sectionMap.get(question.sectionIdx);
+                setQuestions((prevQuestions) => {
+                    const nextQuestions = new Map(prevQuestions);
 
-                    if (newSectionIdx !== undefined) {
-                        next.set(id, {
-                            ...question,
-                            sectionIdx: newSectionIdx,
-                        });
-                    }
+                    nextQuestions.forEach((question, id) => {
+                        const newSection = sectionMap.get(question.sectionIdx);
+
+                        if (newSection !== undefined) {
+                            nextQuestions.set(id, {
+                                ...question,
+                                sectionIdx: newSection,
+                            });
+                        }
+                    });
+
+                    // Normalize question order inside each section
+                    const grouped = new Map<number, [number, QuestionCore][]>();
+
+                    nextQuestions.forEach((question, id) => {
+                        const arr = grouped.get(question.sectionIdx) ?? [];
+                        arr.push([id, question]);
+                        grouped.set(question.sectionIdx, arr);
+                    });
+
+                    grouped.forEach((list) => {
+                        [...list]
+                            .sort((a, b) => a[1].index - b[1].index)
+                            .forEach(([id, question], order) => {
+                                nextQuestions.set(id, {
+                                    ...question,
+                                    index: order,
+                                });
+                            });
+                    });
+
+                    return nextQuestions;
                 });
 
-                return next;
+                return nextSections;
             });
         },
-        [sections]
+        []
     );
 
     const [activeFormID, setActiveFormID] = useState<string | null>(null);
 
+    const isLoadedRef = useRef(false);
+    const skipNextSaveRef = useRef(false);
+    
     /**
      * form Loading
      * load form from DB when activeFormID changes
@@ -328,6 +422,9 @@ export function FormCreateProvider({
     useEffect(() => {
         async function loadFormFromDB() {
             if (!activeFormID) return;
+            isLoadedRef.current = false;
+            skipNextSaveRef.current = true;
+
             try {
                 const formData = await formRepository.get(activeFormID);
                 if (!formData) return;
@@ -343,14 +440,33 @@ export function FormCreateProvider({
                     responseCount: rest.responseCount ?? 0,
                 } satisfies Required<FormCore>);
 
-                if (sections && sections.length > 0) {
-                    setSections(new Map(sections.map((s, idx) => [idx, s])));
+                if (sections?.length) {
+                    const sectionMap = new Map<number, SectionCore>();
+
+                    [...sections]
+                        .sort((a, b) => a.index - b.index)
+                        .forEach((section) => {
+                            sectionMap.set(section.index, section);
+                        });
+
+                    setSections(sectionMap);
+                    nextSectionIndexRef.current = sectionMap.size;
                 }
-                if (questions && questions.length > 0) {
-                    setQuestions(new Map(questions.map((q, idx) => [idx, q])));
+
+                if (questions?.length) {
+                    const questionMap = new Map<number, QuestionCore>();
+
+                    questions.forEach((question, id) => {
+                        questionMap.set(id, question);
+                    });
+
+                    setQuestions(questionMap);
+                    nextQuestionIndexRef.current = questionMap.size;
                 }
             } catch (error) {
                 console.error('Error loading form from DB:', error);
+            } finally {
+                isLoadedRef.current = true;
             }
         }
         loadFormFromDB();
@@ -368,22 +484,53 @@ export function FormCreateProvider({
         []
     );
 
+    function normalizeQuestions(map: QuestionsMap): QuestionCore[] {
+        const questions = [...map.values()].sort((a, b) =>
+            a.sectionIdx === b.sectionIdx
+                ? a.index - b.index
+                : a.sectionIdx - b.sectionIdx
+        );
+
+        let currentSection = -1;
+        let order = 0;
+
+        return questions.map((question) => {
+            if (question.sectionIdx !== currentSection) {
+                currentSection = question.sectionIdx;
+                order = 0;
+            }
+
+            return {
+                ...question,
+                index: order++,
+            };
+        });
+    }
+
     useEffect(() => {
         async function prepareForm() {
-            if (!activeFormID) return;
+            if (!activeFormID || !isLoadedRef.current) return;
+
+            if (skipNextSaveRef.current) {
+                skipNextSaveRef.current = false;
+                return;
+            }
+
             const db = await formRepository.get(activeFormID);
             if (!db) return;
             const formData: FormDB = {
                 ...db,
                 ...form,
-                sections: Array.from(sections.values()),
-                questions: Array.from(questions.values()),
+                sections: [...sections.values()].sort(
+                    (a, b) => a.index - b.index
+                ),
+                questions: normalizeQuestions(questions),
                 _id: activeFormID,
                 version: Date.now(),
                 isDirty: true,
                 updatedAt: Date.now(),
             };
-
+            console.log('Saving form to DB:', formData);
             debouncedUpdate(formData);
 
             await queueChangedFields(db, formData);
@@ -400,6 +547,7 @@ export function FormCreateProvider({
             setSections,
             handleSectionsChange,
             handleAddSection,
+            updateSectionData,
 
             handleAddQuestion,
             duplicateQuestion,
@@ -426,6 +574,7 @@ export function FormCreateProvider({
             reorderQuestions,
             reorderSections,
             deleteSection,
+            updateSectionData,
         ]
     );
 
