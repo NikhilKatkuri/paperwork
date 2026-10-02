@@ -7,6 +7,7 @@ import Settings from '../create/Settings';
 import { Tabs } from '../../types';
 import { useParams } from 'next/navigation';
 import { useFormCreate } from '../../providers/FormCreate';
+import { pageTitle, useDocumentTitle } from '@/lib/useDocumentTitle';
 
 function Render({ _case }: Readonly<{ _case: Tabs }>) {
     switch (_case) {
@@ -23,7 +24,9 @@ function FormCreatePageCreateLayout() {
     const [mode, setMode] = useState<Tabs>('questions');
     const { id } = useParams();
 
-    const { setActiveFormID } = useFormCreate();
+    const { setActiveFormID, form } = useFormCreate();
+
+    useDocumentTitle(pageTitle(form?.name));
     useEffect(() => {
         function updateFormId() {
             if (!id || typeof id !== 'string') return;
@@ -31,7 +34,7 @@ function FormCreatePageCreateLayout() {
         }
         updateFormId();
     }, [id, setActiveFormID]);
-    
+
     return (
         <div className="flex h-screen w-full flex-col">
             <Navbar currMode={mode} setMode={setMode} />

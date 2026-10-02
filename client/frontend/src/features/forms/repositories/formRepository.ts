@@ -142,6 +142,17 @@ class FormRepository {
         });
     }
 
+    /**
+     * Record a field the server has already confirmed.
+     *
+     * Deliberately does not mark the form dirty - the value came *from* the
+     * server, so queueing it would schedule a pointless sync of a change that
+     * has already been applied.
+     */
+    async setPublished(uid: string, isPublished: boolean): Promise<void> {
+        await db.forms.update(uid, { isPublished, isDirty: false });
+    }
+
     async clear(): Promise<void> {
         await db.forms.clear();
     }

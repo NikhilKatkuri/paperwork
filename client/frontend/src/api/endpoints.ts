@@ -62,5 +62,28 @@ export const endpoints = {
             path: `/forms/${formId}`,
             method: 'DELETE',
         }),
+        fill: (formId: string): EndpointConfig => ({
+            path: `/forms/${formId}/fill`,
+            method: 'GET',
+        }),
+        submitFill: (formId: string): EndpointConfig => ({
+            path: `/forms/${formId}/fill`,
+            method: 'POST',
+        }),
+        submissionStatus: (
+            formId: string,
+            submissionId: string
+        ): EndpointConfig => ({
+            path: `/forms/${formId}/fill/submissions/${submissionId}/status`,
+            method: 'GET',
+        }),
+        publishForm: (formId: string): EndpointConfig => ({
+            path: `/forms/${formId}/publish`,
+            method: 'POST',
+        }),
+        unpublishForm: (formId: string): EndpointConfig => ({
+            path: `/forms/${formId}/unpublish`,
+            method: 'POST',
+        }),
     },
 } as const;

@@ -90,12 +90,15 @@ class HttpClient {
                     | undefined;
 
                 const issues = data?.issues ?? [];
-                const detail = issues.length
-                    ? issues.map((i) => `${i.path}: ${i.message}`).join('; ')
-                    : (data?.message ?? error.message);
 
+                // Prefer the server's own message so it is safe to show in the
+                // UI; the request line stays as the fallback when the body
+                // carried nothing useful. Status and issues remain on the error
+                // for logging.
                 throw new ApiError(
-                    `${method} ${path} failed (${status ?? 'network'}): ${detail}`,
+                    data?.message
+                        ? String(data.message)
+                        : `${method} ${path} failed (${status ?? 'network'})`,
                     status,
                     issues
                 );

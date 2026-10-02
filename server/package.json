@@ -11,7 +11,8 @@
         "prebuild": "pnpm run clean",
         "format": "prettier --write src/",
         "format:check": "prettier --check src/",
-        "update:disposable": "tsx src/scripts/update-disposable-domains.ts"
+        "update:disposable": "tsx src/scripts/update-disposable-domains.ts",
+        "seed:demo": "tsx src/scripts/seed-demo-form.ts"
     },
     "keywords": [],
     "author": "",
