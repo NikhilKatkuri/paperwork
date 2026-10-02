@@ -5,6 +5,7 @@ import QuestionCore from '../types/question.type';
 import SectionCore, { SectionAction } from '../types/section.type';
 import formRepository from '../repositories/formRepository';
 import { syncQueueRepository } from './sync-queue.repository';
+import { generateObjectId } from '../utils';
 
 interface SyncResponse {
     success: boolean;
@@ -27,6 +28,42 @@ const BODY_PATHS = new Set(['sections', 'questions']);
 
 function bodyChanged(paths: string[]): boolean {
     return paths.some((path) => BODY_PATHS.has(path));
+}
+
+/**
+ * Backfill missing section/question ids and persist them.
+ *
+ * The Dexie migration and the editor's load path both cover this, but a record
+ * written by an older tab after the migration would still send an undefined
+ * `_id` and fail the batch with "expected string, received undefined". The
+ * repair is written back so the id stays stable across later flushes.
+ */
+async function repairIds(form: FormDB): Promise<FormDB> {
+    const sections = form.sections ?? [];
+    const questions = form.questions ?? [];
+
+    const needsRepair =
+        sections.some((s) => !s._id) || questions.some((q) => !q._id);
+
+    if (!needsRepair) return form;
+
+    const repairedSections = sections.map((s) =>
+        s._id ? s : { ...s, _id: generateObjectId() }
+    );
+    const repairedQuestions = questions.map((q) =>
+        q._id ? q : { ...q, _id: generateObjectId() }
+    );
+
+    await formRepository.update(form._id, {
+        sections: repairedSections,
+        questions: repairedQuestions,
+    });
+
+    return {
+        ...form,
+        sections: repairedSections,
+        questions: repairedQuestions,
+    };
 }
 
 type SectionWire = Record<string, unknown>;
@@ -207,7 +244,11 @@ async function sendForm(
     let skipped = 0;
 
     if (useBulk) {
-        const mapped = toBody(form.sections ?? [], form.questions ?? []);
+        const repaired = await repairIds(form);
+        const mapped = toBody(
+            repaired.sections ?? [],
+            repaired.questions ?? []
+        );
 
         body = {
             ...payload,

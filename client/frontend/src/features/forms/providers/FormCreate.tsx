@@ -73,7 +73,6 @@ async function queueChangedFields(oldForm: FormDB, newForm: FormDB) {
 export function FormCreateProvider({
     children,
 }: Readonly<{ children: ReactNode }>) {
-
     /**
      * form management
      */
@@ -440,7 +439,6 @@ export function FormCreateProvider({
                 if (!formData) return;
                 const { sections, questions, ...rest } = formData;
 
-                console.log('Loaded form from DB:', formData);
                 setForm({
                     name: rest.name,
                     isPrivate: rest.isPrivate,
@@ -450,10 +448,18 @@ export function FormCreateProvider({
                     responseCount: rest.responseCount ?? 0,
                 } satisfies Required<FormCore>);
 
+                // Records cached before sections carried an `_id` would be
+                // rejected by the bulk sync, so repair them on the way in.
+                // The save effect persists the repaired ids.
+                const withIds = <T extends { _id?: string }>(rows: T[]): T[] =>
+                    rows.map((row) =>
+                        row?._id ? row : { ...row, _id: generateObjectId() }
+                    );
+
                 if (sections?.length) {
                     const sectionMap = new Map<number, SectionCore>();
 
-                    [...sections]
+                    withIds(sections)
                         .sort((a, b) => a.index - b.index)
                         .forEach((section) => {
                             sectionMap.set(section.index, section);
@@ -466,7 +472,7 @@ export function FormCreateProvider({
                 if (questions?.length) {
                     const questionMap = new Map<number, QuestionCore>();
 
-                    questions.forEach((question, id) => {
+                    withIds(questions).forEach((question, id) => {
                         questionMap.set(id, question);
                     });
 
@@ -601,7 +607,23 @@ export function FormCreateProvider({
             activeFormID,
             setActiveFormID,
         }),
-        [form, handleFormChange, sections, handleSectionsChange, handleAddSection, updateSectionData, handleAddQuestion, duplicateQuestion, deleteQuestion, questions, updateQuestion, reorderQuestions, reorderSections, deleteSection, activeFormID]
+        [
+            form,
+            handleFormChange,
+            sections,
+            handleSectionsChange,
+            handleAddSection,
+            updateSectionData,
+            handleAddQuestion,
+            duplicateQuestion,
+            deleteQuestion,
+            questions,
+            updateQuestion,
+            reorderQuestions,
+            reorderSections,
+            deleteSection,
+            activeFormID,
+        ]
     );
 
     return (

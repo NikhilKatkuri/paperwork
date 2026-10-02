@@ -3,6 +3,7 @@ import FormCore from '@/features/forms/types/form.type';
 import QuestionCore from '@/features/forms/types/question.type';
 import SectionCore from '@/features/forms/types/section.type';
 import Dexie, { Table } from 'dexie';
+import { generateObjectId } from '@/features/forms/utils';
 
 interface LocalDocument extends BaseDocument {
     isDirty: boolean;
@@ -43,6 +44,44 @@ class PaperworkDB extends Dexie {
         this.version(2).stores({
             forms: '_id, updatedAt, isPublished',
         });
+
+        /**
+         * Data migration, no schema change: records cached before sections and
+         * questions carried an `_id` would be rejected by the bulk sync
+         * ("expected string, received undefined") and fail the whole batch.
+         *
+         * Ids are backfilled here rather than at send time on purpose - a
+         * per-sync id would change on every flush, orphaning GO_TO_SECTION
+         * targets that reference them.
+         */
+        this.version(3)
+            .stores({
+                forms: '_id, updatedAt, isPublished',
+            })
+            .upgrade(async (tx) => {
+                await tx
+                    .table('forms')
+                    .toCollection()
+                    .modify((form: FormDB) => {
+                        const sections = Array.isArray(form.sections)
+                            ? form.sections
+                            : [];
+                        const questions = Array.isArray(form.questions)
+                            ? form.questions
+                            : [];
+
+                        form.sections = sections.map((section) =>
+                            section?._id
+                                ? section
+                                : { ...section, _id: generateObjectId() }
+                        );
+                        form.questions = questions.map((question) =>
+                            question?._id
+                                ? question
+                                : { ...question, _id: generateObjectId() }
+                        );
+                    });
+            });
     }
 }
 
