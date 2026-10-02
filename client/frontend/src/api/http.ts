@@ -18,6 +18,17 @@ export interface RequestConfig extends Omit<
 > {
     signal?: AbortSignal;
 }
+export class ApiError extends Error {
+    constructor(
+        message: string,
+        readonly status: number | undefined,
+        readonly issues: { path: string; message: string }[] = []
+    ) {
+        super(message);
+        this.name = 'ApiError';
+    }
+}
+
 class HttpClient {
     private client: AxiosInstance;
     private getToken: TokenGetter = () => null;
@@ -63,6 +74,33 @@ class HttpClient {
             if (isCancel(error)) {
                 throw new Error(`Request to ${path} was aborted`);
             }
+
+            /**
+             * A bare "Request failed with status code 400" is undiagnosable.
+             * Validation failures carry the offending field paths, so surface
+             * them instead of discarding the response body.
+             */
+            if (axios.isAxiosError(error)) {
+                const status = error.response?.status;
+                const data = error.response?.data as
+                    | {
+                          message?: string;
+                          issues?: { path: string; message: string }[];
+                      }
+                    | undefined;
+
+                const issues = data?.issues ?? [];
+                const detail = issues.length
+                    ? issues.map((i) => `${i.path}: ${i.message}`).join('; ')
+                    : (data?.message ?? error.message);
+
+                throw new ApiError(
+                    `${method} ${path} failed (${status ?? 'network'}): ${detail}`,
+                    status,
+                    issues
+                );
+            }
+
             throw error;
         }
     }

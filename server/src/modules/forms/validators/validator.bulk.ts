@@ -8,9 +8,14 @@ import {
     zodObjectId,
 } from './validator.common';
 
-const indexedSectionSchema = sectionDataSchema.extend({
-    _id: zodObjectId,
-});
+/**
+ * Draft sections may legitimately have a blank title while the editor is open,
+ * so `min(1)` is relaxed here - otherwise clearing a title fails validation and
+ * rejects every other change made in the same session.
+ */
+const indexedSectionSchema = sectionDataSchema
+    .extend({ _id: zodObjectId })
+    .extend({ title: z.string().max(255) });
 
 /**
  * Relaxed rating config.

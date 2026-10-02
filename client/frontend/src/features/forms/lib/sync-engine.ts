@@ -2,7 +2,7 @@ import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
 import { FormDB } from '@/lib/db';
 import QuestionCore from '../types/question.type';
-import SectionCore from '../types/section.type';
+import SectionCore, { SectionAction } from '../types/section.type';
 import formRepository from '../repositories/formRepository';
 import { syncQueueRepository } from './sync-queue.repository';
 
@@ -32,6 +32,31 @@ function bodyChanged(paths: string[]): boolean {
 type SectionWire = Record<string, unknown>;
 type QuestionWire = Record<string, unknown>;
 
+/** `zodObjectId` on the server only accepts 24-char hex. */
+const OBJECT_ID = /^[0-9a-fA-F]{24}$/;
+
+function toSectionAction(
+    action: SectionAction | undefined,
+    sectionIdByIndex: Map<number, string>
+): SectionWire | undefined {
+    if (!action) return undefined;
+
+    if (action.actionType !== 'GO_TO_SECTION') {
+        return { actionType: action.actionType };
+    }
+
+    // The editor stores the target section's *position*, not its id, so it has
+    // to be resolved here - sending the raw value fails validation with
+    // "Invalid Database ID format" and takes the whole batch down with it.
+    const resolved =
+        sectionIdByIndex.get(Number(action.sectionId)) ??
+        (OBJECT_ID.test(action.sectionId) ? action.sectionId : undefined);
+
+    if (!resolved) return undefined;
+
+    return { actionType: action.actionType, sectionId: resolved };
+}
+
 /**
  * Map the editor's shape onto what the API stores.
  *
@@ -45,25 +70,44 @@ function toBody(sections: SectionCore[], questions: QuestionCore[]) {
         sections.map((s) => [s.index, s._id])
     );
 
-    const wireSections: SectionWire[] = sections.map((s) => ({
-        _id: s._id,
-        index: s.index,
-        title: s.title,
-        ...(s.description ? { description: s.description } : {}),
-        ...(s.onAnswer ? { onAnswer: s.onAnswer } : {}),
-        ...(s.defaultAction ? { defaultAction: s.defaultAction } : {}),
-    }));
+    // Duplicate ids would make the server upsert both rows onto one document.
+    const seenSectionIds = new Set<string>();
+
+    const wireSections: SectionWire[] = [];
+    const skipped: string[] = [];
+
+    sections.forEach((s) => {
+        if (seenSectionIds.has(s._id)) {
+            skipped.push(s._id);
+            return;
+        }
+        seenSectionIds.add(s._id);
+
+        const defaultAction = toSectionAction(
+            s.defaultAction,
+            sectionIdByIndex
+        );
+
+        wireSections.push({
+            _id: s._id,
+            index: s.index,
+            title: s.title,
+            ...(s.description ? { description: s.description } : {}),
+            ...(s.onAnswer ? { onAnswer: s.onAnswer } : {}),
+            ...(defaultAction ? { defaultAction } : {}),
+        });
+    });
 
     const wireQuestions: QuestionWire[] = [];
-    const skipped: string[] = [];
 
     questions.forEach((q) => {
         const sectionId = sectionIdByIndex.get(q.sectionIdx);
 
-        if (!sectionId) {
+        if (!sectionId || seenSectionIds.has(q._id)) {
             skipped.push(q._id);
             return;
         }
+        seenSectionIds.add(q._id);
 
         wireQuestions.push({
             _id: q._id,

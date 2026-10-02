@@ -3,16 +3,19 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities'; 
-import { QUESTION_TYPE, QuestionType, questionTypesMap } from '../../common/types';
-import QuestionTooling from './QuestionTooling'; 
+import { CSS } from '@dnd-kit/utilities';
+import {
+    QUESTION_TYPE,
+    QuestionType,
+    questionTypesMap,
+} from '../../common/types';
+import QuestionTooling from './QuestionTooling';
 import { cn } from '@/utils/cn';
 import QuestionCore from '@/features/forms/types/question.type';
 import { useFormCreate } from '@/features/forms/providers/FormCreate';
 import AnswerTemplate from '../question-type-config/AnswerTemplate';
 import RichTextInput from '../../common/RichTextInput';
 import { generateObjectId } from '@/features/forms/utils';
- 
 
 interface InputFieldProps {
     id: number;
@@ -22,15 +25,20 @@ interface InputFieldProps {
     sectionIdx: number;
 }
 
-const OVERLAY_FALLBACK: QuestionCore = {
+/**
+ * Built per instance, not shared: a module-level fallback would hand the same
+ * `_id` to every overlay, which the sync engine would then treat as a duplicate
+ * and drop.
+ */
+const createOverlayFallback = (type: QuestionType): QuestionCore => ({
     _id: generateObjectId(),
     index: 0,
-    type: QUESTION_TYPE.TEXT,
+    type,
     question: 'Untitled Question',
     isRequired: false,
     helpText: undefined,
-    sectionIdx: 0
-};
+    sectionIdx: 0,
+});
 
 export default function InputField({
     id,
@@ -42,10 +50,11 @@ export default function InputField({
     const [mounted, setMounted] = useState(false);
     const { updateQuestion, questions } = useFormCreate();
 
-    const config = questions.get(id) ?? {
-        ...OVERLAY_FALLBACK,
-        type: initialType,
-    };
+    const [overlayFallback] = useState(() =>
+        createOverlayFallback(initialType ?? QUESTION_TYPE.TEXT)
+    );
+
+    const config = questions.get(id) ?? overlayFallback;
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [showMoreOptions, setShowMoreOptions] = useState(false);
@@ -264,7 +273,11 @@ export default function InputField({
                 </div>
             )}
 
-            <AnswerTemplate id={id} type={config.type} update={(patch) => updateQuestion(id, patch)} />
+            <AnswerTemplate
+                id={id}
+                type={config.type}
+                update={(patch) => updateQuestion(id, patch)}
+            />
             <QuestionTooling
                 id={id}
                 sectionIdx={0}
