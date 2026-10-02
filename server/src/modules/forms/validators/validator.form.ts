@@ -6,6 +6,7 @@ import {
 } from './validator.common';
 
 export { formSettingsSchema, zodObjectId } from './validator.common';
+export { bulkPutFormSchema } from './validator.bulk';
 
 export const formSchema = z.object({
     body: z.object({ data: formDataSchema }),

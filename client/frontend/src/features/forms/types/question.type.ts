@@ -59,7 +59,10 @@ interface DependsOn {
 }
 
 interface QuestionCore {
+    /** Mongo-compatible id - required by the bulk sync endpoint. */
+    _id: string;
     index: number;
+    /** Ordinal position within the sections array; resolved to a sectionId on sync. */
     sectionIdx: number;
 
     type: QuestionType;

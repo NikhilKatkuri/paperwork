@@ -111,6 +111,9 @@ class FormsService {
         const safeQuestions = questions.map((question) => ({
             _id: question._id,
             formId,
+            // `getSafeQuestionData` only picks schema-owned content fields, so
+            // the section link has to be re-attached here or it is lost.
+            sectionId: question.sectionId,
             ...fieldsValidator.getSafeQuestionData(question),
         }));
 
@@ -339,7 +342,9 @@ class FormsService {
         }
         const forms = await FormsModel.find(query)
             .select(
-                'title description isPublished isPrivate createdAt updatedAt'
+                // Must match formsSchema - `title`/`description` are not
+                // fields, so selecting them silently dropped `name`.
+                'name isPublished isPrivate allowedDomains settings createdAt updatedAt __v'
             )
             .sort({ updatedAt: -1 })
             .skip(skip)

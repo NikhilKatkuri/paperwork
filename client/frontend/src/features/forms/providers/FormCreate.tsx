@@ -13,8 +13,8 @@ import {
 
 import {
     DEFAULT_FORM_CORE,
-    DEFAULT_QUESTION_CORE,
-    DEFAULT_SECTION_CORE,
+    createDefaultQuestion,
+    createDefaultSection,
 } from '../utils/default';
 
 import FormCore from '../types/form.type';
@@ -25,9 +25,10 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { FormDB } from '@/lib/db';
 import formRepository from '../repositories/formRepository';
 import { debounce } from '@/features/common/utils';
-import { syncQueueRepository } from '../lib/sync-queue.repository';
+import { syncQueueRepository, syncKey } from '../lib/sync-queue.repository';
+import { scheduleFlush, flushFormNow } from '../lib/sync-engine';
 import { SyncQueueDB } from '../lib/sync-queue.db';
-import { generateId } from '../utils';
+import { generateObjectId } from '../utils';
 
 const FormCreateContext = createContext<FormCreateContextValue | undefined>(
     undefined
@@ -37,17 +38,20 @@ async function queueChangedFields(oldForm: FormDB, newForm: FormDB) {
     const operations: SyncQueueDB[] = [];
 
     const compare = (path: string, oldValue: unknown, newValue: unknown) => {
-        if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-            operations.push({
-                id: generateId(),
-                formId: newForm._id,
-                operation: 'update',
-                path,
-                value: newValue,
-                createdAt: Date.now(),
-                synced: false,
-            });
-        }
+        if (JSON.stringify(oldValue) === JSON.stringify(newValue)) return;
+
+        operations.push({
+            // Stable key per field: repeated edits replace the queued row
+            // instead of appending, so an editing session stays one row per
+            // field and flushes as a single grouped request.
+            id: syncKey(newForm._id, path),
+            formId: newForm._id,
+            operation: 'update',
+            path,
+            value: newValue,
+            createdAt: Date.now(),
+            synced: false,
+        });
     };
 
     compare('name', oldForm.name, newForm.name);
@@ -58,14 +62,18 @@ async function queueChangedFields(oldForm: FormDB, newForm: FormDB) {
     compare('sections', oldForm.sections, newForm.sections);
     compare('questions', oldForm.questions, newForm.questions);
 
-    if (operations.length) {
-        await syncQueueRepository.bulkUpsert(operations);
-    }
+    if (!operations.length) return;
+
+    await syncQueueRepository.bulkUpsert(operations);
+
+    // Debounced, so any number of edits in this session collapse into one push.
+    scheduleFlush(newForm._id);
 }
 
 export function FormCreateProvider({
     children,
 }: Readonly<{ children: ReactNode }>) {
+
     /**
      * form management
      */
@@ -86,7 +94,7 @@ export function FormCreateProvider({
     const nextSectionIndexRef = useRef(1);
 
     const [sections, setSections] = useState<defualtSectionCore>(() => {
-        return new Map<number, SectionCore>([[0, DEFAULT_SECTION_CORE]]);
+        return new Map<number, SectionCore>([[0, createDefaultSection()]]);
     });
 
     const handleSectionsChange = useCallback(
@@ -114,7 +122,7 @@ export function FormCreateProvider({
             const next = new Map(prev);
 
             next.set(key, {
-                ...DEFAULT_SECTION_CORE,
+                ...createDefaultSection(),
                 index: key,
             });
 
@@ -143,7 +151,7 @@ export function FormCreateProvider({
     const handleAddQuestionRef = useRef(false);
 
     const [questions, setQuestions] = useState<QuestionsMap>(() => {
-        return new Map([[0, DEFAULT_QUESTION_CORE]]);
+        return new Map([[0, createDefaultQuestion()]]);
     });
 
     function countInSection(sectionIdx: number, map: QuestionsMap) {
@@ -160,7 +168,7 @@ export function FormCreateProvider({
         setQuestions((prev) => {
             const next = new Map(prev);
             next.set(newKey, {
-                ...DEFAULT_QUESTION_CORE,
+                ...createDefaultQuestion(),
                 index: countInSection(sectionIdx, prev),
                 sectionIdx,
             });
@@ -198,6 +206,8 @@ export function FormCreateProvider({
                 const next = new Map(prev);
                 next.set(newKey, {
                     ...source,
+                    // A duplicate is a distinct document, not a copy of the id.
+                    _id: generateObjectId(),
                     index: countInSection(source.sectionIdx, prev),
                 });
                 return next;
@@ -414,7 +424,7 @@ export function FormCreateProvider({
 
     const isLoadedRef = useRef(false);
     const skipNextSaveRef = useRef(false);
-    
+
     /**
      * form Loading
      * load form from DB when activeFormID changes
@@ -516,27 +526,56 @@ export function FormCreateProvider({
                 return;
             }
 
-            const db = await formRepository.get(activeFormID);
-            if (!db) return;
+            const stored = await formRepository.get(activeFormID);
+            if (!stored) return;
+
+            // `__v`, `updatedAt` and `isDirty` are owned by the repository -
+            // setting them here pinned the version to 0 on every save.
             const formData: FormDB = {
-                ...db,
+                ...stored,
                 ...form,
                 sections: [...sections.values()].sort(
                     (a, b) => a.index - b.index
                 ),
                 questions: normalizeQuestions(questions),
                 _id: activeFormID,
-                version: Date.now(),
-                isDirty: true,
-                updatedAt: Date.now(),
             };
-            console.log('Saving form to DB:', formData);
+
             debouncedUpdate(formData);
 
-            await queueChangedFields(db, formData);
+            await queueChangedFields(stored, formData);
         }
         prepareForm();
     }, [activeFormID, debouncedUpdate, form, questions, sections]);
+
+    /**
+     * A pending debounced flush is lost when the editor closes or the tab is
+     * hidden, which would strand queued edits until the next visit. Push
+     * immediately in those cases - `flushFormNow` collapses concurrent calls,
+     * so this cannot double-send alongside the timer.
+     */
+    useEffect(() => {
+        if (!activeFormID) return;
+
+        const flush = () => {
+            void flushFormNow(activeFormID).catch((error) => {
+                console.warn('[sync] flush on close failed', error);
+            });
+        };
+
+        const onVisibility = () => {
+            if (document.visibilityState === 'hidden') flush();
+        };
+
+        document.addEventListener('visibilitychange', onVisibility);
+        window.addEventListener('pagehide', flush);
+
+        return () => {
+            document.removeEventListener('visibilitychange', onVisibility);
+            window.removeEventListener('pagehide', flush);
+            flush();
+        };
+    }, [activeFormID]);
 
     const value = useMemo(
         () => ({
@@ -559,23 +598,10 @@ export function FormCreateProvider({
             reorderQuestions,
             reorderSections,
             deleteSection,
+            activeFormID,
             setActiveFormID,
         }),
-        [
-            form,
-            handleFormChange,
-            sections,
-            handleSectionsChange,
-            handleAddSection,
-            handleAddQuestion,
-            duplicateQuestion,
-            questions,
-            updateQuestion,
-            reorderQuestions,
-            reorderSections,
-            deleteSection,
-            updateSectionData,
-        ]
+        [form, handleFormChange, sections, handleSectionsChange, handleAddSection, updateSectionData, handleAddQuestion, duplicateQuestion, deleteQuestion, questions, updateQuestion, reorderQuestions, reorderSections, deleteSection, activeFormID]
     );
 
     return (

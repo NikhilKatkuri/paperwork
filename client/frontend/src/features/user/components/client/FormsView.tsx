@@ -4,7 +4,9 @@ import { FormDB } from '@/lib/db';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
 
-function toDateString(date: number): string {
+function toDateString(date: number | undefined): string {
+    if (!date) return '-';
+
     const d = new Date(date);
     return d.toLocaleDateString('en-US', {
         year: 'numeric',
@@ -49,7 +51,7 @@ function FormsView({
                         <p className="text-md">me</p>
                     </div>
                     <div className="max-[900px]:hidden">
-                        <p className="text-md"> {form ? toDateString(form.updatedAt) : '9 AM'}</p>
+                        <p className="text-md">{toDateString(form?.updatedAt)}</p>
                     </div>
 
                     <div className="flex items-center justify-end">

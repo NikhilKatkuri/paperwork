@@ -4,8 +4,8 @@ import useCreateForm from '@/features/forms/api/createForm';
 import formRepository from '@/features/forms/repositories/formRepository';
 import {
     DEFAULT_FORM_CORE,
-    DEFAULT_QUESTION_CORE,
-    DEFAULT_SECTION_CORE,
+    createDefaultQuestion,
+    createDefaultSection,
 } from '@/features/forms/utils/default';
 import { FormDB } from '@/lib/db';
 import { redirect } from 'next/navigation';
@@ -32,8 +32,8 @@ function UserFab() {
 
             await formRepository.save({
                 ...form,
-                sections: [DEFAULT_SECTION_CORE],
-                questions: [DEFAULT_QUESTION_CORE],
+                sections: [createDefaultSection()],
+                questions: [createDefaultQuestion()],
             });
             createdFormId = form._id;
         } catch (error) {

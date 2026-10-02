@@ -168,7 +168,9 @@ interface FormCore {
 }
 
 interface SectionEntity extends SectionCore, Document {}
-interface QuestionCoreEntity extends QuestionCore, Document {}
+interface QuestionCoreEntity extends QuestionCore, Document {
+    sectionId: string;
+}
 
 interface FormEntity extends FormCore, Document {
     sections?: SectionEntity[];

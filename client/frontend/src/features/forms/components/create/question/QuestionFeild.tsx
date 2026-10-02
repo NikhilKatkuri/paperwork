@@ -11,6 +11,7 @@ import QuestionCore from '@/features/forms/types/question.type';
 import { useFormCreate } from '@/features/forms/providers/FormCreate';
 import AnswerTemplate from '../question-type-config/AnswerTemplate';
 import RichTextInput from '../../common/RichTextInput';
+import { generateObjectId } from '@/features/forms/utils';
  
 
 interface InputFieldProps {
@@ -22,6 +23,7 @@ interface InputFieldProps {
 }
 
 const OVERLAY_FALLBACK: QuestionCore = {
+    _id: generateObjectId(),
     index: 0,
     type: QUESTION_TYPE.TEXT,
     question: 'Untitled Question',

@@ -10,6 +10,8 @@ interface SectionDependsOn {
 }
 
 interface SectionCore {
+    /** Mongo-compatible id - required by the bulk sync endpoint. */
+    _id: string;
     index: number;
     title: string;
     description?: string;

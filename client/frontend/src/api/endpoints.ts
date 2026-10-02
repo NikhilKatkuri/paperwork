@@ -40,7 +40,7 @@ export const endpoints = {
             method: 'POST',
         }),
         verifyTwoFactor: (otp: string): EndpointConfig => ({
-            path: `/auth/sign-in/2fa/${otp} `,
+            path: `/auth/sign-in/2fa/${otp}`,
             method: 'POST',
         }),
     },
@@ -48,9 +48,19 @@ export const endpoints = {
         cloudinary: { path: '/cloudinary/signature', method: 'GET' },
     },
     forms: {
-        allForms: { path: '/forms', method: 'get' },
-        createForm: { path: '/forms', method: 'post' },
-        updateForm: { path: '/forms', method: 'put' },
-        deleteForm: { path: '/forms', method: 'delete' }
+        allForms: { path: '/forms', method: 'GET' },
+        createForm: { path: '/forms', method: 'POST' },
+        updateForm: (formId: string): EndpointConfig => ({
+            path: `/forms/${formId}`,
+            method: 'PUT',
+        }),
+        bulkUpdateForm: (formId: string): EndpointConfig => ({
+            path: `/forms/${formId}/bulk`,
+            method: 'PUT',
+        }),
+        deleteForm: (formId: string): EndpointConfig => ({
+            path: `/forms/${formId}`,
+            method: 'DELETE',
+        }),
     },
 } as const;

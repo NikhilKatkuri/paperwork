@@ -4,6 +4,7 @@ import { cn } from '@/utils/cn';
 import Image from 'next/image';
 import { Tabs } from '../../types';
 import { useFormCreate } from '../../providers/FormCreate';
+import SyncStatus from './SyncStatus';
 
 interface NavbarProps {
     currMode: Tabs;
@@ -33,7 +34,7 @@ function Navbar({ currMode, setMode }: Readonly<NavbarProps>) {
                         className="text-theme-form-on-surface focus:border-theme-form-container-active placeholder:text-theme-form-on-surface w-full flex-1 border-b border-transparent bg-transparent focus:outline-none lg:text-lg"
                     />
                 </div>
-                <div className="flex items-center gap-3 md:w-full"></div>
+                <SyncStatus />
             </div>
             <div className="flex h-full items-center justify-center max-md:hidden">
                 <div className="grid h-full w-80 grid-cols-3 gap-1">

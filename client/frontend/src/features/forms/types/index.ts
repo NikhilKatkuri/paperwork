@@ -103,6 +103,7 @@ interface FormCreateContextValue {
 
     reorderSections: (activeId: number, overId: number) => void;
     deleteSection: (sectionIdx: number) => void;
+    activeFormID: string | null;
     setActiveFormID: React.Dispatch<React.SetStateAction<string | null>>;
 }
 

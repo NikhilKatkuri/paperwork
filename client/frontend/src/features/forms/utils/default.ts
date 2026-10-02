@@ -1,8 +1,8 @@
-import FormCore, { FormSettings } from "../types/form.type";
-import QuestionCore, { QUESTION_TYPE } from "../types/question.type";
-import SectionCore from "../types/section.type";
+import { generateObjectId } from './index';
+import FormCore, { FormSettings } from '../types/form.type';
+import QuestionCore, { QUESTION_TYPE } from '../types/question.type';
+import SectionCore from '../types/section.type';
 
- 
 const DEFAULT_FORM_SETTINGS: FormSettings = {
     maxResponses: undefined,
     maxResponsesPerUser: undefined,
@@ -30,15 +30,21 @@ const DEFAULT_FORM_CORE: FormCore = {
     responseCount: 0,
 };
 
-const DEFAULT_SECTION_CORE: SectionCore = {
+/**
+ * Factories rather than shared constants: every section and question needs its
+ * own `_id`, and a module-level object would hand the same id to every form.
+ */
+const createDefaultSection = (): SectionCore => ({
+    _id: generateObjectId(),
     index: 0,
     title: 'Untitled section',
     description: 'This is a default section description.',
     onAnswer: undefined,
-    defaultAction: {actionType: 'NEXT_SECTION'},
-};
+    defaultAction: { actionType: 'NEXT_SECTION' },
+});
 
-const DEFAULT_QUESTION_CORE:QuestionCore = {
+const createDefaultQuestion = (): QuestionCore => ({
+    _id: generateObjectId(),
     index: 0,
     sectionIdx: 0,
     type: QUESTION_TYPE.TEXT,
@@ -50,5 +56,11 @@ const DEFAULT_QUESTION_CORE:QuestionCore = {
     validationRule: undefined,
     placeholder: undefined,
     isRequired: false,
-}
-export { DEFAULT_FORM_SETTINGS, DEFAULT_FORM_CORE, DEFAULT_SECTION_CORE, DEFAULT_QUESTION_CORE };
+});
+
+export {
+    DEFAULT_FORM_SETTINGS,
+    DEFAULT_FORM_CORE,
+    createDefaultSection,
+    createDefaultQuestion,
+};

@@ -26,6 +26,15 @@ export class syncQueueDB extends Dexie {
             forms: '_id, updatedAt, isDirty',
             syncQueue: 'id, formId, synced, createdAt',
         });
+
+        /**
+         * Drop the `forms` store (duplicated the one in `PaperworkDB` and never
+         * read from here) and the `synced` index - IndexedDB cannot index
+         * booleans, so pending rows were unfindable through it.
+         */
+        this.version(2).stores({
+            syncQueue: 'id, formId, createdAt',
+        });
     }
 }
 

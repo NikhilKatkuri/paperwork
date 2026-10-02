@@ -2,46 +2,43 @@
 
 import FormsView from '../../user/components/client/FormsView';
 import ViewFormsHeader from '../../user/components/client/FormsHeader';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/utils/cn';
 import useGetAllForms from '@/features/forms/api/user/allForms';
 import { toast } from 'sonner';
 import { FormDB } from '@/lib/db';
 
-type T = FormDB;
-
 function UserForms() {
     const [viewAsRow, setViewAsRow] = useState(true);
-    const { loading, handler } = useGetAllForms();
-    const [data, setData] = useState<T[] | null>(null);
+    const { handler } = useGetAllForms();
+    const [data, setData] = useState<FormDB[] | null>(null);
 
-    const loadForms = useCallback(async () => {
-        try {
-            const res = (await handler()) as T[];
-            setData(res);
-        } catch (e) {
-            if (e instanceof Error) {
-                toast.info(e.message);
-            }
-            toast.error('Failed to load forms');
-        }
-    }, [handler]);
-
+    /**
+     * StrictMode mounts, unmounts, then remounts this effect in dev. The first
+     * request is aborted rather than merely ignored, so its result can never be
+     * discarded after the remount - and no `loaded` ref is needed to suppress
+     * the second call, which is what would otherwise strand `data` at null.
+     */
     useEffect(() => {
-        function fetchData() {
-            if (!loading && !data) {
-                loadForms();
-            }
-        }
+        const controller = new AbortController();
 
-        fetchData();
-    }, [data, loadForms, loading]);
+        handler(controller.signal)
+            .then((forms) => setData(forms))
+            .catch((e: unknown) => {
+                if (controller.signal.aborted) return;
+                toast.error(
+                    e instanceof Error ? e.message : 'Failed to load forms'
+                );
+            });
+
+        return () => controller.abort();
+    }, [handler]);
 
     return (
         <>
             <ViewFormsHeader
                 viewAsRow={viewAsRow}
-                setViewAsRow={() => setViewAsRow(!viewAsRow)}
+                setViewAsRow={() => setViewAsRow((prev) => !prev)}
             />
             <div className="mt-5 h-auto flex-1">
                 <div
@@ -52,7 +49,7 @@ function UserForms() {
                             : 'grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4'
                     )}
                 >
-                    {data && data!.length > 0 ? (
+                    {data && data.length > 0 ? (
                         data.map((form) => (
                             <FormsView
                                 key={form._id}
