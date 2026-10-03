@@ -7,6 +7,7 @@ import UserModel from '@/modules/auth/schemas/user.schema';
 import { FormCore, FormEntity, GetAllOptions } from '@/types/form/forms';
 import { emailQueue } from '@/queues';
 import fieldsValidator from '../validators/validator.feilds';
+import { formIndexCache } from '@/redis/formIndex';
 
 class FormsService {
     async create(data: FormCore, userId: string) {
@@ -20,6 +21,9 @@ class FormsService {
         if (!form) {
             throw AppError.FormCreationFailed('Failed to create form');
         }
+
+        // The cached id/name index no longer matches this user's forms.
+        await formIndexCache.invalidate(userId);
 
         // Fetch user email for notification
         const user = await UserModel.findById(userId).select('email');
@@ -41,6 +45,58 @@ class FormsService {
         return form.toObject();
     }
 
+    /**
+     * Name search across the signed-in user's forms.
+     *
+     * Only `_id` and `name` are projected - enough to render a result row and
+     * fetch the form later, without pulling whole documents into a typeahead.
+     */
+    /**
+     * Name search across the signed-in user's forms.
+     *
+     * Only `{_id, name}` is needed, so the whole per-user index is cached (see
+     * `formIndexCache`) and the filter runs in memory. That removes the regex
+     * against Mongo and makes a `name` index unnecessary at ordinary volumes,
+     * while keeping substring matching.
+     */
+    async search(userId: string, q: string, limit: number = 10) {
+        const term = q.trim().toLowerCase();
+
+        if (!term) return [];
+
+        const safeLimit = Math.min(Math.max(1, Math.trunc(limit) || 10), 25);
+
+        const index = await formIndexCache.getOrLoad(userId, () =>
+            FormsModel.find({ userId })
+                .select('_id name')
+                .sort({ updatedAt: -1 })
+                .lean()
+                .then((rows) =>
+                    rows.map((row) => ({
+                        _id: String(row._id),
+                        name: row.name ?? '',
+                    }))
+                )
+        );
+
+        return (
+            index
+                .filter((entry: { _id: string; name: string }) =>
+                    entry.name.toLowerCase().includes(term)
+                )
+                // The index is already newest-first from the loader, so filtering
+                // preserves that ordering.
+                .slice(0, safeLimit)
+        );
+    }
+
+    /**
+     * A single form with its body.
+     *
+     * Sections and questions are returned flat, matching the shape the bulk
+     * endpoint accepts, so a client can hydrate its local cache in one request
+     * instead of fanning out over the section and question routers.
+     */
     async get(formId: string, userId: string) {
         const form = await FormsModel.findOne({ _id: formId, userId })
             .select('-__v')
@@ -49,7 +105,12 @@ class FormsService {
             throw AppError.FormNotFound('Form not found');
         }
 
-        return form;
+        const [sections, questions] = await Promise.all([
+            SectionModel.find({ formId }).sort({ index: 1 }).lean(),
+            QuestionsModel.find({ formId }).sort({ index: 1 }).lean(),
+        ]);
+
+        return { form, sections, questions };
     }
 
     async delete(formId: string, userId: string) {
@@ -72,6 +133,9 @@ class FormsService {
             ]);
 
             await session.commitTransaction();
+
+            // The form is gone, so the cached id/name index is stale.
+            await formIndexCache.invalidate(userId);
         } catch (error) {
             await session.abortTransaction();
 
@@ -93,6 +157,10 @@ class FormsService {
 
         form.set(fieldsValidator.getSafeFormData(updateData));
         await form.save();
+
+        if (updateData.name !== undefined) {
+            await formIndexCache.invalidate(userId);
+        }
 
         return form.toObject();
     }
@@ -123,7 +191,7 @@ class FormsService {
             await session.withTransaction(async () => {
                 const form = await FormsModel.findOneAndUpdate(
                     { _id: formId, userId },
-                    { $set: safeFormData }, 
+                    { $set: safeFormData },
                     { new: true, session }
                 );
 
@@ -180,6 +248,8 @@ class FormsService {
                 }
             });
 
+            await formIndexCache.invalidate(userId);
+
             return await FormsModel.findOne({ _id: formId, userId })
                 .select('-__v')
                 .lean();
@@ -210,9 +280,20 @@ class FormsService {
 
         form.set(filteredUpdate);
         await form.save();
+
+        if (updateData.name !== undefined) {
+            await formIndexCache.invalidate(userId);
+        }
+
         return form.toObject();
     }
 
+    /**
+     * Flips isPublished/isPrivate.
+     *
+     * No cache invalidation here: the id/name index only holds `_id` and `name`,
+     * and neither changes here. The 5 minute Redis TTL is the safety net.
+     */
     private async toggleBoolean(
         userId: string,
         formId: string,
@@ -323,6 +404,9 @@ class FormsService {
             }
 
             await session.commitTransaction();
+
+            // A new form was added to this user's index.
+            await formIndexCache.invalidate(userId);
             return duplicatedForm.toObject();
         } catch (error) {
             await session.abortTransaction();

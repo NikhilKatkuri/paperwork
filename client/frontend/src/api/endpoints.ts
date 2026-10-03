@@ -110,6 +110,14 @@ export const endpoints = {
             path: `/forms/${formId}/unpublish`,
             method: 'POST',
         }),
+        searchForms: (q: string, limit: number = 10): EndpointConfig => ({
+            path: `/forms/search${toQuery({ q, limit })}`,
+            method: 'GET',
+        }),
+        formById: (formId: string): EndpointConfig => ({
+            path: `/forms/${formId}`,
+            method: 'GET',
+        }),
         formResponses: (
             formId: string,
             query: ResponseQuery

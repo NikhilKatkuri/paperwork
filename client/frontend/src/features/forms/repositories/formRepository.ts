@@ -143,6 +143,47 @@ class FormRepository {
     }
 
     /**
+     * Search form names already cached locally.
+     *
+     * Every form the user owns is seeded into IndexedDB by the forms list, so
+     * this answers a query with no network at all. Ranked exact, then prefix,
+     * then substring; ties keep the newest-first order `getAll` returns.
+     */
+    async searchLocal(
+        term: string,
+        limit: number = 10
+    ): Promise<{ _id: string; name: string }[]> {
+        const needle = term.trim().toLowerCase();
+
+        if (!needle) return [];
+
+        const ranked: { hit: { _id: string; name: string }; rank: number }[] =
+            [];
+
+        for (const form of await this.getAll()) {
+            const name = form.name ?? '';
+            const haystack = name.toLowerCase();
+
+            if (!haystack.includes(needle)) continue;
+
+            ranked.push({
+                hit: { _id: form._id, name: name.trim() || 'Untitled form' },
+                rank:
+                    haystack === needle
+                        ? 0
+                        : haystack.startsWith(needle)
+                          ? 1
+                          : 2,
+            });
+        }
+
+        // Array.prototype.sort is stable, so equal ranks keep recency order.
+        ranked.sort((a, b) => a.rank - b.rank);
+
+        return ranked.slice(0, limit).map((entry) => entry.hit);
+    }
+
+    /**
      * Record a field the server has already confirmed.
      *
      * Deliberately does not mark the form dirty - the value came *from* the

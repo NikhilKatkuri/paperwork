@@ -11,7 +11,14 @@ import {
     limiter,
     lowLimiter,
 } from '@/middleware/limiter';
-import { formSchema, getFormSchema, patchRequestFormSchema, putRequestFormSchema, bulkPutFormSchema } from '../validators/validator.form';
+import {
+    formSchema,
+    getFormSchema,
+    patchRequestFormSchema,
+    putRequestFormSchema,
+    bulkPutFormSchema,
+    searchFormsSchema,
+} from '../validators/validator.form';
 
 const formsRouter = express.Router({ mergeParams: true });
 
@@ -26,6 +33,15 @@ formsRouter.post(
     controller.create
 );
 
+formsRouter.get(
+    '/search',
+    limiter,
+    protect,
+    validate(searchFormsSchema),
+    controller.search
+);
+
+
 formsRouter.put(
     '/:formId',
     limiter,
@@ -34,7 +50,13 @@ formsRouter.put(
     controller.put
 );
 
-formsRouter.put('/:formId/bulk', limiter, protect, validate(bulkPutFormSchema), controller.bulkPut);
+formsRouter.put(
+    '/:formId/bulk',
+    limiter,
+    protect,
+    validate(bulkPutFormSchema),
+    controller.bulkPut
+);
 
 formsRouter.patch(
     '/:formId',

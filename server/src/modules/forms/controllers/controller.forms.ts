@@ -52,11 +52,40 @@ class FormsController {
     async get(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId, formId } = this.getRequestData(req);
-            const form = await this.service.get(formId, userId);
+            const { form, sections, questions } = await this.service.get(
+                formId,
+                userId
+            );
             res.status(StatusCodes.OK).json({
                 success: true,
                 message: 'Form retrieved successfully',
-                data: { form },
+                data: { form, sections, questions },
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async search(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { userId } = this.getRequestData(req);
+            const { q, limit } = (req.query ?? {}) as {
+                q?: string;
+                limit?: number;
+            };
+
+            const forms = await this.service.search(
+                userId,
+                q ?? '',
+                limit ?? 10
+            );
+
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: forms.length
+                    ? 'Forms found successfully'
+                    : 'No forms matched that search',
+                data: { forms },
             });
         } catch (error) {
             next(error);
