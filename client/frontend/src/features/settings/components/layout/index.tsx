@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Sidebar from '../client/Sidebar';
 import { cn } from '@/utils/cn';
+import ThemePicker from '@/features/user/components/ui/ThemePicker';
 
 export default function SettingsLayout({
     children,
@@ -15,8 +16,12 @@ export default function SettingsLayout({
 
     return (
         <div className="flex w-full overflow-hidden p-3 md:items-center md:justify-center md:p-4">
-            <div className="border-theme-skeletion-surface grid w-full max-w-4xl grid-cols-[18rem_1fr] gap-4 rounded-2xl border max-md:mb-32 max-md:grid-cols-1 md:h-full md:max-h-180 md:p-2">
+            <div className="border-theme-skeletion-surface relative grid w-full max-w-4xl grid-cols-[18rem_1fr] gap-4 rounded-2xl border max-md:mb-32 max-md:grid-cols-1 md:h-full md:max-h-180 md:p-2">
                 <Sidebar currentRoute={pathname} />
+
+                <div className="absolute top-3 right-3 z-10">
+                    <ThemePicker />
+                </div>
 
                 <div
                     className={cn(

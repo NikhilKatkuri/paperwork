@@ -4,7 +4,12 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { pageTitle, useDocumentTitle } from '@/lib/useDocumentTitle';
-import { FORM_THEME_ATTR, FORM_THEMES } from '@/lib/formTheme';
+import {
+    DEFAULT_FORM_THEME,
+    FORM_THEME_ATTR,
+    FORM_THEMES,
+    type FormThemeId,
+} from '@/lib/formTheme';
 import SectionView from '../view/SectionView';
 import { useFillForm, useSubmitForm } from '../../api/user/fillForm';
 import {
@@ -206,20 +211,23 @@ export default function FormViewPageLayout() {
      * `default` removes the attribute instead of setting it, so the base
      * :root palette applies rather than an unmatched selector.
      */
-    // Only known keys are honoured, so a form saved before a theme existed, or
-    // carrying a value this build no longer offers, falls back to the base
-    // palette instead of setting a selector that matches nothing.
-    const formTheme =
-        form?.form?.theme &&
-        FORM_THEMES.some((theme) => theme.id === form.form.theme)
-            ? form.form.theme
-            : null;
+    /*
+     * Pinned to the form's own theme, defaulting to `default` when the form has
+     * none - it predates per-form themes, or the value is not one this build
+     * offers. Leaving the attribute off would be wrong here: the page would
+     * inherit whatever theme the *respondent* picked for themselves, so the
+     * same form would look different to different people. `default` is a real
+     * selector, so setting it pins the base palette.
+     */
+    const requested = form?.form?.theme;
+    const formTheme: FormThemeId =
+        requested && FORM_THEMES.some((theme) => theme.id === requested)
+            ? requested
+            : DEFAULT_FORM_THEME;
 
-    const themeScope = (
-        formTheme && formTheme !== 'default'
-            ? { [FORM_THEME_ATTR]: formTheme }
-            : {}
-    ) as Record<string, string>;
+    const themeScope = {
+        [FORM_THEME_ATTR]: formTheme,
+    } as Record<string, string>;
 
     const themed = (children: React.ReactNode) => (
         <div

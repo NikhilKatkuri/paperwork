@@ -5,7 +5,6 @@ import { cn } from '@/utils/cn';
 import normalizeUrl, { NormalizedUrl } from '@/utils/profile';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import ThemePicker from './ui/ThemePicker';
 
 interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     name: string;
@@ -83,16 +82,6 @@ export default function Sidebar() {
                 name="settings"
                 isHovered={() => getHover(pathname) === 'settings'}
             />
-
-            {/* Positioned by the picker itself: anchored left of the rail on
-                wide screens, a bottom sheet under 44rem where the rail becomes
-                a fixed bar. */}
-            <div className="flex flex-col items-center justify-center min-[44rem]:self-start">
-                <ThemePicker
-                    label="Theme"
-                    className="hover:bg-brand-light h-10 w-16"
-                />
-            </div>
 
             <div className="group flex flex-col items-center justify-center *:cursor-pointer *:**:transition-all *:**:duration-150 *:**:ease-in-out min-[44rem]:self-end">
                 <button className="max-[44rem]:group-hover:bg-brand-light flex h-10 w-16 items-center justify-center rounded-full">

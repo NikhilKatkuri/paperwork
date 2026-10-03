@@ -75,13 +75,6 @@ export function storeFormTheme(id: FormThemeId): void {
     }
 }
 
-/*
- * IndexedDB is the durable store, but it is asynchronous and so cannot be read
- * by the inline pre-paint script. localStorage is therefore kept as a
- * synchronous mirror of the same value: the script applies it before first
- * paint to avoid a flash of the default palette, and IndexedDB is reconciled
- * in on mount and is what a fresh read consults.
- */
 const PREFERENCE_KEY = 'form-theme';
 
 export async function readFormThemeFromDb(): Promise<FormThemeId | null> {
@@ -113,20 +106,6 @@ export async function persistFormTheme(id: FormThemeId): Promise<void> {
         console.warn('[theme] could not persist preference', error);
     }
 }
-/**
- * Applies the stored theme before first paint.
- *
- * Inlined into the document head: doing this from an effect would paint the
- * default palette first and then repaint, which reads as a flash on every
- * reload. Kept dependency-free and defensive because it runs before hydration.
- */
-export const THEME_INIT_SCRIPT = `(function(){try{
-var k=${JSON.stringify(FORM_THEME_STORAGE_KEY)};
-var a=${JSON.stringify(FORM_THEME_ATTR)};
-var v=localStorage.getItem(k);
-if(v&&v!==${JSON.stringify(DEFAULT_FORM_THEME)}){document.documentElement.setAttribute(a,v);}
-}catch(e){}})();`;
-
 /**
  * Colour chip for a theme, rendered from the stylesheet rather than a literal.
  *

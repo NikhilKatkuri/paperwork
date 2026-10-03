@@ -4,7 +4,6 @@ import '@/styles/globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthGuardProvider, AuthProvider } from '@/providers';
 import { APP_NAME } from '@/lib/useDocumentTitle';
-import { THEME_INIT_SCRIPT } from '@/lib/formTheme';
 
 export const plusJakartaSans = Plus_Jakarta_Sans({
     subsets: ['latin'],
@@ -26,18 +25,11 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        // suppressHydrationWarning: the inline theme script below sets an
-        // attribute on this element before React hydrates.
         <html
             lang="en"
-            suppressHydrationWarning
             className={`${plusJakartaSans.variable} ${plusJakartaSans.className} h-full antialiased`}
         >
-            {/* Applies the stored form theme before first paint. */}
             <head>
-                <script
-                    dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
-                />
                 {/* eslint-disable-next-line @next/next/no-page-custom-font, @next/next/google-font-display */}
                 <link
                     rel="stylesheet"

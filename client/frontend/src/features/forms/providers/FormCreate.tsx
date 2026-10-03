@@ -56,6 +56,7 @@ async function queueChangedFields(oldForm: FormDB, newForm: FormDB) {
     };
 
     compare('name', oldForm.name, newForm.name);
+    compare('theme', oldForm.theme, newForm.theme);
     compare('isPrivate', oldForm.isPrivate, newForm.isPrivate);
     compare('isPublished', oldForm.isPublished, newForm.isPublished);
     compare('allowedDomains', oldForm.allowedDomains, newForm.allowedDomains);
