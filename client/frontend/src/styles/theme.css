@@ -1,4 +1,5 @@
-:root {
+:root,
+[data-form-theme='default'] {
     /* Font Sizes */
     --font-size-base: 1rem;
     --font-size-sm: 0.875rem;
@@ -53,7 +54,7 @@
     --theme-skeletion-radius-container: var(--radius-lg, 12px);
 
     /* Form Base Tokens (Default - Indigo) */
-    --color-name: "#6366f1";
+    --color-name: '#6366f1';
     --theme-form-surface: #e0e7ff;
     --theme-form-surface-hover: #c7d2fe;
     --theme-form-on-surface: #3730a3;
@@ -71,7 +72,7 @@
    ========================================================================== */
 
 [data-form-theme='blue'] {
-    --color-name: "#0284c7";
+    --color-name: '#0284c7';
     --theme-form-surface: #e0f2fe;
     --theme-form-surface-hover: #bae6fd;
     --theme-form-on-surface: #0369a1;
@@ -88,7 +89,7 @@
 }
 
 [data-form-theme='orange'] {
-    --color-name: "#ea580c";
+    --color-name: '#ea580c';
     --theme-form-surface: #ffedd5;
     --theme-form-surface-hover: #fed7aa;
     --theme-form-on-surface: #c2410c;
@@ -105,7 +106,7 @@
 }
 
 [data-form-theme='green'] {
-    --color-name: "#16a34a";
+    --color-name: '#16a34a';
     --theme-form-surface: #dcfce7;
     --theme-form-surface-hover: #bbf7d0;
     --theme-form-on-surface: #15803d;
@@ -122,7 +123,7 @@
 }
 
 [data-form-theme='purple'] {
-    --color-name: "#9333ea";
+    --color-name: '#9333ea';
     --theme-form-surface: #f3e8ff;
     --theme-form-surface-hover: #e9d5ff;
     --theme-form-on-surface: #6b21a8;
@@ -139,7 +140,7 @@
 }
 
 [data-form-theme='red'] {
-    --color-name: "#e11d48";
+    --color-name: '#e11d48';
     --theme-form-surface: #ffe4e6;
     --theme-form-surface-hover: #fecdd3;
     --theme-form-on-surface: #be123c;
@@ -156,7 +157,7 @@
 }
 
 [data-form-theme='teal'] {
-    --color-name: "#0d9488";
+    --color-name: '#0d9488';
     --theme-form-surface: #ccfbf1;
     --theme-form-surface-hover: #99f6e4;
     --theme-form-on-surface: #0f766e;
@@ -173,7 +174,7 @@
 }
 
 [data-form-theme='amber'] {
-    --color-name: "#d97706";
+    --color-name: '#d97706';
     --theme-form-surface: #fef3c7;
     --theme-form-surface-hover: #fde68a;
     --theme-form-on-surface: #b45309;
@@ -190,7 +191,7 @@
 }
 
 [data-form-theme='slate'] {
-    --color-name: "#475569";
+    --color-name: '#475569';
     --theme-form-surface: #f1f5f9;
     --theme-form-surface-hover: #e2e8f0;
     --theme-form-on-surface: #334155;
@@ -207,7 +208,7 @@
 }
 
 [data-form-theme='emerald'] {
-    --color-name: "#059669";
+    --color-name: '#059669';
     --theme-form-surface: #d1fae5;
     --theme-form-surface-hover: #a7f3d0;
     --theme-form-on-surface: #047857;
@@ -227,7 +228,8 @@
    DARK MODE OVERRIDES (@media prefers-color-scheme: dark)
    ========================================================================== */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root,
+    [data-form-theme='default'] {
         --theme-surface: #0f172a;
         --theme-on-surface: #f8fafc;
         --theme-surface-hover: rgba(248, 250, 252, 0.08);

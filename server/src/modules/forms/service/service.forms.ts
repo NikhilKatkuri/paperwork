@@ -428,7 +428,7 @@ class FormsService {
             .select(
                 // Must match formsSchema - `title`/`description` are not
                 // fields, so selecting them silently dropped `name`.
-                'name isPublished isPrivate allowedDomains settings createdAt updatedAt __v'
+                'name isPublished isPrivate allowedDomains settings theme createdAt updatedAt __v'
             )
             .sort({ updatedAt: -1 })
             .skip(skip)

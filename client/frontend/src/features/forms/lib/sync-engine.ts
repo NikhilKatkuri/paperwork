@@ -193,6 +193,9 @@ function toPayload(form: FormDB): Record<string, unknown> | null {
         ...(typeof form.responseCount === 'number'
             ? { responseCount: form.responseCount }
             : {}),
+        // The form's own theme is part of the document, so it has to travel
+        // with the rest of the form or it never reaches the server.
+        ...(form.theme ? { theme: form.theme } : {}),
     };
 }
 

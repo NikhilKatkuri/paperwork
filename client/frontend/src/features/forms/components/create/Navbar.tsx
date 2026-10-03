@@ -6,6 +6,7 @@ import { Tabs } from '../../types';
 import { useFormCreate } from '../../providers/FormCreate';
 import SyncStatus from './SyncStatus';
 import PublishButton from './PublishButton';
+import FormThemePicker from './FormThemePicker';
 
 interface NavbarProps {
     currMode: Tabs;
@@ -37,6 +38,7 @@ function Navbar({ currMode, setMode }: Readonly<NavbarProps>) {
                 </div>
                 <div className="flex items-center gap-3 md:w-full">
                     <SyncStatus />
+                    <FormThemePicker />
                     <PublishButton />
                 </div>
             </div>

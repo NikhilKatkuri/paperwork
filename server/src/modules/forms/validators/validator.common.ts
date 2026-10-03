@@ -4,6 +4,7 @@ import {
     fieldValidationRuleEnum,
     ratingIconEnum,
 } from '../schemas/schemas.questions';
+import { FORM_THEMES } from '@/types/form/themes';
 
 export const zodObjectId = z
     .string()
@@ -34,6 +35,7 @@ export const formDataSchema = z
         allowedDomains: z.array(z.string()).optional(),
         settings: formSettingsSchema.optional(),
         responseCount: z.number().int().nonnegative().optional(),
+        theme: z.enum(FORM_THEMES).optional(),
     })
     .strict();
 

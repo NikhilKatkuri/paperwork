@@ -9,6 +9,7 @@ import { Tabs } from '../../types';
 import { useParams } from 'next/navigation';
 import { useFormCreate } from '../../providers/FormCreate';
 import { pageTitle, useDocumentTitle } from '@/lib/useDocumentTitle';
+import { FORM_THEME_ATTR, FORM_THEMES } from '@/lib/formTheme';
 
 function Render({ _case }: Readonly<{ _case: Tabs }>) {
     switch (_case) {
@@ -36,8 +37,23 @@ function FormCreatePageCreateLayout() {
         updateFormId();
     }, [id, setActiveFormID]);
 
+    /*
+     * The editor previews the form in the theme the form itself carries, so
+     * what you see while designing is what a respondent gets. The account-wide
+     * theme on <html> is left alone - only this subtree is overridden - so the
+     * rest of the app keeps the user's own preference.
+     */
+    const theme = form?.theme;
+    const formTheme =
+        theme && FORM_THEMES.some((t) => t.id === theme) ? theme : null;
+
     return (
-        <div className="flex h-screen w-full flex-col">
+        <div
+            {...(formTheme && formTheme !== 'default'
+                ? { [FORM_THEME_ATTR]: formTheme }
+                : {})}
+            className="flex h-screen w-full flex-col"
+        >
             <Navbar currMode={mode} setMode={setMode} />
             <div className="bg-theme-form-surface min-h-0 w-full flex-1">
                 <Render _case={mode} />

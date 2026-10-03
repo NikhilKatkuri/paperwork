@@ -1,4 +1,5 @@
-import Document from "./db.types";
+import Document from './db.types';
+import { FormThemeId } from '@/lib/formTheme';
 
 interface FormSettings {
     maxResponses?: number;
@@ -25,6 +26,8 @@ interface FormCore {
     allowedDomains?: string[];
     settings?: FormSettings;
     responseCount?: number;
+    /** Per-form colour theme; defaults to the base palette when unset. */
+    theme?: FormThemeId;
 }
 
 type FormDocument = Document<FormCore>;

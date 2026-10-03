@@ -1,4 +1,5 @@
 import { Document } from 'mongoose';
+import { FormTheme } from './themes';
 
 enum QUESTION_TYPE {
     TEXT = 'TEXT',
@@ -165,6 +166,8 @@ interface FormCore {
     allowedDomains?: string[];
     settings?: FormSettings;
     responseCount?: number;
+    /** Per-form colour theme; see `FORM_THEMES`. */
+    theme?: FormTheme;
 }
 
 interface SectionEntity extends SectionCore, Document {}

@@ -14,6 +14,7 @@ class FieldsValidator {
         'allowedDomains',
         'settings',
         'responseCount',
+        'theme',
     ] as const satisfies readonly (keyof Required<FormCore>)[];
 
     readonly formSettingsFields = [
@@ -100,7 +101,6 @@ class FieldsValidator {
         NonNullable<QuestionCore['validationRule']>
     >)[];
 
-   
     private pickFields<T extends object, K extends readonly (keyof T)[]>(
         data: Partial<T>,
         allowed: K
@@ -166,32 +166,33 @@ class FieldsValidator {
     getSafeQuestionData(data: Partial<QuestionCore>) {
         const safeData = this.pickFields(data, this.questionCoreKeys);
 
-        if(safeData.optionsConfig) {
+        if (safeData.optionsConfig) {
             safeData.optionsConfig = {
                 correctAnswer: safeData.optionsConfig.correctAnswer,
-                options: safeData.optionsConfig.options.map((option) =>
-                    this.pickFields(option, this.optionKeys) as NonNullable<
-                        QuestionCore['optionsConfig']
-                    >['options'][number]
+                options: safeData.optionsConfig.options.map(
+                    (option) =>
+                        this.pickFields(option, this.optionKeys) as NonNullable<
+                            QuestionCore['optionsConfig']
+                        >['options'][number]
                 ),
-            }
+            };
         }
 
-        if(safeData.dependsOn) {
+        if (safeData.dependsOn) {
             safeData.dependsOn = this.pickFields(
                 safeData.dependsOn,
                 this.questionDependsOnKeys
             ) as QuestionCore['dependsOn'];
         }
 
-        if(safeData.ratingConfig) {
+        if (safeData.ratingConfig) {
             safeData.ratingConfig = this.pickFields(
                 safeData.ratingConfig,
                 this.questionRatingConfigKeys
             ) as QuestionCore['ratingConfig'];
         }
 
-        if(safeData.validationRule) {
+        if (safeData.validationRule) {
             safeData.validationRule = this.pickFields(
                 safeData.validationRule,
                 this.fieldValidationRuleKeys

@@ -16,6 +16,7 @@ import {
     createDefaultQuestion,
     createDefaultSection,
 } from '../utils/default';
+import { DEFAULT_FORM_THEME } from '@/lib/formTheme';
 
 import FormCore from '../types/form.type';
 import SectionCore, { defualtSectionCore } from '../types/section.type';
@@ -446,6 +447,9 @@ export function FormCreateProvider({
                     allowedDomains: rest.allowedDomains ?? [],
                     settings: { ...rest.settings },
                     responseCount: rest.responseCount ?? 0,
+                    // Forms saved before the theme existed have no value; the
+                    // base palette is the intended default.
+                    theme: rest.theme ?? DEFAULT_FORM_THEME,
                 } satisfies Required<FormCore>);
 
                 // Records cached before sections carried an `_id` would be

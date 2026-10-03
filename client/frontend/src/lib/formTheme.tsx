@@ -2,28 +2,25 @@
  * Form theme variants, backed by the `[data-form-theme]` blocks in
  * `theme.css`.
  *
- * Each `swatch` matches that block's `--color-name`, so the picker shows the
- * theme's identity colour rather than the accent actually rendered - those are
- * deliberately allowed to differ, because the accent is darkened where it has
- * to sit behind white text.
- *
- * `default` has no block of its own; it is the `:root` palette and is applied
- * by removing the attribute.
+ * The ids here are the single source of truth: the server enum mirrors them,
+ * and every theme - `default` included - has a matching selector, so a swatch
+ * never depends on what it happens to inherit.
  */
 export const FORM_THEMES = [
-    { id: 'default', label: 'Indigo', swatch: '#6366f1' },
-    { id: 'blue', label: 'Sky Blue', swatch: '#0284c7' },
-    { id: 'orange', label: 'Orange', swatch: '#ea580c' },
-    { id: 'green', label: 'Green', swatch: '#16a34a' },
-    { id: 'purple', label: 'Purple', swatch: '#9333ea' },
-    { id: 'red', label: 'Rose Red', swatch: '#e11d48' },
-    { id: 'teal', label: 'Teal', swatch: '#0d9488' },
-    { id: 'amber', label: 'Amber / Gold', swatch: '#d97706' },
-    { id: 'slate', label: 'Slate Grey', swatch: '#475569' },
-    { id: 'emerald', label: 'Emerald', swatch: '#059669' },
+    { id: 'default', label: 'Indigo' },
+    { id: 'blue', label: 'Sky Blue' },
+    { id: 'orange', label: 'Orange' },
+    { id: 'green', label: 'Green' },
+    { id: 'purple', label: 'Purple' },
+    { id: 'red', label: 'Rose Red' },
+    { id: 'teal', label: 'Teal' },
+    { id: 'amber', label: 'Amber / Gold' },
+    { id: 'slate', label: 'Slate Grey' },
+    { id: 'emerald', label: 'Emerald' },
 ] as const;
 
 import { db } from './db';
+import { cn } from '@/utils/cn';
 
 export type FormThemeId = (typeof FORM_THEMES)[number]['id'];
 
@@ -129,3 +126,31 @@ var a=${JSON.stringify(FORM_THEME_ATTR)};
 var v=localStorage.getItem(k);
 if(v&&v!==${JSON.stringify(DEFAULT_FORM_THEME)}){document.documentElement.setAttribute(a,v);}
 }catch(e){}})();`;
+
+/**
+ * Colour chip for a theme, rendered from the stylesheet rather than a literal.
+ *
+ * The attribute goes on the chip itself, so the chip resolves that theme's
+ * palette instead of inheriting the surrounding one - which matters twice over:
+ * the `default` chip stays indigo even while the editor is themed, and the chip
+ * follows the active colour scheme, since `--theme-form-container-active` is
+ * redefined under the dark media query.
+ */
+export function FormThemeSwatch({
+    id,
+    className,
+}: {
+    id: FormThemeId;
+    className?: string;
+}) {
+    return (
+        <span
+            aria-hidden="true"
+            data-form-theme={id}
+            className={cn(
+                'bg-theme-form-container-active inline-block h-5 w-5 shrink-0 rounded-full ring-1 ring-black/10',
+                className
+            )}
+        />
+    );
+}

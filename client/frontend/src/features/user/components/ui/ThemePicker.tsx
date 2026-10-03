@@ -11,6 +11,7 @@ import { cn } from '@/utils/cn';
 import {
     DEFAULT_FORM_THEME,
     FORM_THEME_ATTR,
+    FormThemeSwatch,
     FORM_THEMES,
     applyFormTheme,
     persistFormTheme,
@@ -152,11 +153,7 @@ export default function ThemePicker({ className, label }: ThemePickerProps) {
                     className
                 )}
             >
-                <span
-                    aria-hidden="true"
-                    className="h-5 w-5 rounded-full ring-1 ring-black/10"
-                    style={{ backgroundColor: active?.swatch }}
-                />
+                {active ? <FormThemeSwatch id={active.id} /> : null}
             </button>
 
             {label ? (
@@ -207,12 +204,9 @@ export default function ThemePicker({ className, label }: ThemePickerProps) {
                                         : 'hover:bg-theme-form-on-surface/5 border-transparent'
                                 )}
                             >
-                                <span
-                                    aria-hidden="true"
-                                    className="h-6 w-6 rounded-full ring-1 ring-black/10"
-                                    style={{
-                                        backgroundColor: theme.swatch,
-                                    }}
+                                <FormThemeSwatch
+                                    id={theme.id}
+                                    className="h-6 w-6"
                                 />
                                 <span className="text-theme-form-on-surface text-center text-[11px] leading-tight">
                                     {theme.label}

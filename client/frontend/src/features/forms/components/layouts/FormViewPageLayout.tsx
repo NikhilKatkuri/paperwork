@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { pageTitle, useDocumentTitle } from '@/lib/useDocumentTitle';
+import { FORM_THEME_ATTR, FORM_THEMES } from '@/lib/formTheme';
 import SectionView from '../view/SectionView';
 import { useFillForm, useSubmitForm } from '../../api/user/fillForm';
 import {
@@ -195,112 +196,130 @@ export default function FormViewPageLayout() {
         scrollTop();
     }, [scrollTop]);
 
-    if (loading) {
-        return (
-            <div className="bg-theme-form-surface h-full w-full p-6">
-                <Loading />
-            </div>
-        );
-    }
+    /*
+     * The form carries its own theme, so it is scoped to this page rather than
+     * applied to <html>: a respondent who has picked a theme of their own keeps
+     * it everywhere else, and only sees the owner's colours while filling this
+     * form in. The custom properties inherit, and Tailwind's utilities read
+     * them directly, so a wrapper attribute is enough.
+     *
+     * `default` removes the attribute instead of setting it, so the base
+     * :root palette applies rather than an unmatched selector.
+     */
+    // Only known keys are honoured, so a form saved before a theme existed, or
+    // carrying a value this build no longer offers, falls back to the base
+    // palette instead of setting a selector that matches nothing.
+    const formTheme =
+        form?.form?.theme &&
+        FORM_THEMES.some((theme) => theme.id === form.form.theme)
+            ? form.form.theme
+            : null;
+
+    const themeScope = (
+        formTheme && formTheme !== 'default'
+            ? { [FORM_THEME_ATTR]: formTheme }
+            : {}
+    ) as Record<string, string>;
+
+    const themed = (children: React.ReactNode) => (
+        <div
+            {...themeScope}
+            className="bg-theme-form-surface h-full w-full scrollbar-none overflow-y-auto"
+        >
+            {children}
+        </div>
+    );
+
+    if (loading) return themed(<Loading />);
 
     if (error || !form) {
-        return (
-            <div className="bg-theme-form-surface h-full w-full p-6">
-                <Failure
-                    message={
-                        error ??
-                        (id
-                            ? 'This form could not be loaded.'
-                            : 'No form was specified in the address.')
-                    }
-                />
-            </div>
+        return themed(
+            <Failure
+                message={
+                    error ??
+                    (id
+                        ? 'This form could not be loaded.'
+                        : 'No form was specified in the address.')
+                }
+            />
         );
     }
 
-    if (state === 'accepted') {
-        return (
-            <div className="bg-theme-form-surface h-full w-full p-6">
-                <Done message={message} />
-            </div>
-        );
-    }
+    if (state === 'accepted') return themed(<Done message={message} />);
 
     const section = sections[current];
     const isLast = current >= sections.length - 1;
     const percent = total ? Math.round((answered / total) * 100) : 0;
 
-    return (
-        <div className="bg-theme-form-surface h-screen w-full scrollbar-none overflow-y-auto">
-            <div ref={topRef} className="mx-auto w- max-w-2xl px-6 py-10">
-                <header className="mb-8 flex flex-col gap-2">
-                    <h1 className="text-theme-form-on-surface text-2xl font-bold">
-                        {form.form.name || 'Untitled form'}
-                    </h1>
-                    <p className="text-theme-form-on-surface/60 text-sm">
-                        Section {current + 1} of {sections.length} · {answered}/
-                        {total} answered
-                    </p>
+    return themed(
+        <div ref={topRef} className="mx-auto w-full max-w-2xl px-6 py-10">
+            <header className="mb-8 flex flex-col gap-2">
+                <h1 className="text-theme-form-on-surface text-2xl font-bold">
+                    {form.form.name || 'Untitled form'}
+                </h1>
+                <p className="text-theme-form-on-surface/60 text-sm">
+                    Section {current + 1} of {sections.length} · {answered}/
+                    {total} answered
+                </p>
+                <div
+                    role="progressbar"
+                    aria-valuenow={percent}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    className="bg-theme-form-on-surface/10 mt-2 h-1.5 w-full overflow-hidden rounded-full"
+                >
                     <div
-                        role="progressbar"
-                        aria-valuenow={percent}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        className="bg-theme-form-on-surface/10 mt-2 h-1.5 w-full overflow-hidden rounded-full"
-                    >
-                        <div
-                            className="bg-theme-form-container-active h-full rounded-full transition-all"
-                            style={{ width: `${percent}%` }}
-                        />
-                    </div>
-                </header>
-
-                {section ? (
-                    <SectionView
-                        section={section}
-                        answers={answers}
-                        errors={errors}
-                        onChange={onChange}
+                        className="bg-theme-form-container-active h-full rounded-full transition-all"
+                        style={{ width: `${percent}%` }}
                     />
-                ) : (
-                    <p className="text-theme-form-on-surface/70 text-sm">
-                        This form has no questions yet.
-                    </p>
-                )}
+                </div>
+            </header>
 
-                <footer className="mt-10 flex items-center justify-between gap-3">
-                    <button
-                        type="button"
-                        onClick={goBack}
-                        disabled={current === 0}
-                        className="border-theme-form-on-surface/30 text-theme-form-on-surface hover:bg-theme-form-on-surface/5 rounded-md border px-4 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                        Back
-                    </button>
+            {section ? (
+                <SectionView
+                    section={section}
+                    answers={answers}
+                    errors={errors}
+                    onChange={onChange}
+                />
+            ) : (
+                <p className="text-theme-form-on-surface/70 text-sm">
+                    This form has no questions yet.
+                </p>
+            )}
 
-                    <button
-                        type="button"
-                        onClick={isLast ? () => void handleSubmit() : goNext}
-                        disabled={state === 'sending'}
-                        className="bg-theme-form-container-active rounded-md px-5 py-2 text-sm font-medium text-theme-form-on-active transition-opacity disabled:opacity-60"
-                    >
-                        {state === 'sending'
-                            ? 'Submitting…'
-                            : isLast
-                              ? 'Submit'
-                              : 'Next'}
-                    </button>
-                </footer>
+            <footer className="mt-10 flex items-center justify-between gap-3">
+                <button
+                    type="button"
+                    onClick={goBack}
+                    disabled={current === 0}
+                    className="border-theme-form-on-surface/30 text-theme-form-on-surface hover:bg-theme-form-on-surface/5 rounded-md border px-4 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                    Back
+                </button>
 
-                {state === 'failed' && message ? (
-                    <p
-                        role="alert"
-                        className="mt-4 text-right text-sm text-red-500"
-                    >
-                        {message}
-                    </p>
-                ) : null}
-            </div>
+                <button
+                    type="button"
+                    onClick={isLast ? () => void handleSubmit() : goNext}
+                    disabled={state === 'sending'}
+                    className="bg-theme-form-container-active text-theme-form-on-active rounded-md px-5 py-2 text-sm font-medium transition-opacity disabled:opacity-60"
+                >
+                    {state === 'sending'
+                        ? 'Submitting…'
+                        : isLast
+                          ? 'Submit'
+                          : 'Next'}
+                </button>
+            </footer>
+
+            {state === 'failed' && message ? (
+                <p
+                    role="alert"
+                    className="mt-4 text-right text-sm text-red-500"
+                >
+                    {message}
+                </p>
+            ) : null}
         </div>
     );
 }
