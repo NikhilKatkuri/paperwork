@@ -1,3 +1,5 @@
+import Document from "./db.types";
+
 interface FormSettings {
     maxResponses?: number;
     maxResponsesPerUser?: number;
@@ -25,5 +27,7 @@ interface FormCore {
     responseCount?: number;
 }
 
-export type { FormSettings };
+type FormDocument = Document<FormCore>;
+
+export type { FormSettings, FormDocument };
 export default FormCore;

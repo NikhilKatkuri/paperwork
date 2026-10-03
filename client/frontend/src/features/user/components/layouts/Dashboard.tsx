@@ -1,6 +1,6 @@
 import Sidebar from '../sidebar';
 
-function Dashboard({ children }: { children: React.ReactNode }) {
+function Dashboard({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
         <div
             className={

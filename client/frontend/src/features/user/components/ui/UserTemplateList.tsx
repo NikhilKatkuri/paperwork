@@ -49,7 +49,7 @@ export default function HorizontalScrollList() {
                 {canScrollLeft && (
                     <button
                         onClick={() => scroll('left')}
-                        className="bg-brand-depth text-on-brand-depth absolute top-1/2 left-2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity duration-200 group-hover:flex focus:outline-none"
+                        className="bg-theme-form-container-active text-on-brand-depth absolute top-1/2 left-2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity duration-200 group-hover:flex focus:outline-none"
                         aria-label="Scroll Left"
                     >
                         <span className="material-symbols-outlined text-3xl">
@@ -85,7 +85,7 @@ export default function HorizontalScrollList() {
                 {canScrollRight && (
                     <button
                         onClick={() => scroll('right')}
-                        className="bg-brand-depth text-on-brand-depth absolute top-1/2 right-2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity duration-200 group-hover:flex focus:outline-none"
+                        className="bg-theme-form-container-active text-on-brand-depth absolute top-1/2 right-2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-opacity duration-200 group-hover:flex focus:outline-none"
                         aria-label="Scroll Right"
                     >
                         <span className="material-symbols-outlined text-3xl">

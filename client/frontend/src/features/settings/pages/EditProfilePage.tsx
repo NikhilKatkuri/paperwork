@@ -109,7 +109,7 @@ const EditProfilePage = memo(() => {
                         );
                     }}
                     disabled={loading}
-                    className="bg-brand-depth text-on-brand-depth hover:bg-brand-depth/90 cursor-pointer rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 disabled:opacity-50 sm:px-8"
+                    className="bg-theme-form-container-active/80 text-on-brand-depth hover:bg-theme-form-container-active cursor-pointer rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 disabled:opacity-50 sm:px-8"
                 >
                     {loading ? 'Saving...' : 'Save Changes'}
                 </button>

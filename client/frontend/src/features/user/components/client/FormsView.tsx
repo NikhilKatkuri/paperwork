@@ -32,7 +32,7 @@ function FormsView({
                 )}
             >
                 <div className="grid grid-cols-[36px_1fr] items-center gap-4">
-                    <div className="bg-brand-depth flex aspect-square h-7 w-7 items-center justify-center rounded-md">
+                    <div className="bg-theme-form-container-active flex aspect-square h-7 w-7 items-center justify-center rounded-md">
                         <div className="material-symbols-outlined text-on-brand-depth">
                             format_list_bulleted
                         </div>

@@ -144,7 +144,7 @@ export default function SecurityPage() {
                     <button
                         type="submit"
                         disabled={!isDirty || accountActionSaving}
-                        className="bg-brand-depth text-on-brand-depth hover:bg-brand-depth/90 rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="bg-theme-form-container-active/80 text-on-brand-depth hover:bg-theme-form-container-active rounded-full p-4 px-7 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Save Changes
                     </button>

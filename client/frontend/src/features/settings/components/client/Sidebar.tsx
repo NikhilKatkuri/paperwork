@@ -39,8 +39,8 @@ export default function Sidebar({ currentRoute }: { currentRoute: string }) {
                                 className={cn(
                                     'grid w-full cursor-pointer grid-cols-[24px_1fr] items-center gap-4 rounded-lg bg-transparent p-2 transition-colors duration-200 ease-in-out',
                                     currentRoute.startsWith(item.route)
-                                        ? 'bg-brand-light/50 text-brand-depth'
-                                        : 'hover:bg-brand-light/50 hover:text-brand-depth'
+                                        ? 'bg-brand-light/50 text-theme-form-container-active'
+                                        : 'hover:bg-brand-light/50 hover:text-theme-form-container-active'
                                 )}
                             >
                                 <span className="material-symbols-outlined">

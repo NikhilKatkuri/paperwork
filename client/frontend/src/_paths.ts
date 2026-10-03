@@ -5,7 +5,7 @@ export const AUTH_PATHS = [
     '/auth/forgot-password',
 ];
 
-export const PROTECTED_PATHS = ['/user'];
+export const PROTECTED_PATHS = ['/user','/forms'];
 
 export const PARTIAL_AUTH_PATHS = [
     '/auth/2fa',
