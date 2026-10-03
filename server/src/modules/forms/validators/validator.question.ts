@@ -46,3 +46,4 @@ export const reorderQuestionSchema = z.object({
 
 export { questionTypesWithIndexSchema };
 export { fillFormSchema, postFormSchema } from './validator.fill';
+export { responsesQuerySchema } from './validator.fill';

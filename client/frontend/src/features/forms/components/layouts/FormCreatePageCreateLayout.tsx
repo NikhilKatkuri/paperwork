@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Navbar from '../create/Navbar';
 import FormLayout from '../form';
 import Settings from '../create/Settings';
+import ResponsesPanel from '../create/responses/ResponsesPanel';
 import { Tabs } from '../../types';
 import { useParams } from 'next/navigation';
 import { useFormCreate } from '../../providers/FormCreate';
@@ -16,7 +17,7 @@ function Render({ _case }: Readonly<{ _case: Tabs }>) {
         case 'settings':
             return <Settings />;
         case 'responses':
-            return <div>Responses</div>;
+            return <ResponsesPanel />;
     }
 }
 

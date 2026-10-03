@@ -3,6 +3,7 @@ import FillController from '@/modules/forms/controllers/controller.fill';
 import {
     fillFormSchema,
     postFormSchema,
+    responsesQuerySchema,
 } from '@/modules/forms/validators/validator.question';
 import validate from '@/middleware/validate';
 import { responseIdSchema } from '../validators/validator.fill';
@@ -27,7 +28,24 @@ fillRouter.post(
     fillController.submit
 );
 
-fillRouter.get('/responses', lowLimiter, protect, fillController.responses);
+/**
+ * Declared before `/responses/:responseId` so the literal path is not captured
+ * as an id (and then rejected as a malformed ObjectId).
+ */
+fillRouter.get(
+    '/responses/summary',
+    lowLimiter,
+    protect,
+    validate(responsesQuerySchema),
+    fillController.responsesSummary
+);
+fillRouter.get(
+    '/responses',
+    lowLimiter,
+    protect,
+    validate(responsesQuerySchema),
+    fillController.responses
+);
 fillRouter.get(
     '/responses/export/:exportType',
     lowLimiter,

@@ -8,6 +8,44 @@ import { ResponseCore } from '@/types/form/forms';
 import { FormDocument, QuestionDocument } from '@/types/form/Document';
 import FileService from '@/modules/forms/service/service.internal.file';
 
+export interface ResponseQuery {
+    search?: string;
+    questionId?: string;
+    sort?: 'newest' | 'oldest';
+}
+
+/** Escape a user string before using it inside a `$regex`. */
+function escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Build the `$match` for the response list.
+ *
+ * Search is case-insensitive across the respondent email and any answer value.
+ * `questionId` restricts to responses that answered that question.
+ */
+function buildResponseMatch(
+    formId: string,
+    options: ResponseQuery = {}
+): Record<string, any> {
+    const match: Record<string, any> = { formId };
+
+    if (options.questionId) {
+        match['answers.questionId'] = options.questionId;
+    }
+
+    const search = options.search?.trim();
+
+    if (search) {
+        const pattern = new RegExp(escapeRegex(search), 'i');
+
+        match.$or = [{ email: pattern }, { 'answers.values': pattern }];
+    }
+
+    return match;
+}
+
 class FillService {
     private validateEmailDomain(
         email: string,
@@ -173,19 +211,33 @@ class FillService {
         }
     }
 
-    async responses(formId: string, page: number = 1, limit: number = 20) {
+    async responses(
+        formId: string,
+        page: number = 1,
+        limit: number = 20,
+        options: ResponseQuery = {}
+    ) {
         const form = await FormsModel.findById(formId).lean();
         if (!form) throw AppError.FormNotFound('Form not found');
 
-        const skip = (page - 1) * limit;
+        // Bounded again here so a caller bypassing validation cannot ask for
+        // the whole collection in one page.
+        const safeLimit = Math.min(Math.max(1, Math.trunc(limit) || 20), 100);
+        const safePage = Math.max(1, Math.trunc(page) || 1);
+        const skip = (safePage - 1) * safeLimit;
+
         const result = await FormResponseModel.aggregate([
-            { $match: { formId: formId.toString() } },
+            { $match: buildResponseMatch(formId.toString(), options) },
             {
                 $facet: {
                     data: [
-                        { $sort: { createdAt: -1 } },
+                        {
+                            $sort: {
+                                createdAt: options.sort === 'oldest' ? 1 : -1,
+                            },
+                        },
                         { $skip: skip },
-                        { $limit: limit },
+                        { $limit: safeLimit },
                         { $project: { __v: 0, updatedAt: 0 } },
                     ],
                     totalCount: [{ $count: 'count' }],
@@ -193,18 +245,75 @@ class FillService {
             },
         ]);
 
-        const responses = result[0].data;
-        const total = result[0].totalCount[0]?.count || 0;
+        const responses = result[0]?.data ?? [];
+        const total = result[0]?.totalCount[0]?.count || 0;
 
         return {
             responses,
             pagination: {
-                currentPage: page,
-                totalPages: Math.ceil(total / limit),
+                currentPage: safePage,
+                totalPages: Math.ceil(total / safeLimit),
                 total,
-                limit,
+                limit: safeLimit,
             },
         };
+    }
+
+    /**
+     * Per-question totals across every response, not just one page, so the
+     * summary does not change as the user pages through the list.
+     */
+    async responsesSummary(formId: string, options: ResponseQuery = {}) {
+        const form = await FormsModel.findById(formId).lean();
+        if (!form) throw AppError.FormNotFound('Form not found');
+
+        const match = buildResponseMatch(formId.toString(), options);
+
+        const [totalResponses, breakdown] = await Promise.all([
+            FormResponseModel.countDocuments(match),
+            FormResponseModel.aggregate([
+                { $match: match },
+                { $unwind: '$answers' },
+                { $unwind: '$answers.values' },
+                {
+                    $group: {
+                        _id: {
+                            questionId: '$answers.questionId',
+                            value: '$answers.values',
+                        },
+                        count: { $sum: 1 },
+                    },
+                },
+            ]),
+        ]);
+
+        const byQuestion = new Map<
+            string,
+            { answered: number; values: { value: string; count: number }[] }
+        >();
+
+        breakdown.forEach((row: any) => {
+            const { questionId, value } = row._id;
+            const entry = byQuestion.get(questionId) ?? {
+                answered: 0,
+                values: [],
+            };
+
+            entry.values.push({ value, count: row.count });
+            entry.answered += row.count;
+            byQuestion.set(questionId, entry);
+        });
+
+        const questions = [...byQuestion.entries()].map(
+            ([questionId, entry]) => ({
+                questionId,
+                answered: entry.answered,
+                // Most-answered first so the summary reads top-down.
+                values: entry.values.sort((a, b) => b.count - a.count),
+            })
+        );
+
+        return { totalResponses, questions };
     }
 
     async getResponse(formId: string, responseId: string) {

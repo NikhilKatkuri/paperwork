@@ -4,6 +4,31 @@ export interface EndpointConfig {
     method: HttpMethod;
 }
 
+export interface ResponseQuery {
+    page: number;
+    limit: number;
+    q?: string;
+    questionId?: string;
+    sort?: 'newest' | 'oldest';
+}
+
+/**
+ * Build a query string, skipping empty values so the URL stays clean and the
+ * server's own defaults apply to anything omitted.
+ */
+function toQuery(params: Record<string, string | number | undefined>): string {
+    const search = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+        if (value === undefined || value === '') return;
+        search.set(key, String(value));
+    });
+
+    const query = search.toString();
+
+    return query ? `?${query}` : '';
+}
+
 export const endpoints = {
     auth: {
         signIn: { path: '/auth/sign-in', method: 'POST' },
@@ -84,6 +109,29 @@ export const endpoints = {
         unpublishForm: (formId: string): EndpointConfig => ({
             path: `/forms/${formId}/unpublish`,
             method: 'POST',
+        }),
+        formResponses: (
+            formId: string,
+            query: ResponseQuery
+        ): EndpointConfig => ({
+            path: `/forms/${formId}/fill/responses${toQuery({
+                page: query.page,
+                limit: query.limit,
+                q: query.q,
+                questionId: query.questionId,
+                sort: query.sort,
+            })}`,
+            method: 'GET',
+        }),
+        formResponsesSummary: (
+            formId: string,
+            query: { q?: string; questionId?: string }
+        ): EndpointConfig => ({
+            path: `/forms/${formId}/fill/responses/summary${toQuery({
+                q: query.q,
+                questionId: query.questionId,
+            })}`,
+            method: 'GET',
         }),
     },
 } as const;

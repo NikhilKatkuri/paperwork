@@ -32,3 +32,22 @@ export const responseIdSchema = z.object({
         limit: z.string().optional(),
     }),
 });
+
+/**
+ * Query for the paginated response list.
+ *
+ * `limit` is bounded here so a caller cannot ask for an unbounded page, and
+ * `q` is length-capped before it reaches a `$regex`.
+ */
+export const responsesQuerySchema = z.object({
+    params: z.object({
+        formId: zodObjectId,
+    }),
+    query: z.object({
+        page: z.coerce.number().int().min(1).max(10000).default(1),
+        limit: z.coerce.number().int().min(1).max(100).default(20),
+        q: z.string().trim().max(120).optional(),
+        questionId: zodObjectId.optional(),
+        sort: z.enum(['newest', 'oldest']).default('newest'),
+    }),
+});

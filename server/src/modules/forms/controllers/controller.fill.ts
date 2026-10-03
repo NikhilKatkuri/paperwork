@@ -139,30 +139,65 @@ class FillController {
 
     async responses(req: Request, res: Response, next: NextFunction) {
         try {
-            const { formId, page, limit } = this.getContent(req);
+            const { formId } = this.getContent(req);
+            const query = (req.query ?? {}) as {
+                page?: number;
+                limit?: number;
+                q?: string;
+                questionId?: string;
+                sort?: 'newest' | 'oldest';
+            };
+
             const { responses, pagination } = await this.service.responses(
                 formId,
-                parseInt(page ?? '1'),
-                parseInt(limit ?? '20')
+                query.page ?? 1,
+                query.limit ?? 20,
+                {
+                    search: query.q,
+                    questionId: query.questionId,
+                    sort: query.sort,
+                }
             );
 
             if (!responses) {
                 throw AppError.BadRequest('Form not found or no responses');
             }
-            if (responses.length === 0) {
-                res.status(StatusCodes.OK).json({
-                    success: true,
-                    message: 'No responses found for this form',
-                    data: [],
-                });
-                return;
-            }
+
+            /**
+             * `pagination` is returned alongside `data` in both cases. It used
+             * to be omitted for an empty page, which left the client unable to
+             * show totals or page count for a form with no responses yet.
+             */
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: responses.length
+                    ? 'Responses retrieved successfully'
+                    : 'No responses found for this form',
+                data: responses,
+                pagination,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async responsesSummary(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { formId } = this.getContent(req);
+            const query = (req.query ?? {}) as {
+                q?: string;
+                questionId?: string;
+            };
+
+            const summary = await this.service.responsesSummary(formId, {
+                search: query.q,
+                questionId: query.questionId,
+            });
 
             res.status(StatusCodes.OK).json({
                 success: true,
-                message: 'Responses retrieved successfully',
-                data: responses,
-                pagination,
+                message: 'Response summary retrieved successfully',
+                data: summary,
             });
         } catch (error) {
             next(error);
