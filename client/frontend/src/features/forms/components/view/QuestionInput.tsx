@@ -173,7 +173,7 @@ export default function QuestionInput({
                                 onClick={() => setSingle(String(point))}
                                 className={`h-10 w-10 rounded-full border text-sm transition-colors ${
                                     selected === String(point)
-                                        ? 'border-theme-form-container-active bg-theme-form-container-active text-white'
+                                        ? 'border-theme-form-container-active bg-theme-form-container-active text-theme-form-on-active'
                                         : 'border-theme-form-on-surface/30 hover:bg-theme-form-on-surface/10'
                                 }`}
                             >

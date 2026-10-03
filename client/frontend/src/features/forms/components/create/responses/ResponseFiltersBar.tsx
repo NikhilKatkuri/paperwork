@@ -6,7 +6,7 @@ import type { ResponseFilters } from '../../../api/user/formResponses';
 import type QuestionCore from '../../../types/question.type';
 
 const CONTROL =
-    'border-theme-form-on-surface/25 bg-theme-form-on-surface/5 text-theme-form-on-surface placeholder:text-theme-form-on-surface/40 rounded-md border px-3 py-2 text-sm outline-none transition-colors focus:border-theme-form-container-active';
+    'rounded-lg border border-theme-form-container-border/60 bg-theme-form-container text-sm text-theme-form-on-surface outline-none transition-colors placeholder:text-theme-form-on-surface/40 hover:border-theme-form-container-active/40 focus:border-theme-form-container-active';
 
 interface ResponseFiltersProps {
     filters: ResponseFilters;
@@ -44,8 +44,9 @@ export default function ResponseFiltersBar({
 
     return (
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="relative flex-1 sm:min-w-[220px]">
-                <span className="material-symbols-outlined text-theme-form-on-surface/40 pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-base">
+            {/* Outlined search field with a leading icon. */}
+            <div className="relative flex-1 sm:min-w-60">
+                <span className="material-symbols-outlined text-theme-form-on-surface/40 pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-lg">
                     search
                 </span>
                 <input
@@ -54,7 +55,7 @@ export default function ResponseFiltersBar({
                     onChange={(e) => setTerm(e.target.value)}
                     placeholder="Search answers or email"
                     aria-label="Search responses"
-                    className={cn(CONTROL, 'w-full pl-9')}
+                    className={cn(CONTROL, 'w-full py-2.5 pr-3 pl-10')}
                 />
             </div>
 
@@ -67,7 +68,7 @@ export default function ResponseFiltersBar({
                     })
                 }
                 aria-label="Filter by question"
-                className={cn(CONTROL, 'sm:max-w-[220px]')}
+                className={cn(CONTROL, 'py-2.5 sm:max-w-70 px-4')}
             >
                 <option value="">All questions</option>
                 {questions.map((question) => (
@@ -86,7 +87,7 @@ export default function ResponseFiltersBar({
                     })
                 }
                 aria-label="Sort responses"
-                className={CONTROL}
+                className={cn(CONTROL, 'py-2.5 px-4')}
             >
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
@@ -101,8 +102,11 @@ export default function ResponseFiltersBar({
                         setTerm('');
                         onChange({ sort: 'newest' });
                     }}
-                    className="text-theme-form-on-surface/70 hover:bg-theme-form-on-surface/5 self-start rounded-md px-2 py-2 text-xs transition-colors sm:self-auto"
+                    className="text-theme-form-on-surface/70 hover:bg-theme-form-on-surface/5 flex shrink-0 items-center gap-1 self-start rounded-lg px-2.5 py-2 text-xs transition-colors sm:self-auto"
                 >
+                    <span className="material-symbols-outlined text-base">
+                        close
+                    </span>
                     Clear
                 </button>
             ) : null}

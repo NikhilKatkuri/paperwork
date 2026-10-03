@@ -5,6 +5,7 @@ import { cn } from '@/utils/cn';
 import normalizeUrl, { NormalizedUrl } from '@/utils/profile';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import ThemePicker from './ui/ThemePicker';
 
 interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     name: string;
@@ -44,9 +45,9 @@ function IconButton({ name, isHovered, ...props }: IconButtonProps) {
     );
 }
 
-function Wrapper({ children }: { children: React.ReactNode }) {
+function Wrapper({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <div className="h-full w-24 bg-slate-100 max-[44rem]:fixed max-[44rem]:bottom-0 max-[44rem]:left-0 max-[44rem]:h-20 max-[44rem]:w-full">
+        <div className="z-50 h-full w-24 bg-slate-100 max-[44rem]:fixed max-[44rem]:bottom-0 max-[44rem]:left-0 max-[44rem]:h-20 max-[44rem]:w-full">
             <div className="bg-brand-light/30 grid h-full w-full grid-cols-3 items-center py-6 max-[44rem]:py-0 min-[44rem]:grid-cols-1 min-[44rem]:grid-rows-[66px_66px_1fr] min-[44rem]:gap-4">
                 {children}
             </div>
@@ -82,6 +83,16 @@ export default function Sidebar() {
                 name="settings"
                 isHovered={() => getHover(pathname) === 'settings'}
             />
+
+            {/* Positioned by the picker itself: anchored left of the rail on
+                wide screens, a bottom sheet under 44rem where the rail becomes
+                a fixed bar. */}
+            <div className="flex flex-col items-center justify-center min-[44rem]:self-start">
+                <ThemePicker
+                    label="Theme"
+                    className="hover:bg-brand-light h-10 w-16"
+                />
+            </div>
 
             <div className="group flex flex-col items-center justify-center *:cursor-pointer *:**:transition-all *:**:duration-150 *:**:ease-in-out min-[44rem]:self-end">
                 <button className="max-[44rem]:group-hover:bg-brand-light flex h-10 w-16 items-center justify-center rounded-full">

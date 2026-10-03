@@ -56,7 +56,7 @@ export default function ResponseDetail({
 
     return createPortal(
         <div
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[2px] sm:items-center sm:p-6"
             role="dialog"
             aria-modal="true"
             aria-label="Response detail"
@@ -64,8 +64,8 @@ export default function ResponseDetail({
                 if (e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="bg-theme-form-surface max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl p-5 sm:rounded-2xl">
-                <header className="mb-4 flex items-start justify-between gap-4">
+            <div className="bg-theme-form-surface flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl shadow-2xl sm:rounded-2xl">
+                <header className="border-theme-form-container-border/50 flex items-start justify-between gap-4 border-b px-5 py-4">
                     <div>
                         <h3 className="text-theme-form-on-surface text-base font-semibold">
                             {response.email || response.userId}
@@ -80,13 +80,13 @@ export default function ResponseDetail({
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="text-theme-form-on-surface/60 hover:bg-theme-form-on-surface/10 rounded-full p-1.5 transition-colors"
+                        className="text-theme-form-on-surface/60 hover:bg-theme-form-on-surface/8 grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors"
                     >
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </header>
 
-                <dl className="flex flex-col gap-4">
+                <dl className="flex flex-1 scrollbar-none flex-col gap-4 overflow-y-auto px-5 py-4">
                     {ordered.map((question) => {
                         const answer = response.answers.find(
                             (a) => a.questionId === question._id
@@ -95,7 +95,7 @@ export default function ResponseDetail({
                         return (
                             <div
                                 key={question._id}
-                                className="border-theme-form-container-border/40 border-b pb-3 last:border-b-0 last:pb-0"
+                                className="border-theme-form-container-border/40 hover:border-theme-form-container-border/40 hover:bg-theme-form-on-surface/[0.03] rounded-lg border border-transparent px-3 py-2 transition-colors last:border-b-0"
                             >
                                 <dt className="text-theme-form-on-surface/70 mb-1 text-xs font-medium">
                                     {question.question
@@ -122,7 +122,7 @@ export default function ResponseDetail({
                 </dl>
 
                 {response.metadata ? (
-                    <footer className="text-theme-form-on-surface/50 mt-5 border-t pt-3 text-xs">
+                    <footer className="border-theme-form-container-border/50 text-theme-form-on-surface/50 border-t px-5 py-3 text-xs">
                         <p className="truncate">
                             {response.metadata.ipAddress ?? 'unknown IP'}
                         </p>

@@ -26,8 +26,21 @@ export interface FormDB extends FormCore, LocalDocument {
     questions: QuestionCore[];
 }
 
+/**
+ * Small key/value store for per-device preferences such as the form theme.
+ *
+ * IndexedDB rather than localStorage so preferences live and are cleared with
+ * the rest of the app's local data.
+ */
+export interface PreferenceRecord {
+    key: string;
+    value: unknown;
+    updatedAt: number;
+}
+
 class PaperworkDB extends Dexie {
     forms!: Table<FormDB, string>;
+    preferences!: Table<PreferenceRecord, string>;
 
     constructor() {
         super('PaperworkDB');
@@ -82,6 +95,11 @@ class PaperworkDB extends Dexie {
                         );
                     });
             });
+
+        this.version(4).stores({
+            forms: '_id, updatedAt, isPublished',
+            preferences: 'key, updatedAt',
+        });
     }
 }
 

@@ -77,6 +77,7 @@
     --color-theme-form-on-container: var(--theme-form-on-container);
     --color-theme-form-container-border: var(--theme-form-container-border);
     --color-theme-form-container-active: var(--theme-form-container-active);
+    --color-theme-form-on-active: var(--theme-form-on-active);
 }
 
 body {

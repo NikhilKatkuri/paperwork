@@ -112,7 +112,7 @@ function PublishButton() {
             className={
                 isPublished
                     ? 'border-theme-form-on-surface/30 text-theme-form-on-surface hover:bg-theme-form-on-surface/5 rounded-md border px-3 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60'
-                    : 'bg-theme-form-container-active rounded-md px-4 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60'
+                    : 'bg-theme-form-container-active rounded-md px-4 py-1.5 text-xs font-medium text-theme-form-on-active transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60'
             }
         >
             {busy ? 'Working…' : isPublished ? 'Unpublish' : 'Publish'}

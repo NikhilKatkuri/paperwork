@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { cn } from '@/utils/cn';
-import AnswerValue from './AnswerValue';
 import ResponseDetail from './ResponseDetail';
 import ResponseFiltersBar from './ResponseFiltersBar';
 import SummaryView from './SummaryView';
@@ -17,18 +16,42 @@ import { useFormCreate } from '../../../providers/FormCreate';
 
 type ViewMode = 'list' | 'summary';
 
-function formatDate(value: string | number): string {
-    const date = new Date(value);
+/** "just now", "12m ago", "3 Mar" - friendlier than an absolute timestamp. */
+function relativeTime(value: string | number): string {
+    const then = new Date(value).getTime();
 
-    if (Number.isNaN(date.getTime())) return '-';
+    if (Number.isNaN(then)) return '-';
 
-    return date.toLocaleString(undefined, {
-        day: '2-digit',
+    const seconds = Math.round((Date.now() - then) / 1000);
+
+    if (seconds < 60) return 'just now';
+
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+
+    const days = Math.round(hours / 24);
+    if (days < 7) return `${days}d ago`;
+
+    return new Date(then).toLocaleDateString(undefined, {
+        day: 'numeric',
         month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
     });
+}
+
+function initials(source: string): string {
+    const cleaned = source.replace(/@.*$/, '').replace(/[^a-zA-Z0-9]/g, ' ');
+
+    if (!cleaned.trim()) return '?';
+
+    return cleaned
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? '')
+        .join('');
 }
 
 function Pagination({
@@ -49,8 +72,7 @@ function Pagination({
     onLimit: (limit: number) => void;
 }>) {
     const pages = useMemo(() => {
-        // A short window around the current page, with the ends reachable.
-        const span = 2;
+        const span = 1;
         const start = Math.max(1, page - span);
         const end = Math.min(totalPages, page + span);
 
@@ -60,73 +82,85 @@ function Pagination({
         );
     }, [page, totalPages]);
 
-    const button =
-        'rounded-md border border-theme-form-on-surface/25 px-2.5 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 hover:bg-theme-form-on-surface/5 disabled:hover:bg-transparent';
+    const iconButton =
+        'grid h-9 w-9 place-items-center rounded-full border border-transparent text-sm transition-colors hover:bg-theme-form-on-surface/5 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent';
 
     return (
-        <div className="border-theme-form-container-border/60 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-theme-form-on-surface/70 text-xs tabular-nums">
+        <nav
+            aria-label="Response pages"
+            className="border-theme-form-container-border/50 flex flex-col items-center justify-between gap-3 border-t pt-4 sm:flex-row"
+        >
+            <label className="text-theme-form-on-surface/70 flex items-center gap-2 text-xs">
+                Rows
+                <select
+                    value={limit}
+                    disabled={disabled}
+                    onChange={(e) => onLimit(Number(e.target.value))}
+                    className="border-theme-form-container-border/60 rounded-md border bg-transparent px-2 py-1.5 text-xs outline-none disabled:opacity-40"
+                >
+                    {RESPONSE_PAGE_SIZES.map((size) => (
+                        <option key={size} value={size}>
+                            {size}
+                        </option>
+                    ))}
+                </select>
+            </label>
+
+            {total > 0 ? (
+                <div className="flex items-center gap-1">
+                    <button
+                        type="button"
+                        onClick={() => onPage(page - 1)}
+                        disabled={disabled || page <= 1}
+                        aria-label="Previous page"
+                        className={iconButton}
+                    >
+                        <span className="material-symbols-outlined text-lg">
+                            chevron_left
+                        </span>
+                    </button>
+
+                    {pages.map((p) => (
+                        <button
+                            key={p}
+                            type="button"
+                            onClick={() => onPage(p)}
+                            disabled={disabled}
+                            aria-current={p === page ? 'page' : undefined}
+                            className={cn(
+                                'grid h-9 min-w-9 place-items-center rounded-full px-2 text-sm tabular-nums transition-colors',
+                                'hover:bg-theme-form-on-surface/5',
+                                p === page &&
+                                    'bg-theme-form-container-active text-theme-form-on-active'
+                            )}
+                        >
+                            {p}
+                        </button>
+                    ))}
+
+                    <button
+                        type="button"
+                        onClick={() => onPage(page + 1)}
+                        disabled={disabled || page >= totalPages}
+                        aria-label="Next page"
+                        className={iconButton}
+                    >
+                        <span className="material-symbols-outlined text-lg">
+                            chevron_right
+                        </span>
+                    </button>
+                </div>
+            ) : null}
+
+            <p className="text-theme-form-on-surface/60 text-xs tabular-nums">
                 {total === 0
                     ? 'No responses'
-                    : `Showing ${(page - 1) * limit + 1}–${Math.min(
+                    : `${(page - 1) * limit + 1}–${Math.min(
                           page * limit,
                           total
                       )} of ${total}`}
             </p>
-
-            <div className="flex flex-wrap items-center gap-2">
-                <label className="text-theme-form-on-surface/70 flex items-center gap-2 text-xs">
-                    Rows
-                    <select
-                        value={limit}
-                        disabled={disabled}
-                        onChange={(e) => onLimit(Number(e.target.value))}
-                        className="border-theme-form-on-surface/30 text-theme-form-on-surface rounded-md border bg-transparent px-2 py-1.5 text-xs outline-none disabled:opacity-40"
-                    >
-                        {RESPONSE_PAGE_SIZES.map((size) => (
-                            <option key={size} value={size}>
-                                {size}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-
-                <button
-                    type="button"
-                    onClick={() => onPage(page - 1)}
-                    disabled={disabled || page <= 1}
-                    className={button}
-                >
-                    Prev
-                </button>
-
-                {pages.map((p) => (
-                    <button
-                        key={p}
-                        type="button"
-                        onClick={() => onPage(p)}
-                        disabled={disabled}
-                        aria-current={p === page ? 'page' : undefined}
-                        className={cn(
-                            button,
-                            p === page &&
-                                'bg-theme-form-container-active border-theme-form-container-active text-white'
-                        )}
-                    >
-                        {p}
-                    </button>
-                ))}
-
-                <button
-                    type="button"
-                    onClick={() => onPage(page + 1)}
-                    disabled={disabled || page >= totalPages}
-                    className={button}
-                >
-                    Next
-                </button>
-            </div>
-        </div>
+        </nav>
     );
 }
 
@@ -142,7 +176,6 @@ export default function ResponsesPanel() {
     const [detail, setDetail] = useState<FormResponse | null>(null);
 
     const questions = useMemo(() => [...questionMap.values()], [questionMap]);
-
     const formId = activeFormID ?? undefined;
 
     const { responses, pagination, loading, error } = useFormResponses(
@@ -159,9 +192,7 @@ export default function ResponsesPanel() {
     } = useResponseSummary(formId, filters);
 
     const total = pagination?.total ?? 0;
-    const totalPages = pagination?.totalPages ?? 0;
 
-    // Any filter change can leave the current page out of range.
     const applyFilters = useCallback((next: ResponseFilters) => {
         setFilters(next);
         setPage(1);
@@ -180,44 +211,54 @@ export default function ResponsesPanel() {
         );
     }
 
-    const answeredBy = (questionId: string) =>
-        summary?.questions.find((q) => q.questionId === questionId)?.answered ??
-        0;
+    const showSkeleton = loading && responses.length === 0;
+    const filtering = Boolean(filters.q || filters.questionId);
 
     return (
-        <div className="mx-auto flex h-full w-full max-w-6xl scrollbar-none flex-col gap-4 overflow-y-auto px-4 py-5">
+        <div className="mx-auto flex h-full w-full max-w-4xl bg-white my-2 rounded-lg scrollbar-none flex-col gap-4 overflow-y-auto px-4 py-6 md:p-6">
+            {/* Header: title, count, and the view switch */}
             <header className="flex flex-wrap items-center justify-between gap-3">
-                <div>
+                <div className="flex items-center gap-2.5">
                     <h2 className="text-theme-form-on-surface text-lg font-semibold">
                         Responses
                     </h2>
-                    <p className="text-theme-form-on-surface/60 text-xs tabular-nums">
-                        {loading
-                            ? 'Loading…'
-                            : `${total} submitted${total === 1 ? '' : 's'}`}
-                    </p>
+                    <span className="bg-theme-form-on-surface/8 text-theme-form-on-surface/70 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums">
+                        {loading && !total ? '–' : total}
+                    </span>
                 </div>
 
                 <div
                     role="tablist"
                     aria-label="Response view"
-                    className="border-theme-form-container-border/60 bg-theme-form-on-surface/5 flex rounded-md border p-0.5"
+                    className="border-theme-form-container-border/60 flex rounded-full border p-0.5"
                 >
-                    {(['list', 'summary'] as ViewMode[]).map((value) => (
+                    {(
+                        [
+                            { id: 'list', label: 'Responses', icon: 'list' },
+                            {
+                                id: 'summary',
+                                label: 'Summary',
+                                icon: 'bar_chart',
+                            },
+                        ] as const
+                    ).map((tab) => (
                         <button
-                            key={value}
+                            key={tab.id}
                             role="tab"
                             type="button"
-                            aria-selected={mode === value}
-                            onClick={() => setMode(value)}
+                            aria-selected={mode === tab.id}
+                            onClick={() => setMode(tab.id)}
                             className={cn(
-                                'rounded-sm px-3 py-1.5 text-xs font-medium capitalize transition-colors',
-                                mode === value
-                                    ? 'bg-theme-form-container-active text-white'
+                                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium capitalize transition-colors',
+                                mode === tab.id
+                                    ? 'bg-theme-form-container-active text-theme-form-on-active'
                                     : 'text-theme-form-on-surface/70 hover:text-theme-form-on-surface'
                             )}
                         >
-                            {value}
+                            <span className="material-symbols-outlined text-base">
+                                {tab.icon}
+                            </span>
+                            {tab.label}
                         </button>
                     ))}
                 </div>
@@ -242,165 +283,120 @@ export default function ResponsesPanel() {
                 )
             ) : error ? (
                 <p className="text-sm text-red-500">{error}</p>
-            ) : loading ? (
-                <div className="flex flex-col gap-2">
-                    {Array.from({ length: 6 }, (_, i) => (
+            ) : showSkeleton ? (
+                <div className="flex flex-col gap-3">
+                    {Array.from({ length: 5 }, (_, i) => (
                         <div
                             key={i}
-                            className="bg-theme-form-on-surface/10 h-16 animate-pulse rounded-md"
+                            className="bg-theme-form-on-surface/8 h-20 animate-pulse rounded-xl"
                         />
                     ))}
                 </div>
             ) : responses.length === 0 ? (
-                <div className="border-theme-form-container-border/60 flex flex-col items-center gap-2 rounded-md border border-dashed py-16 text-center">
-                    <span className="material-symbols-outlined text-3xl opacity-40">
-                        {filters.q || filters.questionId
-                            ? 'filter_alt_off'
-                            : 'inbox'}
+                <div className="border-theme-form-container-border/60 flex flex-col items-center gap-2 rounded-xl border border-dashed py-16 text-center">
+                    <span className="material-symbols-outlined text-theme-form-on-surface/30 text-3xl">
+                        {filtering ? 'filter_alt_off' : 'inbox'}
                     </span>
                     <p className="text-theme-form-on-surface text-sm font-medium">
-                        {filters.q || filters.questionId
-                            ? 'No responses match those filters'
+                        {filtering
+                            ? 'No matching responses'
                             : 'No responses yet'}
                     </p>
                     <p className="text-theme-form-on-surface/60 max-w-xs text-xs">
-                        {filters.q || filters.questionId
-                            ? 'Try a different search or clear the filters.'
-                            : 'Responses appear here once someone fills the form.'}
+                        {filtering
+                            ? 'Try a different search term, or clear the filters.'
+                            : 'Responses appear here as soon as someone fills in the form.'}
                     </p>
                 </div>
             ) : (
                 <>
-                    {/* Desktop: table. Phones: cards, since the table is unusable at that width. */}
-                    <div className="border-theme-form-container-border/60 hidden overflow-hidden rounded-md border md:block">
-                        <table className="w-full border-collapse text-left text-sm">
-                            <thead>
-                                <tr className="border-theme-form-container-border/60 bg-theme-form-on-surface/5 text-xs">
-                                    <th className="w-12 px-3 py-2 font-medium">
-                                        #
-                                    </th>
-                                    <th className="w-40 px-3 py-2 font-medium">
-                                        Submitted
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Respondent
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Answers
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {responses.map(
-                                    (response: FormResponse, index) => (
-                                        <tr
-                                            key={response._id}
-                                            onClick={() => setDetail(response)}
-                                            className="border-theme-form-container-border/40 hover:bg-theme-form-on-surface/5 cursor-pointer border-b transition-colors last:border-b-0"
-                                        >
-                                            <td className="text-theme-form-on-surface/50 px-3 py-2.5 align-top text-xs tabular-nums">
-                                                {(page - 1) * limit + index + 1}
-                                            </td>
-                                            <td className="text-theme-form-on-surface/80 px-3 py-2.5 align-top text-xs whitespace-nowrap">
-                                                {formatDate(response.createdAt)}
-                                            </td>
-                                            <td className="max-w-[180px] truncate px-3 py-2.5 align-top text-xs">
-                                                {response.email ||
-                                                    response.userId}
-                                            </td>
-                                            <td className="px-3 py-2.5 align-top">
-                                                <ul className="flex flex-col gap-1.5">
-                                                    {response.answers.map(
-                                                        (answer) => (
-                                                            <li
-                                                                key={
-                                                                    answer.questionId
-                                                                }
-                                                                className="text-xs"
-                                                            >
-                                                                <span className="text-theme-form-on-surface/55">
-                                                                    {byId
-                                                                        .get(
-                                                                            answer.questionId
-                                                                        )
-                                                                        ?.question.replace(
-                                                                            /<[^>]*>/g,
-                                                                            ' '
-                                                                        ) ??
-                                                                        'Deleted question'}
-                                                                    :
-                                                                </span>{' '}
-                                                                <AnswerValue
-                                                                    values={
-                                                                        answer.values
-                                                                    }
-                                                                    question={byId.get(
-                                                                        answer.questionId
-                                                                    )}
-                                                                />
-                                                            </li>
-                                                        )
-                                                    )}
-                                                </ul>
-                                            </td>
-                                        </tr>
-                                    )
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    {/*
+                     * One list layout for every screen width. A table gave every
+                     * row a different height, because each cell held the whole
+                     * answer list, and needed a separate card variant on
+                     * mobile. Each entry shows a short preview instead, with the
+                     * full set one click away.
+                     */}
+                    <ul
+                        className={cn(
+                            'flex flex-col gap-2 transition-opacity',
+                            loading && 'opacity-60'
+                        )}
+                    >
+                        {responses.map((response: FormResponse, index) => {
+                            const respondent =
+                                response.email || response.userId;
+                            const preview = response.answers
+                                .slice(0, 2)
+                                .map((answer) => {
+                                    const label = byId
+                                        .get(answer.questionId)
+                                        ?.question.replace(/<[^>]*>/g, ' ')
+                                        .trim();
 
-                    <div className="flex flex-col gap-2 md:hidden">
-                        {responses.map((response: FormResponse, index) => (
-                            <button
-                                key={response._id}
-                                type="button"
-                                onClick={() => setDetail(response)}
-                                className="border-theme-form-container-border/60 hover:bg-theme-form-on-surface/5 rounded-md border p-3 text-left transition-colors"
-                            >
-                                <span className="flex items-baseline justify-between gap-2">
-                                    <span className="text-theme-form-on-surface truncate text-sm font-medium">
-                                        {response.email || response.userId}
-                                    </span>
-                                    <span className="text-theme-form-on-surface/50 shrink-0 text-xs tabular-nums">
-                                        #{(page - 1) * limit + index + 1}
-                                    </span>
-                                </span>
+                                    return `${label ?? 'Question'}: ${answer.values
+                                        .filter((v) => v.trim())
+                                        .join(', ')}`;
+                                })
+                                .filter(Boolean)
+                                .join('  ·  ');
 
-                                <span className="text-theme-form-on-surface/60 mt-0.5 block text-xs">
-                                    {formatDate(response.createdAt)}
-                                </span>
-
-                                <span className="mt-2 flex flex-col gap-1">
-                                    {response.answers.map((answer) => (
+                            return (
+                                <li key={response._id}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetail(response)}
+                                        className="hover:border-theme-form-container-active/40 focus-visible:border-theme-form-container-active/40 group border-theme-form-container-border/50 bg-theme-form-container flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-all hover:shadow-sm"
+                                    >
                                         <span
-                                            key={answer.questionId}
-                                            className="text-xs"
+                                            aria-hidden="true"
+                                            className="bg-theme-form-container-active/12 text-theme-form-container-active grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold"
                                         >
-                                            <span className="text-theme-form-on-surface/55">
-                                                {byId
-                                                    .get(answer.questionId)
-                                                    ?.question.replace(
-                                                        /<[^>]*>/g,
-                                                        ' '
-                                                    ) ?? 'Deleted question'}
-                                            </span>{' '}
-                                            <AnswerValue
-                                                values={answer.values}
-                                                question={byId.get(
-                                                    answer.questionId
-                                                )}
-                                            />
+                                            {initials(respondent)}
                                         </span>
-                                    ))}
-                                </span>
-                            </button>
-                        ))}
-                    </div>
+
+                                        <span className="min-w-0 flex-1">
+                                            <span className="flex items-baseline justify-between gap-3">
+                                                <span className="text-theme-form-on-surface truncate text-sm font-medium">
+                                                    {respondent}
+                                                </span>
+                                                <span className="text-theme-form-on-surface/50 shrink-0 text-xs tabular-nums">
+                                                    {relativeTime(
+                                                        response.createdAt
+                                                    )}
+                                                </span>
+                                            </span>
+
+                                            <span className="text-theme-form-on-surface/70 mt-0.5 line-clamp-2 block text-xs">
+                                                {preview || 'No answers given'}
+                                            </span>
+
+                                            <span className="mt-2 flex flex-wrap items-center gap-1.5">
+                                                <span className="bg-theme-form-on-surface/8 text-theme-form-on-surface/60 rounded-md px-1.5 py-0.5 text-[11px]">
+                                                    #
+                                                    {(page - 1) * limit +
+                                                        index +
+                                                        1}
+                                                </span>
+                                                <span className="bg-theme-form-on-surface/8 text-theme-form-on-surface/60 rounded-md px-1.5 py-0.5 text-[11px]">
+                                                    {response.answers.length}{' '}
+                                                    answered
+                                                </span>
+                                            </span>
+                                        </span>
+
+                                        <span className="material-symbols-outlined text-theme-form-on-surface/30 mt-1 shrink-0 text-lg transition-transform group-hover:translate-x-0.5">
+                                            chevron_right
+                                        </span>
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
 
                     <Pagination
                         page={page}
-                        totalPages={totalPages}
+                        totalPages={pagination?.totalPages ?? 0}
                         total={total}
                         limit={limit}
                         disabled={loading}
@@ -410,16 +406,6 @@ export default function ResponsesPanel() {
                             setPage(1);
                         }}
                     />
-
-                    <p className="text-theme-form-on-surface/50 -mt-2 text-xs">
-                        Select a row to see the full response
-                        {questions.length
-                            ? ` · ${questions.length} questions`
-                            : ''}
-                        {summary
-                            ? ` · ${answeredBy(questions[0]?._id ?? '')} answered the first question`
-                            : ''}
-                    </p>
                 </>
             )}
 

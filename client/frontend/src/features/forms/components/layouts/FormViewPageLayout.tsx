@@ -232,7 +232,7 @@ export default function FormViewPageLayout() {
 
     return (
         <div className="bg-theme-form-surface h-screen w-full scrollbar-none overflow-y-auto">
-            <div ref={topRef} className="mx-auto w-full max-w-2xl px-6 py-10">
+            <div ref={topRef} className="mx-auto w- max-w-2xl px-6 py-10">
                 <header className="mb-8 flex flex-col gap-2">
                     <h1 className="text-theme-form-on-surface text-2xl font-bold">
                         {form.form.name || 'Untitled form'}
@@ -282,7 +282,7 @@ export default function FormViewPageLayout() {
                         type="button"
                         onClick={isLast ? () => void handleSubmit() : goNext}
                         disabled={state === 'sending'}
-                        className="bg-theme-form-container-active rounded-md px-5 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-60"
+                        className="bg-theme-form-container-active rounded-md px-5 py-2 text-sm font-medium text-theme-form-on-active transition-opacity disabled:opacity-60"
                     >
                         {state === 'sending'
                             ? 'Submitting…'
