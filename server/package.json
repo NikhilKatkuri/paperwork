@@ -12,9 +12,7 @@
         "format": "prettier --write src/",
         "format:check": "prettier --check src/",
         "update:disposable": "tsx src/scripts/update-disposable-domains.ts",
-        "seed:demo": "tsx src/scripts/seed-demo-form.ts",
-        "verify:logging": "tsx verify-logging.ts",
-        "verify:env": "tsx verify-env-modes.ts development && tsx verify-env-modes.ts production"
+        "seed:demo": "tsx src/scripts/seed-demo-form.ts"
     },
     "keywords": [],
     "author": "",
