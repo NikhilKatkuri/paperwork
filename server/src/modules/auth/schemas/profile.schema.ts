@@ -9,15 +9,15 @@ const sensitiveSchema = new Schema<SensitiveDocument>(
         },
         gender: {
             type: String,
-            enum: [...Object.values(GENDERS)],
+            enum: Object.values(GENDERS),
         },
         country: {
             type: String,
-            enum: [...Object.values(COUNTRIES)],
+            enum: Object.values(COUNTRIES),
         },
         language: {
             type: String,
-            enum: [...Object.values(LANGUAGES)],
+            enum: Object.values(LANGUAGES),
         },
     },
     {

@@ -1,6 +1,8 @@
 import { redisConnection } from '@/redis';
 import { Queue, QueueOptions } from 'bullmq';
 
+import { queueLogger } from '@/utils/logger';
+
 class QueueManager {
     constructor() {
         const methods = Object.getOwnPropertyNames(
@@ -14,10 +16,18 @@ class QueueManager {
         for (const method of methods) {
             (this as any)[method] = (this as any)[method].bind(this);
         }
-        console.log('[QueueManager] initialized successfully');
+
+        queueLogger.info('queue_manager.initialized', {
+            event: 'QUEUE_MANAGER_INITIALIZED',
+        });
     }
 
     createQueue(name: string, opts: Omit<QueueOptions, 'connection'> = {}) {
+        queueLogger.info('queue.created', {
+            event: 'QUEUE_CREATED',
+            queue: name,
+        });
+
         return new Queue(name, { ...opts, connection: redisConnection });
     }
 }

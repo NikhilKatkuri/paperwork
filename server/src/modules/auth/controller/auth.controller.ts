@@ -1,13 +1,13 @@
-import { NextFunction, Response } from 'express';
+import { NextFunction, Response, Request } from 'express';
 import statusCodes from 'http-status-codes';
 import { AppError } from '@/utils/AppError';
-import { Request } from 'express';
 import TokenBoot from '../service/token.service';
 import { TokenPayload } from '../types/token.types';
 import { AutoBoundController } from '@/utils/AutoBoundClass';
 import AuthServiceBoot from '@/modules/auth/service/auth.service';
 import userAgentService from '../service/userAgent.service';
 import HashBoot from '../service/hash.service';
+import { cacheLogger } from '@/utils/logger';
 
 interface EmailCheckCookie {
     last_check_email: string;
@@ -15,7 +15,7 @@ interface EmailCheckCookie {
 }
 
 class AuthController extends AutoBoundController {
-    private email_check_cache = 'email_check_cache';
+    private readonly email_check_cache = 'email_check_cache';
 
     constructor() {
         super();
@@ -76,7 +76,7 @@ class AuthController extends AutoBoundController {
         }
     }
 
-    async signOutController(req: Request, res: Response, next: NextFunction) {
+    signOutController(req: Request, res: Response, next: NextFunction) {
         try {
             const refreshToken = req.cookies?.refreshToken;
             if (!refreshToken) {
@@ -105,19 +105,12 @@ class AuthController extends AutoBoundController {
                 throw AppError.Unauthorized('No refresh token provided');
             }
             let decode: TokenPayload | null = null;
-            try {
-                decode = await TokenBoot.verifyToken<TokenPayload>(
-                    refreshToken,
-                    'refresh'
-                );
-                if (!decode.userId || !decode.email) {
-                    throw AppError.Unauthorized('Invalid refresh token');
-                }
-            } catch (jwterror) {
-                throw AppError.Unauthorized('Invalid or expired refresh token');
-            }
 
-            if (!decode || !decode.userId || !decode.email) {
+            decode = TokenBoot.verifyToken<TokenPayload>(
+                refreshToken,
+                'refresh'
+            );
+            if (!decode?.userId || !decode?.email) {
                 throw AppError.Unauthorized('Invalid refresh token');
             }
 
@@ -347,9 +340,12 @@ class AuthController extends AutoBoundController {
                         return;
                     }
                 } catch (error) {
-                    console.warn(
-                        'Failed to parse email check cache cookie, ignoring cache'
-                    );
+                    // A corrupt cache cookie is a client-side problem, not a
+                    // server fault: drop it and fall through to a live check.
+                    cacheLogger.warn('email_check_cache_cookie_unparseable', {
+                        event: 'CACHE_COOKIE_INVALID',
+                        reason: error instanceof Error ? error.name : 'unknown',
+                    });
                 }
             }
 

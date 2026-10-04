@@ -19,7 +19,7 @@ class CloudinaryService {
     private cachedSignature: UploadSignature | null = null;
     private cachedSignatureExpiry = 0;
 
-    private signaturePromise: Promise<UploadSignature> | null = null;
+    private signaturePromise: UploadSignature | null = null;
 
     private readonly folder = config.cloudinary.named_folder;
 
@@ -39,10 +39,10 @@ class CloudinaryService {
         });
     }
 
-    private async generateSignature(
+    private  generateSignature(
         bucketTimestamp: number,
         expiresAt: number
-    ): Promise<UploadSignature> {
+    ): UploadSignature {
         const cloudinaryTimestamp = Math.floor(bucketTimestamp / 1000);
 
         const paramsToSign = {
@@ -50,7 +50,7 @@ class CloudinaryService {
             folder: this.folder,
         };
 
-        const signature = cloudinary.utils.api_sign_request(
+        const signature =  cloudinary.utils.api_sign_request(
             paramsToSign,
             config.cloudinary.api_secret
         );
@@ -72,7 +72,7 @@ class CloudinaryService {
         return result;
     }
 
-    async getSignature(): Promise<UploadSignature> {
+    getSignature(): UploadSignature {
         const now = Date.now();
 
         const windowSize = config.cloudinary.window_expiration;
@@ -100,9 +100,7 @@ class CloudinaryService {
         this.signaturePromise = this.generateSignature(
             bucketTimestamp,
             expiresAt
-        ).finally(() => {
-            this.signaturePromise = null;
-        });
+        );
 
         return this.signaturePromise;
     }

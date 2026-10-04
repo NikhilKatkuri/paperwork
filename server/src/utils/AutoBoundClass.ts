@@ -4,6 +4,9 @@ import { AppError } from './AppError';
 
 class AutoBoundClass {
     constructor() {
+        this.bindMethods();
+    }
+    private bindMethods() {
         const proto = Object.getPrototypeOf(this);
         const methods = Object.getOwnPropertyNames(proto).filter(
             (method) => method !== 'constructor'
@@ -18,10 +21,6 @@ class AutoBoundClass {
 }
 
 class AutoBoundController extends AutoBoundClass {
-    constructor() {
-        super();
-    }
-
     cookieSetter = (
         res: Response,
         name: string,

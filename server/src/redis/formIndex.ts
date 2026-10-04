@@ -1,5 +1,7 @@
 import { cacheRedis } from '@/redis';
 
+import { cacheLogger, logError } from '@/utils/logger';
+
 export interface FormIndexEntry {
     _id: string;
     name: string;
@@ -12,7 +14,7 @@ interface CacheEntry {
 
 class Semaphore {
     private counter: number;
-    private queue: (() => void)[] = [];
+    private readonly queue: (() => void)[] = [];
 
     constructor(max: number) {
         this.counter = max;
@@ -48,15 +50,15 @@ class Semaphore {
  * invalidation on write (see `FormsService`) plus a short TTL as a safety net.
  */
 class FormIndexCache {
-    private hot = new Map<string, CacheEntry>();
-    private dbSemaphore = new Semaphore(5);
+    private readonly hot = new Map<string, CacheEntry>();
+    private readonly dbSemaphore = new Semaphore(5);
 
     /** L1 lifetime - short, since writes invalidate explicitly. */
-    private HOT_TTL_MS = 60 * 1000;
+    private readonly HOT_TTL_MS = 60 * 1000;
     /** L2 lifetime - the safety net for missed invalidations. */
-    private REDIS_TTL_S = 5 * 60;
+    private readonly REDIS_TTL_S = 5 * 60;
     /** Bound L1 growth across many users in one process. */
-    private MAX_L1_ENTRIES = 500;
+    private readonly MAX_L1_ENTRIES = 500;
 
     private key(userId: string): string {
         return `formindex:${userId}`;
@@ -112,7 +114,10 @@ class FormIndexCache {
             return this.parse(raw);
         } catch (error) {
             // Redis unavailable - fall through to the loader.
-            console.warn('[formIndex] cache read failed:', error);
+            logError(cacheLogger, 'form_index.cache_read_failed', error, {
+                event: 'CACHE_READ_FAILED',
+                key,
+            });
 
             return null;
         }
@@ -127,7 +132,10 @@ class FormIndexCache {
         try {
             await cacheRedis.set(key, raw, 'EX', this.REDIS_TTL_S);
         } catch (error) {
-            console.warn('[formIndex] cache write failed:', error);
+            logError(cacheLogger, 'form_index.cache_write_failed', error, {
+                event: 'CACHE_WRITE_FAILED',
+                key,
+            });
         }
     }
 
@@ -144,7 +152,10 @@ class FormIndexCache {
             await cacheRedis.del(key);
         } catch (error) {
             // Not fatal - the TTL will expire it anyway.
-            console.warn('[formIndex] invalidation failed:', error);
+            logError(cacheLogger, 'form_index.invalidation_failed', error, {
+                event: 'CACHE_INVALIDATION_FAILED',
+                key,
+            });
         }
     }
 

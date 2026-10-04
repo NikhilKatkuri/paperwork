@@ -1,14 +1,13 @@
-import { NextFunction, Response } from 'express';
+import { NextFunction, Response, Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { Request } from 'express';
 import questionService from '@/modules/forms/service/service.questions';
 import { AppError } from '@/utils/AppError';
 
-class questionsController {
+class QuestionsController {
     service = new questionService();
     constructor() {
         const methods = Object.getOwnPropertyNames(
-            questionsController.prototype
+            QuestionsController.prototype
         ).filter(
             (prop) =>
                 prop !== 'constructor' &&
@@ -155,4 +154,4 @@ class questionsController {
     }
 }
 
-export default questionsController;
+export default QuestionsController;

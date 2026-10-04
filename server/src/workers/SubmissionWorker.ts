@@ -3,6 +3,7 @@ import FillService from '@/modules/forms/service/service.fill';
 import { emailQueue } from '@/queues';
 import { Job } from 'bullmq';
 import { worker } from '@/workers/index';
+import { logError, workerLogger } from '@/utils/logger';
 
 interface SubmissionJob {
     submissionId: string;
@@ -16,7 +17,7 @@ interface SubmissionJob {
 const submissionKey = (submissionId: string) => `submission:${submissionId}`;
 
 class SubmissionWorker {
-    private service = new FillService();
+    private readonly service = new FillService();
 
     constructor() {
         const methods = Object.getOwnPropertyNames(
@@ -34,7 +35,11 @@ class SubmissionWorker {
             concurrency: 5,
         });
 
-        console.log('[SubmissionWorker] initialized');
+        workerLogger.info('submission_worker.initialized', {
+            event: 'WORKER_MOUNTED',
+            queue: 'submissions',
+            concurrency: 5,
+        });
     }
 
     private async updateStatus(
@@ -93,6 +98,16 @@ class SubmissionWorker {
                 formId,
             });
         } catch (error) {
+            logError(workerLogger, 'submission_job.failed', error, {
+                event: 'QUEUE_JOB_FAILED',
+                queue: 'submissions',
+                jobId: job.id,
+                submissionId,
+                formId,
+                userId,
+                attempt: job.attemptsMade,
+            });
+
             await this.updateStatus(submissionId, 'failed', {
                 error: (error as Error).message,
             });

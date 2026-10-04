@@ -104,7 +104,7 @@ const questionsSchema = new Schema<QuestionDocument>(
 
         helpText: { type: String, default: '', maxlength: 500 },
 
-        optionsConfig:{ type: optionConfigSchema, default: undefined },
+        optionsConfig: { type: optionConfigSchema, default: undefined },
         dependsOn: { type: questionDependsOnSchema, default: undefined },
         ratingConfig: { type: ratingConfigSchema, default: undefined },
         validationRule: { type: fieldValidationRuleSchema, default: undefined },
@@ -167,10 +167,18 @@ questionsSchema.pre('validate', function (this: QuestionDocument) {
         this.type
     );
 
-    if (isOptionBased && (!this.optionsConfig?.options || this.optionsConfig.options.length === 0)) {
+    if (
+        isOptionBased &&
+        (!this.optionsConfig?.options ||
+            this.optionsConfig.options.length === 0)
+    ) {
         throw new Error(`${this.type} questions require at least one option`);
     }
-    if (!isOptionBased && this.optionsConfig?.options && this.optionsConfig.options.length > 0) {
+    if (
+        !isOptionBased &&
+        this.optionsConfig?.options &&
+        this.optionsConfig.options.length > 0
+    ) {
         throw new Error(
             `options are only valid for ${OPTION_BASED_TYPES.join(', ')} questions`
         );
@@ -197,8 +205,7 @@ questionsSchema.pre('validate', function (this: QuestionDocument) {
 
     if (
         this.dependsOn?.questionId &&
-        this._id &&
-        this.dependsOn.questionId === this._id.toString()
+        this.dependsOn.questionId === this._id?.toString()
     ) {
         throw new Error('A question cannot depend on itself');
     }

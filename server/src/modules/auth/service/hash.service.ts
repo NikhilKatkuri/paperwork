@@ -1,7 +1,7 @@
 import config from '@/config';
 import AutoBoundClass from '@/utils/AutoBoundClass';
 import argon2 from 'argon2';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import { AppError, SystemError } from '@/utils/AppError';
 
 class Hash extends AutoBoundClass {
@@ -18,7 +18,7 @@ class Hash extends AutoBoundClass {
         }
     }
 
-    private HASH_OPTIONS = {
+    private readonly HASH_OPTIONS = {
         ...config.argonOptions,
         secret: Buffer.from(config.argonOptions.secret, 'base64'),
         type: this.getArgonType(config.argonOptions.type),

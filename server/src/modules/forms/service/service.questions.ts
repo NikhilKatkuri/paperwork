@@ -12,7 +12,7 @@ interface I {
     questionId: string;
 }
 
-class questionService {
+class QuestionService {
     private async authorizeAccess(
         ids: Omit<I, 'questionId'>,
         session?: mongoose.ClientSession
@@ -195,4 +195,4 @@ class questionService {
     }
 }
 
-export default questionService;
+export default QuestionService;

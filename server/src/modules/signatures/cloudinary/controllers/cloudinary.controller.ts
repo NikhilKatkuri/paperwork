@@ -1,6 +1,5 @@
 import CloudinaryService from '../service/cloudinary.service';
-import { Response } from 'express';
-import { Request } from 'express';
+import { Response, Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { AppError } from '@/utils/AppError';
 
@@ -11,9 +10,9 @@ class CloudinaryController {
         this.getSignature = this.getSignature.bind(this);
     }
 
-    async getSignature(_req: Request, res: Response) {
+    getSignature(_req: Request, res: Response) {
         try {
-            const signature = await this.service.getSignature();
+            const signature = this.service.getSignature();
 
             res.status(StatusCodes.OK).json({
                 success: true,

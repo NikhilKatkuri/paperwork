@@ -2,9 +2,10 @@ import { Worker, WorkerOptions, Processor, Job } from 'bullmq';
 import MailService from '@/utils/mail';
 import { AppError } from '@/utils/AppError';
 import { redisConnection } from '@/redis';
+import { logError, workerLogger } from '@/utils/logger';
 
 class WorkerManager {
-    private mailservice = new MailService();
+    private readonly mailservice = new MailService();
 
     constructor() {
         const methods = Object.getOwnPropertyNames(
@@ -101,11 +102,17 @@ class WorkerManager {
                     }
 
                     await fn(job);
-                } catch (error: any) {
-                    console.error(
-                        `[WorkerManager] Job ${job.id} (${job.name}) failed execution:`,
-                        error.message
-                    );
+                } catch (error) {
+                    // Re-thrown so BullMQ applies its retry policy, but logged
+                    // first with the job identity attached — otherwise a job
+                    // that exhausts its attempts leaves no trace beyond a
+                    // generic worker error.
+                    logError(workerLogger, 'email_job.failed', error, {
+                        event: 'QUEUE_JOB_FAILED',
+                        jobId: job.id,
+                        jobName: job.name,
+                        attempt: job.attemptsMade,
+                    });
                     throw error;
                 }
             },
@@ -116,19 +123,26 @@ class WorkerManager {
         );
 
         this.onWorkerError(emailWorker, (err) => {
-            console.error('[WorkerManager Global Error]:', err.message);
+            logError(workerLogger, 'email_worker.error', err, {
+                event: 'WORKER_ERROR',
+                queue: 'email',
+            });
         });
 
         this.onWorkerFailed(emailWorker, (job, err) => {
-            console.error(
-                `[WorkerManager Global Failure]: Job ${job?.id} failed structural completion. Reason:`,
-                err.message
-            );
+            logError(workerLogger, 'email_worker.job_failed', err, {
+                event: 'QUEUE_JOB_ABANDONED',
+                queue: 'email',
+                jobId: job?.id,
+                jobName: job?.name,
+            });
         });
 
-        console.log(
-            '[WorkerManager] Email worker successfully mounted with concurrency limits.'
-        );
+        workerLogger.info('email_worker.mounted', {
+            event: 'WORKER_MOUNTED',
+            queue: 'email',
+            concurrency: 1,
+        });
     }
 }
 

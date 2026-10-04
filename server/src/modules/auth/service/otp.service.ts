@@ -1,14 +1,15 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import config from '@/config/index';
 
 class OTP {
-    private secret: string;
-    private expirationTime: number;
+    private readonly secret: string;
+    private readonly expirationTime: number;
 
     constructor() {
         this.secret = config.otp.SECRET;
         this.expirationTime =
-            parseInt(config.otp.EXPIRATION.toString(), 10) || 5 * 60 * 1000;
+            Number.parseInt(config.otp.EXPIRATION.toString(), 10) ||
+            5 * 60 * 1000;
     }
 
     /**
@@ -25,7 +26,7 @@ class OTP {
         otp: string;
         expiresAt: number;
     } {
-        const sortedKeys = Object.keys(payloads).sort();
+        const sortedKeys = Object.keys(payloads).sort((a, b) => a.localeCompare(b));
 
         const expiresAt = Date.now() + this.expirationTime;
 
@@ -76,7 +77,7 @@ class OTP {
             return false;
         }
 
-        const sortedKeys = Object.keys(payloads).sort();
+        const sortedKeys = Object.keys(payloads).sort((a, b) => a.localeCompare(b));
         const data =
             JSON.stringify(
                 Object.fromEntries(sortedKeys.map((k) => [k, payloads[k]]))
@@ -100,6 +101,9 @@ class OTP {
             );
             return result;
         } catch (error) {
+            if(error instanceof Error) {
+                console.error('Error during OTP verification:', error.message);
+            }
             return false;
         }
     }

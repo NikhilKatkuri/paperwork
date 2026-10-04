@@ -4,22 +4,31 @@ import rateLimit, {
 } from 'express-rate-limit';
 
 import {
-    rateLimitConfig,
     baseRateLimitOptions,
+    buildRateLimitHandler,
     buildRateLimitMessage,
+    rateLimitConfig,
+    type ConfigKey,
 } from '@/config/rateLimit';
 
-type ConfigKey = keyof typeof rateLimitConfig;
-
+/**
+ * Builds a limiter from a named preset.
+ *
+ * The preset key is captured here so the `handler` can attribute a throttle to
+ * a specific limiter in the security audit trail — a 429 on `auth` means
+ * something very different from one on `createFormsInner`.
+ */
 const createLimiter = (key: ConfigKey): RateLimitRequestHandler => {
     const config = rateLimitConfig[key];
     if (!config) {
         throw new Error(`Rate limit configuration for key "${key}" not found.`);
     }
+
     return rateLimit({
         ...baseRateLimitOptions,
         windowMs: config.windowMs,
         limit: config.limit,
+        handler: buildRateLimitHandler(key, config),
         message: buildRateLimitMessage(config.message),
     } satisfies Partial<Options>);
 };

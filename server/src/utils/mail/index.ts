@@ -13,6 +13,7 @@ import {
 } from './templates';
 import { Resend } from 'resend';
 import { SystemError } from '../AppError';
+import { logError, mailLogger } from '@/utils/logger';
 
 interface MailPayload {
     to: string;
@@ -24,8 +25,8 @@ interface MailPayload {
 type Mode = 'resend' | 'nodemailer';
 
 class MailService {
-    private transporter: Transporter | Resend;
-    private mode: Mode = config.env === 'production' ? 'resend' : 'nodemailer';
+    private readonly transporter: Transporter | Resend;
+    private readonly mode: Mode = config.env === 'production' ? 'resend' : 'nodemailer';
     private number: number = 0;
 
     constructor() {
@@ -79,9 +80,16 @@ class MailService {
                 );
 
                 if (response.error) {
-                    console.error(
-                        '[Email service -- Resend Error]:',
-                        JSON.stringify(response.error, null, 2)
+                    logError(
+                        mailLogger,
+                        'mail.resend_rejected',
+                        response.error,
+                        {
+                            event: 'MAIL_REJECTED',
+                            provider: 'resend',
+                            recipient: props.to,
+                            subject: props.subject,
+                        }
                     );
                     throw new Error(
                         `Resend payload rejected: ${response.error.message}`
@@ -89,12 +97,22 @@ class MailService {
                 }
 
                 this.number++;
-                console.log(
-                    `[Email service -- Resend]:[${new Date().toISOString()}] Email sent count (${this.number}) | Message ID: ${response.data?.id}`
-                );
+                mailLogger.info('mail.sent', {
+                    event: 'MAIL_SENT',
+                    provider: 'resend',
+                    recipient: props.to,
+                    subject: props.subject,
+                    messageId: response.data?.id,
+                    sentTotal: this.number,
+                });
                 return response.data;
             } catch (error) {
-                console.error('Error sending email via Resend:', error);
+                logError(mailLogger, 'mail.send_failed', error, {
+                    event: 'MAIL_SEND_FAILED',
+                    provider: 'resend',
+                    recipient: props.to,
+                    subject: props.subject,
+                });
                 throw error;
             }
         }
@@ -109,12 +127,22 @@ class MailService {
                     html: props.html,
                 });
                 this.number++;
-                console.log(
-                    `[Email service -- Nodemailer]:[${new Date().toISOString()}] Email sent via Nodemailer (${this.number})`
-                );
+                mailLogger.info('mail.sent', {
+                    event: 'MAIL_SENT',
+                    provider: 'nodemailer',
+                    recipient: props.to,
+                    subject: props.subject,
+                    messageId: info.messageId,
+                    sentTotal: this.number,
+                });
                 return info;
             } catch (error) {
-                console.error('Error sending email via Nodemailer:', error);
+                logError(mailLogger, 'mail.send_failed', error, {
+                    event: 'MAIL_SEND_FAILED',
+                    provider: 'nodemailer',
+                    recipient: props.to,
+                    subject: props.subject,
+                });
                 throw error;
             }
         }

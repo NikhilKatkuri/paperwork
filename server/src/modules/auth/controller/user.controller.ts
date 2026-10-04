@@ -1,8 +1,7 @@
-import { Request } from 'express';
-import { NextFunction, Response } from 'express';
+import { Request ,NextFunction, Response } from 'express';
 import { AccountActionService } from '../types/auth.types';
 import { StatusCodes } from 'http-status-codes';
-import { sensitiveData } from '../types/profile.auth';
+import { SensitiveData } from '../types/profile.auth';
 import UserServiceBoot from '../service/user.service';
 import { AutoBoundController } from '@/utils/AutoBoundClass';
 
@@ -40,7 +39,7 @@ class UserController extends AutoBoundController {
     async personalInfo(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId } = this.getContext(req);
-            const data = req.body as sensitiveData;
+            const data = req.body as SensitiveData;
             const result = await UserServiceBoot.PersonalInfo(
                 data,
                 userId,

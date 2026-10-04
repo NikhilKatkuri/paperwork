@@ -1,7 +1,7 @@
 import { Document, Types } from 'mongoose';
 import { Country, Gender, Language } from '../constants/enums';
 
-export interface sensitiveData {
+export interface SensitiveData {
     dob: Date;
     gender: Gender;
     country: Country;
@@ -13,8 +13,8 @@ export interface Profile {
     fullName: string;
     avatarUrl?: string;
     bio?: string;
-    sensitiveData?: sensitiveData;
+    sensitiveData?: SensitiveData;
 }
 
 export type ProfileDocument = Profile & Document;
-export type SensitiveDocument = sensitiveData & Document;
+export type SensitiveDocument = SensitiveData & Document;

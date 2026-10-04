@@ -1,7 +1,7 @@
-import config from '@/config';
+ import config from '@/config';
 import UserModel from '@/modules/auth/schemas/user.schema';
 import ProfileModel from '@/modules/auth/schemas/profile.schema';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import TokenBoot from './token.service';
 import UserRepoBoot from '../repository/user.repository';
 import OTPBoot from './otp.service';
@@ -9,11 +9,11 @@ import ProfileRepoBoot from '../repository/profile.repository';
 import statusCodes from 'http-status-codes';
 import MailService from '@/utils/mail';
 import HashBoot from './hash.service';
-import { Request } from 'express';
+
+import { Request, Response } from 'express';
 import { AppError } from '@/utils/AppError';
 import { SignInService, SignUpService } from '@/modules/auth/types/auth.types';
 import { emailQueue } from '@/queues';
-import { Response } from 'express';
 import { UserDocument } from '../types/user.auth';
 import { AutoBoundController } from '@/utils/AutoBoundClass';
 import { TokenPayload } from '../types/token.types';
@@ -123,7 +123,7 @@ class AuthService extends AutoBoundController {
     };
 
     private async otpFor2FA(userId: string, email: string, res: Response) {
-        const { otp, expiresAt } = await OTPBoot.generateOTP({ userId, email });
+        const { otp, expiresAt } = OTPBoot.generateOTP({ userId, email });
 
         await new MailService().sendOTPEmail(
             email,
@@ -238,20 +238,16 @@ class AuthService extends AutoBoundController {
             );
         }
 
-        if (
-            !decodedTempToken ||
-            !decodedTempToken.userId ||
-            !decodedTempToken.email
-        ) {
+        if (!decodedTempToken?.userId || !decodedTempToken?.email) {
             throw AppError.BadRequest(
                 'Invalid session payload. Please sign in again.'
             );
         }
 
-        const isValid = await OTPBoot.verifyOTP(
+        const isValid = OTPBoot.verifyOTP(
             { userId: decodedTempToken.userId, email: decodedTempToken.email },
             otp,
-            parseInt(twoFAExpireAt)
+            Number.parseInt(twoFAExpireAt)
         );
 
         if (!isValid) {
@@ -351,7 +347,7 @@ class AuthService extends AutoBoundController {
                 throw AppError.BadRequest('Email is already verified');
             }
 
-            const { otp, expiresAt } = await OTPBoot.generateOTP({
+            const { otp, expiresAt } = OTPBoot.generateOTP({
                 userId,
                 email,
             });
@@ -380,11 +376,7 @@ class AuthService extends AutoBoundController {
         otp: string,
         expiresAt: number
     ) => {
-        const isValid = await OTPBoot.verifyOTP(
-            { email, userId },
-            otp,
-            expiresAt
-        );
+        const isValid = OTPBoot.verifyOTP({ email, userId }, otp, expiresAt);
         if (!isValid) {
             throw AppError.BadRequest(
                 'Invalid or expired OTP. Please request a new one.'
@@ -482,7 +474,10 @@ class AuthService extends AutoBoundController {
             }
             return 'If an account with that email exists, a password reset link has been sent.';
         } catch (error) {
-            return 'If an account with that email exists, a password reset link has been sent.';
+            if (error instanceof AppError) throw error;
+            throw AppError.Internal(
+                'Failed to initiate password reset. Please try again.'
+            );
         }
     };
 
@@ -525,6 +520,7 @@ class AuthService extends AutoBoundController {
             const user = await UserRepoBoot.findUserByEmail(email);
             return !!user;
         } catch (error) {
+            if(error instanceof AppError) throw error;
             throw AppError.Internal(
                 'Failed to check email. Please try again later.'
             );

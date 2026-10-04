@@ -20,7 +20,7 @@ interface GlobalStats {
 
 class Semaphore {
     private counter: number;
-    private queue: (() => void)[] = [];
+    private readonly queue: (() => void)[] = [];
 
     constructor(max: number) {
         this.counter = max;

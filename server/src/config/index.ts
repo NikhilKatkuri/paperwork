@@ -1,4 +1,4 @@
-import { AppConfig } from '@/types';
+import { AppConfig, LoggerLevel } from '@/types';
 import { SystemError } from '@/utils/AppError';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -31,7 +31,7 @@ export function getEnvVar<T extends string | number | boolean>(
     const isPureNumber = /^-?\d+(\.\d+)?$/.test(trimmed);
     if (isPureNumber) {
         const parsedNum = Number(trimmed);
-        if (!isNaN(parsedNum)) {
+        if (!Number.isNaN(parsedNum)) {
             return parsedNum as unknown as T;
         }
     }
@@ -57,15 +57,57 @@ function getEnvArray(key: string, defaultValue?: string[]): string[] {
 }
 
 const isDev = getEnvVar<string>('NODE_ENV', 'development') === 'development';
+const isProd = !isDev;
+
+const LOG_LEVELS: Set<LoggerLevel> = new Set([
+    'error',
+    'warn',
+    'info',
+    'http',
+    'verbose',
+    'debug',
+    'silly',
+]);
+
+const debugEnabled = getEnvVar<boolean>('DEBUG', false);
+
+/**
+ * `LOG_LEVEL` wins when it is a level winston understands; otherwise fall
+ * back to `debug` in development (so the default dev experience is verbose)
+ * and `info` in production.
+ */
+function resolveLoggerLevel(): LoggerLevel {
+    const requested = getEnvVar<string>('LOG_LEVEL', '').toLowerCase();
+    if (requested && LOG_LEVELS.has(requested as LoggerLevel)) {
+        return requested as LoggerLevel;
+    }
+    if (isProd) {
+        return 'info';
+    }
+    return debugEnabled ? 'debug' : 'info';
+}
 
 const config: AppConfig = {
     env: getEnvVar<string>('NODE_ENV', 'development'),
     port: getEnvVar<number>('PORT', 5000),
     host: getEnvVar<string>('HOST', '0.0.0.0'),
+    logger: {
+        level: resolveLoggerLevel(),
+        requestBody: getEnvVar<boolean>('LOG_REQUEST_BODY', isDev),
+        logPreflight: getEnvVar<boolean>('LOG_PREFLIGHT', false),
+        suspiciousPayloadThreshold: getEnvVar<number>(
+            'LOG_SUSPICIOUS_PAYLOAD_THRESHOLD',
+            5
+        ),
+        suspiciousPayloadWindowMs: getEnvVar<number>(
+            'LOG_SUSPICIOUS_PAYLOAD_WINDOW_MS',
+            60_000
+        ),
+    },
     mongo: {
         uri: getEnvVar<string>('MONGO_URI'),
     },
-    debug: getEnvVar<boolean>('DEBUG', false),
+    debug: debugEnabled,
     origins: isDev
         ? {
               env: 'dev',

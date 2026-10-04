@@ -241,7 +241,7 @@ async function main() {
                     placeholder: 'ABC-1234',
                     validationRule: {
                         ruleType: 'REGEX_MATCH',
-                        pattern: '^[A-Z]{3}-\\d{4}$',
+                        pattern: String.raw`^[A-Z]{3}-\d{4}$`,
                     },
                 },
                 {

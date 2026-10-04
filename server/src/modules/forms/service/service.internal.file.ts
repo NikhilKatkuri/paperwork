@@ -15,7 +15,8 @@ class FileService {
             (this as any)[method] = (this as any)[method].bind(this);
         }
     }
-    async CSVExport(
+    
+    CSVExport(
         headers: string[],
         questionIdMap: Map<string, string>,
         responses: ResponseCore[]

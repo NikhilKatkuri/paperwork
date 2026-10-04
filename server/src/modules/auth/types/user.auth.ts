@@ -5,19 +5,19 @@ import {
 import { Document } from 'mongoose';
 
 export interface Security {
-    accountDeletedStatus?: UserAccountDeletedStatus | undefined;
-    accountDeactivationStatus?: UserAccountDeactivationStatus | undefined;
-    twofactorEnabled?: boolean | undefined;
-    accountDeleteRequestedAt?: Date | undefined;
-    accountWillbeDeletedAt?: Date | undefined;
+    accountDeletedStatus?: UserAccountDeletedStatus;
+    accountDeactivationStatus?: UserAccountDeactivationStatus;
+    twofactorEnabled?: boolean;
+    accountDeleteRequestedAt?: Date;
+    accountWillbeDeletedAt?: Date;
 }
 
 export interface User extends Security {
     email: string;
     passwordHash: string;
     isVerified: boolean;
-    resetToken?: string | undefined;
-    resetExpires?: Date | undefined;
+    resetToken?: string;
+    resetExpires?: Date;
 }
 
 export type UserDocument = User & Document;

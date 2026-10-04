@@ -7,11 +7,11 @@ import {
     userAccountDeletedStatus,
 } from '../constants/enums';
 import { AccountActionService } from '../types/auth.types';
-import { sensitiveData } from '../types/profile.auth';
+import { SensitiveData } from '../types/profile.auth';
 import UserRepoBoot from '../repository/user.repository';
 
 class UserService {
-    private accountDeletionPeriodInDays = 30 * 24 * 60 * 60 * 1000;
+    private readonly accountDeletionPeriodInDays = 30 * 24 * 60 * 60 * 1000;
 
     constructor() {
         const methods = Object.getOwnPropertyNames(
@@ -130,6 +130,10 @@ class UserService {
                     data: updatedUser,
                 };
             } catch (error) {
+                if(error instanceof AppError) {
+                    throw error;
+                }
+
                 throw AppError.Internal('Failed to update user account');
             }
         } catch (error) {
@@ -149,7 +153,7 @@ class UserService {
      * @returns the result of the operation
      */
     async PersonalInfo(
-        data: sensitiveData,
+        data: SensitiveData,
         userId: string,
         method: 'add' | 'update' = 'add'
     ): Promise<{ success: boolean; message: string; data?: any }> {
@@ -161,9 +165,7 @@ class UserService {
             }
 
             if (method === 'update') {
-                if (!profile.sensitiveData) {
-                    profile.sensitiveData = {} as sensitiveData;
-                }
+                profile.sensitiveData ??= {} as SensitiveData;
 
                 Object.assign(profile.sensitiveData, data);
             } else {
@@ -183,6 +185,9 @@ class UserService {
                     data: profile.sensitiveData,
                 };
             } catch (error) {
+                if (error instanceof AppError) {
+                    throw error;
+                }
                 throw AppError.Internal('Failed to save profile changes');
             }
         } catch (error) {

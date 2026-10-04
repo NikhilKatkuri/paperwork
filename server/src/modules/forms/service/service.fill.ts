@@ -16,7 +16,7 @@ export interface ResponseQuery {
 
 /** Escape a user string before using it inside a `$regex`. */
 function escapeRegex(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 /**
@@ -67,16 +67,34 @@ class FillService {
     }
 
     async verifier(form: FormDocument, userId: string, email?: string) {
-        if (!form || form.isPrivate)
-            throw AppError.FormNotFound('Form not found');
-        if (!form.isPublished)
-            throw AppError.FormNotPublished('Form is not published');
+        this.assertFormAvailability(form);
+        this.assertAllowedDomain(form, userId, email);
+        this.assertFormSchedule(form);
+        this.assertMaxResponseLimit(form);
+        await this.assertUserSubmissionLimit(form, userId);
+    }
 
+    private assertFormAvailability(form: FormDocument): void {
+        if (!form || form.isPrivate) {
+            throw AppError.FormNotFound('Form not found');
+        }
+        if (!form.isPublished) {
+            throw AppError.FormNotPublished('Form is not published');
+        }
+    }
+
+    private assertAllowedDomain(
+        form: FormDocument,
+        userId: string,
+        email?: string
+    ): void {
         if (form.allowedDomains && form.allowedDomains.length > 0) {
             const target = email || userId;
             this.validateEmailDomain(target, form.allowedDomains);
         }
+    }
 
+    private assertFormSchedule(form: FormDocument): void {
         const now = new Date();
         if (form.settings?.startDate && now < form.settings.startDate) {
             throw AppError.FormNotOpen('Form is not yet open');
@@ -84,21 +102,31 @@ class FillService {
         if (form.settings?.closeDate && now > form.settings.closeDate) {
             throw AppError.FormClosed('Form is closed');
         }
+    }
 
-        if (form.settings?.maxResponses && form.responseCount !== undefined) {
-            if (form.responseCount >= form.settings.maxResponses) {
+    private assertMaxResponseLimit(form: FormDocument): void {
+        const maxResponses = form.settings?.maxResponses;
+        if (maxResponses !== undefined && form.responseCount !== undefined) {
+            if (form.responseCount >= maxResponses) {
                 throw AppError.FormClosed('Maximum response limit reached');
             }
         }
+    }
 
-        if (form.settings?.maxResponsesPerUser && userId) {
-            const userCount = await FormResponseModel.countDocuments({
-                formId: form._id.toString(),
-                userId,
-            });
-            if (userCount >= form.settings.maxResponsesPerUser) {
-                throw AppError.FormClosed('User submission limit reached');
-            }
+    private async assertUserSubmissionLimit(
+        form: FormDocument,
+        userId: string
+    ): Promise<void> {
+        const limit = form.settings?.maxResponsesPerUser;
+        if (!limit || !userId) return;
+
+        const userCount = await FormResponseModel.countDocuments({
+            formId: form._id.toString(),
+            userId,
+        });
+
+        if (userCount >= limit) {
+            throw AppError.FormClosed('User submission limit reached');
         }
     }
 
@@ -107,7 +135,12 @@ class FillService {
             .select('-__v')
             .lean()) as FormDocument;
 
-        await this.verifier(form, userId, email);
+        try {
+            await this.verifier(form, userId, email);
+        } catch (error) {
+            console.error('Verification failed:', error);
+            throw error;
+        }
 
         const [sections, allQuestions] = await Promise.all([
             SectionModel.find({ formId })
@@ -126,7 +159,7 @@ class FillService {
         const questionsBySection = allQuestions.reduce(
             (acc, q) => {
                 const sId = q.sectionId.toString();
-                if (!acc[sId]) acc[sId] = [];
+                acc[sId] ??= [];
                 acc[sId].push(q);
                 return acc;
             },
@@ -181,9 +214,11 @@ class FillService {
                 .distinct('_id')
                 .session(session);
 
-            const validIdStrings = validQuestionIds.map((id) => id.toString());
+            const validIdStrings = new Set(
+                validQuestionIds.map((id) => id.toString())
+            );
             const isDataValid = answers.every((ans) =>
-                validIdStrings.includes(ans.questionId.toString())
+                validIdStrings.has(ans.questionId.toString())
             );
 
             if (!isDataValid) throw AppError.BadRequest('Invalid questions');
@@ -309,7 +344,7 @@ class FillService {
                 questionId,
                 answered: entry.answered,
                 // Most-answered first so the summary reads top-down.
-                values: entry.values.sort((a, b) => b.count - a.count),
+                values: entry.values.toSorted((a, b) => b.count - a.count),
             })
         );
 
@@ -334,14 +369,18 @@ class FillService {
     async exportResponses(formId: string, exportType: string) {
         try {
             const form = await FormsModel.findById(formId).lean();
+
             if (!form) throw AppError.FormNotFound('Form not found');
+
             const questions = (await QuestionsModel.find({
                 formId,
             })) as QuestionDocument[];
+
             if (!questions.length)
                 throw AppError.QuestionNotFound(
                     'No questions found for this form'
                 );
+
             const responses = await FormResponseModel.find({ formId })
                 .sort({ createdAt: -1 })
                 .select('-__v -updatedAt')
@@ -353,27 +392,25 @@ class FillService {
 
             const fileService = new FileService();
             const questionIdMap = new Map<string, string>();
+
             questions.forEach((q) =>
-                questionIdMap.set(q._id.toString(), q.question)
+                questionIdMap.set(q._id?.toString() , q.question)
             );
 
             const headers = questions.map((q) => q.question);
-            let i = '';
 
-            switch (exportType.toLowerCase()) {
-                case 'csv':
-                    i = await fileService.CSVExport(
-                        headers,
-                        questionIdMap,
-                        responses
-                    );
-                    break;
-                default:
-                    throw AppError.BadRequest('Unsupported export type');
+            if (exportType.toLowerCase() === 'csv') {
+                return await fileService.CSVExport(
+                    headers,
+                    questionIdMap,
+                    responses
+                );
             }
-            return i;
+
+            throw AppError.BadRequest('Unsupported export type');
         } catch (error) {
-            throw AppError.Internal('Export failed');
+             if(error instanceof AppError) throw error;
+            throw AppError.Internal('Failed to export responses');
         }
     }
 }

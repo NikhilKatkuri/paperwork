@@ -1,9 +1,44 @@
 type Origins = { env: 'dev'; urls: string[] } | { env: 'prod'; urls: string[] };
 
+export type LoggerLevel =
+    | 'error'
+    | 'warn'
+    | 'info'
+    | 'http'
+    | 'verbose'
+    | 'debug'
+    | 'silly';
+
+export interface LoggerConfig {
+    /**
+     * Minimum winston level that reaches a transport.
+     */
+    level: LoggerLevel;
+    /**
+     * Whether parsed request bodies are attached to access logs. Defaults to
+     * on in development and off in production: bodies on this API carry
+     * passwords, OTPs and reset tokens, and redaction cannot guarantee that
+     * every future field is covered.
+     */
+    requestBody: boolean;
+    /**
+     * Whether CORS preflight (`OPTIONS`) requests get an access log line.
+     */
+    logPreflight: boolean;
+    /**
+     * How many `4xx` responses from one client inside
+     * `suspiciousPayloadWindowMs` are treated as a payload-injection burst.
+     */
+    suspiciousPayloadThreshold: number;
+    /** Sliding window, in ms, used by the suspicious payload detector. */
+    suspiciousPayloadWindowMs: number;
+}
+
 export interface AppConfig {
     env: string;
     port: number;
     host: string;
+    logger: LoggerConfig;
     mongo: {
         uri: string;
     };

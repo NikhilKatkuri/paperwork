@@ -14,7 +14,7 @@ const corsOptions: cors.CorsOptions = {
         callback(new Error(`CORS policy: origin ${origin} is not allowed`));
     },
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
     exposedHeaders: ['X-Total-Count', 'X-Request-Id'],
     credentials: true,
     maxAge: 86400,

@@ -1,13 +1,13 @@
-import { Response, NextFunction } from 'express';
+import { Response, NextFunction, Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
 
-import { Request } from 'express';
 import FillService from '@/modules/forms/service/service.fill';
 import { AppError } from '@/utils/AppError';
 import { cacheRedis, trendEngine } from '@/redis';
 import mongoose from 'mongoose';
 import { submissionQueue } from '@/queues';
 import { submissionKey } from '@/workers/SubmissionWorker';
+import { cacheLogger, logError } from '@/utils/logger';
 
 class FillController {
     service = new FillService();
@@ -25,7 +25,7 @@ class FillController {
         }
     }
 
-    private inFlightReads = new Map<string, Promise<any>>();
+    private readonly inFlightReads = new Map<string, Promise<any>>();
 
     private getContent(req: Request) {
         const { id: userId, email } = req.user!;
@@ -91,8 +91,18 @@ class FillController {
                 if (isFirst) {
                     await trendEngine
                         .handleDbFallback(formId, formData)
-                        .catch((err) => {
-                            console.error('Error caching form data:', err);
+                        .catch((err: unknown) => {
+                            // The response is already on its way; a cache
+                            // write failure degrades search, not the request.
+                            logError(
+                                cacheLogger,
+                                'form_data_cache_failed',
+                                err,
+                                {
+                                    event: 'CACHE_WRITE_FAILED',
+                                    formId,
+                                }
+                            );
                         });
                 }
             }
@@ -111,6 +121,7 @@ class FillController {
         try {
             const { ...params } = this.getContent(req);
             const submissionId = new mongoose.Types.ObjectId().toString();
+            
             await cacheRedis.set(
                 submissionKey(submissionId),
                 JSON.stringify({

@@ -57,7 +57,7 @@ const formsSchema = new Schema<FormDocument>(
     }
 );
 
-formsSchema.pre('save', async function () {
+formsSchema.pre('save', function () {
     if (!this.isPrivate && this.allowedDomains?.length) {
         throw new Error(
             'allowedDomains can only be set when isPrivate is true'
