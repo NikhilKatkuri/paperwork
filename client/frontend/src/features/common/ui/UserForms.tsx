@@ -7,6 +7,7 @@ import { cn } from '@/utils/cn';
 import useGetAllForms from '@/features/forms/api/user/allForms';
 import { toast } from 'sonner';
 import { FormDB } from '@/lib/db';
+import { uiPreferencesDB } from '@/features/user/components/lib/UiPreferences';
 
 interface UserFormsProps {
     /** Already debounced by the parent. */
@@ -15,8 +16,89 @@ interface UserFormsProps {
 
 function UserForms({ query = '' }: Readonly<UserFormsProps>) {
     const [viewAsRow, setViewAsRow] = useState(true);
+    const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadPreferences() {
+            try {
+                const preferences =
+                    await uiPreferencesDB.preferences.get('preferences');
+
+                if (!cancelled && preferences) {
+                    setViewAsRow(preferences.viewAs === 'row');
+                }
+            } catch {
+                if (!cancelled) {
+                    toast.error('Failed to load view preferences');
+                }
+            } finally {
+                if (!cancelled) {
+                    setPreferencesLoaded(true);
+                }
+            }
+        }
+
+        void loadPreferences();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    function toggleView() {
+        setViewAsRow((current) => !current);
+    }
+
+    useEffect(() => {
+        if (!preferencesLoaded) return;
+
+        uiPreferencesDB.preferences
+            .put({
+                id: 'preferences',
+                viewAs: viewAsRow ? 'row' : 'grid',
+            })
+            .catch(() => {
+                toast.error('Failed to save view preferences');
+            });
+    }, [viewAsRow, preferencesLoaded]);
+
     const { loading, handler } = useGetAllForms();
+
     const [data, setData] = useState<FormDB[] | null>(null);
+
+    const [sortMethod, setSortMethod] = useState<
+        'plain' | 'alphabetical-forward' | 'alphabetical-reverse'
+    >('plain');
+
+    const displayedForms = useMemo(() => {
+        const items = (data ?? []).filter((form) =>
+            (form.name ?? '').toLowerCase().includes(query.trim().toLowerCase())
+        );
+
+        if (sortMethod === 'plain') {
+            items.sort(
+                (a, b) =>
+                    new Date(b.updatedAt!).getTime() -
+                    new Date(a.updatedAt!).getTime()
+            );
+        } else if (sortMethod === 'alphabetical-forward') {
+            items.sort((a, b) => a.name.localeCompare(b.name));
+        } else {
+            items.sort((a, b) => b.name.localeCompare(a.name));
+        }
+
+        return items;
+    }, [data, query, sortMethod]);
+
+    function sort() {
+        setSortMethod((current) =>
+            current === 'plain' || current === 'alphabetical-reverse'
+                ? 'alphabetical-forward'
+                : 'alphabetical-reverse'
+        );
+    }
 
     /**
      * StrictMode mounts, unmounts, then remounts this effect in dev. The first
@@ -60,7 +142,8 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
         <>
             <ViewFormsHeader
                 viewAsRow={viewAsRow}
-                setViewAsRow={() => setViewAsRow((prev) => !prev)}
+                setViewAsRow={toggleView}
+                sort={sort}
             />
             {isSearching && data && data.length > 0 ? (
                 <p className="text-theme-on-surface/60 mt-4 text-xs">
@@ -80,8 +163,8 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
                 >
                     {/* Nothing rendered while loading - otherwise the empty
                         state flashes before the first response lands. */}
-                    {loading && !data ? null : filtered.length > 0 ? (
-                        filtered.map((form) => (
+                    {!loading && displayedForms.length > 0 ? (
+                        displayedForms.map((form) => (
                             <FormsView
                                 key={form._id}
                                 viewAsRow={viewAsRow}

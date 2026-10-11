@@ -1,5 +1,5 @@
 'use client';
- 
+
 import { FormDB } from '@/lib/db';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
@@ -22,13 +22,13 @@ function FormsView({
     viewAsRow: boolean;
     form?: FormDB;
 }>) {
-    if(!form) return null;
+    if (!form) return null;
     if (viewAsRow) {
         return (
             <Link
                 href={'/forms/c/' + (form ? form._id : '')}
                 className={cn(
-                    'hover:bg-brand-light grid h-14 w-full cursor-pointer grid-cols-[1fr_0.5fr] items-center rounded-md border border-transparent px-4 transition-all duration-150 ease-in-out *:text-sm md:grid-cols-2'
+                    'hover:bg-brand-light grid h-14 w-full cursor-pointer grid-cols-[1fr_0.5fr] items-center rounded-md border border-transparent px-4 transition-all duration-150 ease-in-out *:text-sm'
                 )}
             >
                 <div className="grid grid-cols-[36px_1fr] items-center gap-4">
@@ -44,14 +44,16 @@ function FormsView({
                 <div
                     className={cn(
                         'grid items-center gap-4 max-[900px]:grid-cols-[1fr_36px] xl:justify-end',
-                        'grid-cols-[1fr_32px] min-[900px]:grid-cols-[1fr_1fr_36px] xl:grid-cols-[1fr_1fr_160px]'
+                        'grid-cols-[1fr_32px] min-[900px]:grid-cols-[1fr_36px] xl:grid-cols-[1fr_160px]'
                     )}
                 >
-                    <div className="text-left">
+                    {/* <div className="text-left">
                         <p className="text-md">me</p>
-                    </div>
+                    </div> */}
                     <div className="max-[900px]:hidden">
-                        <p className="text-md">{toDateString(form?.updatedAt)}</p>
+                        <p className="text-md">
+                            {toDateString(form?.updatedAt)}
+                        </p>
                     </div>
 
                     <div className="flex items-center justify-end">
@@ -68,7 +70,7 @@ function FormsView({
 
     return (
         <Link
-            href={'/'}
+            href={'/forms/c/' + (form ? form._id : '')}
             className={
                 'grid-row-[1fr_36px] hover:bg-brand-light border-theme-skeletion-surface grid w-full cursor-pointer items-center gap-2 rounded-md border p-4 transition-all duration-150 ease-in-out *:text-sm'
             }
@@ -80,7 +82,10 @@ function FormsView({
                             format_list_bulleted
                         </div>
                     </div>
-                    <p className="font-medium">Recent forms</p>
+                    <p className="font-medium">
+                        {' '}
+                        {form.name ? form.name : 'Untitled Form'}
+                    </p>
                     <button className="rounded-full">
                         <span className="material-symbols-outlined">
                             more_vert
@@ -91,11 +96,7 @@ function FormsView({
             </div>
             <div className={cn('grid items-center')}>
                 <div className="">
-                    <p className="text-md">me</p>
-                </div>
-
-                <div className="">
-                    <p className="text-sm">9:00 AM</p>
+                    <p className="text-sm"> {toDateString(form?.updatedAt)}</p>
                 </div>
             </div>
         </Link>
