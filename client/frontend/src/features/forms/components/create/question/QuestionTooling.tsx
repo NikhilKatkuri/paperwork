@@ -6,17 +6,19 @@ import Toggle from '../../common/Toggle';
 
 interface QuestionToolingProps {
     isRequired: boolean;
-    helpText: string | undefined;
+    helpText?: string;
     showMoreOptions: boolean;
     setShowMoreOptions: (value: boolean) => void;
     updateConfig: (patch: Partial<QuestionCore>) => void;
     id: number;
     sectionIdx: number;
+    placeholder?: string;
 }
 
 function QuestionTooling({
     isRequired,
     helpText,
+    placeholder,
     showMoreOptions,
     setShowMoreOptions,
     updateConfig,
@@ -74,15 +76,31 @@ function QuestionTooling({
                                     onClick={() =>
                                         updateConfig({
                                             helpText:
-                                                helpText === undefined ||
-                                                helpText === ''
+                                                helpText === undefined
                                                     ? ''
                                                     : undefined,
                                         })
                                     }
                                     className="text-theme-form-on-container hover:bg-theme-form-container-border/40 h-10 w-full bg-transparent px-3 pl-6 text-left text-sm"
                                 >
+                                    {helpText !== undefined ? 'Hide' : 'Show'}{' '}
                                     help text
+                                </button>
+                                <button
+                                    onClick={() =>
+                                        updateConfig({
+                                            placeholder:
+                                                placeholder === undefined
+                                                    ? ''
+                                                    : undefined,
+                                        })
+                                    }
+                                    className="text-theme-form-on-container hover:bg-theme-form-container-border/40 h-10 w-full bg-transparent px-3 pl-6 text-left text-sm"
+                                >
+                                    {placeholder !== undefined
+                                        ? 'Hide'
+                                        : 'Show'}{' '}
+                                    placeholder text
                                 </button>
                             </div>
                         </div>

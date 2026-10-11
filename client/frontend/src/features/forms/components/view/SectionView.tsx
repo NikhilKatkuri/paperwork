@@ -11,11 +11,10 @@ interface SectionViewProps {
 }
 
 /** Strips the tags a rich-text question body may contain. */
-function plainText(html: string): string {
-    return html
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
+export function plainText(html: string): string {
+    if (!html) return '';
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent?.replace(/\s+/g, ' ').trim() || '';
 }
 
 export default function SectionView({
@@ -27,13 +26,13 @@ export default function SectionView({
     if (!section.questions.length) return null;
 
     return (
-        <section className="flex flex-col gap-8">
-            <header>
-                <h2 className="text-theme-form-on-surface text-lg font-semibold">
+        <section className="flex flex-col gap-8 overflow-hidden rounded-xl bg-white pb-6">
+            <header className="bg-theme-form-container-active flex flex-col p-4">
+                <h2 className="text-lg font-semibold text-white">
                     {section.title || 'Untitled section'}
                 </h2>
                 {section.description ? (
-                    <p className="text-theme-form-on-surface/70 mt-1 text-sm">
+                    <p className="mt-1 text-sm text-white/90">
                         {plainText(section.description)}
                     </p>
                 ) : null}
@@ -43,7 +42,10 @@ export default function SectionView({
                 const error = errors[question._id];
 
                 return (
-                    <div key={question._id} className="flex flex-col gap-2">
+                    <div
+                        key={question._id}
+                        className="flex flex-col gap-2 px-4"
+                    >
                         <label
                             className="text-theme-form-on-surface text-sm font-medium"
                             htmlFor={`q-${question._id}`}

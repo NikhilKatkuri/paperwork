@@ -218,6 +218,12 @@ export function FormCreateProvider({
     );
 
     const deleteQuestion = useCallback((questionId: number) => {
+        const isConfirmed = window.confirm(
+            'Are you sure you want to delete this Question? This action cannot be undone.'
+        );
+
+        if (!isConfirmed) return;
+
         setQuestions((prev) => {
             const target = prev.get(questionId);
             if (!target) return prev;
@@ -245,6 +251,7 @@ export function FormCreateProvider({
             setQuestions((prev) => {
                 const question = prev.get(idx);
                 if (!question) return prev;
+
                 const next = new Map(prev);
                 next.set(idx, { ...question, ...patch });
                 return next;
@@ -291,6 +298,13 @@ export function FormCreateProvider({
     );
 
     const deleteSection = useCallback((sectionId: number) => {
+        const isConfirmed = window.confirm(
+            `Are you sure you want to delete this section? All questions inside it will also be removed or shifted. 
+            Note that this action cannot be undone.`
+        );
+
+        if (!isConfirmed) return;
+
         setSections((prev) => {
             const entries = [...prev.entries()]
                 .filter(([id]) => id !== sectionId)
@@ -358,62 +372,29 @@ export function FormCreateProvider({
                 const activeIndex = entries.findIndex(
                     ([id]) => id === activeKey
                 );
+
                 const overIndex = entries.findIndex(([id]) => id === overKey);
 
-                if (activeIndex === -1 || overIndex === -1) return prevSections;
+                if (
+                    activeIndex === -1 ||
+                    overIndex === -1 ||
+                    activeIndex === overIndex
+                ) {
+                    return prevSections;
+                }
 
                 const reordered = arrayMove(entries, activeIndex, overIndex);
 
-                const sectionMap = new Map<number, number>();
                 const nextSections = new Map<number, SectionCore>();
 
-                reordered.forEach(([, section], newIndex) => {
-                    sectionMap.set(section.index, newIndex);
-
-                    nextSections.set(newIndex, {
+                reordered.forEach(([id, section], index) => {
+                    nextSections.set(id, {
                         ...section,
-                        index: newIndex,
+                        index,
                     });
                 });
 
                 nextSectionIndexRef.current = nextSections.size;
-
-                setQuestions((prevQuestions) => {
-                    const nextQuestions = new Map(prevQuestions);
-
-                    nextQuestions.forEach((question, id) => {
-                        const newSection = sectionMap.get(question.sectionIdx);
-
-                        if (newSection !== undefined) {
-                            nextQuestions.set(id, {
-                                ...question,
-                                sectionIdx: newSection,
-                            });
-                        }
-                    });
-
-                    // Normalize question order inside each section
-                    const grouped = new Map<number, [number, QuestionCore][]>();
-
-                    nextQuestions.forEach((question, id) => {
-                        const arr = grouped.get(question.sectionIdx) ?? [];
-                        arr.push([id, question]);
-                        grouped.set(question.sectionIdx, arr);
-                    });
-
-                    grouped.forEach((list) => {
-                        [...list]
-                            .sort((a, b) => a[1].index - b[1].index)
-                            .forEach(([id, question], order) => {
-                                nextQuestions.set(id, {
-                                    ...question,
-                                    index: order,
-                                });
-                            });
-                    });
-
-                    return nextQuestions;
-                });
 
                 return nextSections;
             });
@@ -490,7 +471,7 @@ export function FormCreateProvider({
                 isLoadedRef.current = true;
             }
         }
-        loadFormFromDB();
+        void loadFormFromDB();
     }, [activeFormID]);
 
     /**
@@ -556,7 +537,7 @@ export function FormCreateProvider({
 
             await queueChangedFields(stored, formData);
         }
-        prepareForm();
+        void prepareForm();
     }, [activeFormID, debouncedUpdate, form, questions, sections]);
 
     /**

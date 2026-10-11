@@ -25,11 +25,6 @@ interface InputFieldProps {
     sectionIdx: number;
 }
 
-/**
- * Built per instance, not shared: a module-level fallback would hand the same
- * `_id` to every overlay, which the sync engine would then treat as a duplicate
- * and drop.
- */
 const createOverlayFallback = (type: QuestionType): QuestionCore => ({
     _id: generateObjectId(),
     index: 0,
@@ -90,10 +85,10 @@ export default function InputField({
           };
 
     useEffect(() => {
-        function setMountedTrue() {
+        function updateMount() {
             setMounted(true);
         }
-        setMountedTrue();
+        updateMount();
     }, []);
 
     const updatePosition = useCallback(() => {
@@ -236,7 +231,7 @@ export default function InputField({
                                                 updateQuestion(id, {
                                                     type: key,
                                                 });
-                                                setShowMoreOptions(false);
+                                                // FIXED: Close the dropdown correctly instead of toggling showMoreOptions
                                                 setIsDropdownOpen(false);
                                             }}
                                             className={`hover:bg-theme-form-container-hover flex h-10 w-full items-center gap-2 rounded-md p-2 text-left text-sm ${
@@ -273,6 +268,19 @@ export default function InputField({
                 </div>
             )}
 
+            {config.placeholder !== undefined && (
+                <div className="flex-1">
+                    <RichTextInput
+                        placeholder="Placeholder text (optional)"
+                        className="h-8"
+                        value={config.placeholder ?? ''}
+                        onChange={(value) =>
+                            updateQuestion(id, { placeholder: value })
+                        }
+                    />
+                </div>
+            )}
+
             <AnswerTemplate
                 id={id}
                 type={config.type}
@@ -280,14 +288,15 @@ export default function InputField({
             />
             <QuestionTooling
                 id={id}
-                sectionIdx={0}
+                sectionIdx={sectionIdx}
                 isRequired={config.isRequired ?? false}
                 showMoreOptions={showMoreOptions}
-                setShowMoreOptions={() => setShowMoreOptions(!showMoreOptions)}
+                setShowMoreOptions={setShowMoreOptions}
                 updateConfig={(patch: Partial<QuestionCore>) =>
                     updateQuestion(id, patch)
                 }
                 helpText={config.helpText}
+                placeholder={config.placeholder}
             />
         </div>
     );

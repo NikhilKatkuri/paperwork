@@ -9,7 +9,7 @@ interface MetaInputFeildsProps {
 }
 
 function MetaInputFeilds({ sectionIdx }: Readonly<MetaInputFeildsProps>) {
-    const { sections, handleSectionsChange } = useFormCreate();
+    const { sections, handleSectionsChange, deleteSection } = useFormCreate();
 
     const meta = sections.get(sectionIdx);
 
@@ -25,7 +25,7 @@ function MetaInputFeilds({ sectionIdx }: Readonly<MetaInputFeildsProps>) {
     return (
         <div
             id={`section-${sectionIdx}`}
-            className="floating-toolbar-selector w-full"
+            className="floating-toolbar-selector group w-full"
         >
             <div
                 className={cn(
@@ -55,6 +55,16 @@ function MetaInputFeilds({ sectionIdx }: Readonly<MetaInputFeildsProps>) {
                     value={meta.description}
                     onChange={(value) => patch({ key: 'description', value })}
                 />
+                <div className="hidden w-full items-center justify-end gap-2 p-3 transition-all duration-200 ease-in-out group-hover:flex">
+                    <button
+                        onClick={() => deleteSection(sectionIdx)}
+                        className="hover:bg-theme-form-container-hover focus-visible:bg-theme-form-container-hover flex h-10 w-10 items-center justify-center rounded-md"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">
+                            delete
+                        </span>
+                    </button>
+                </div>
             </div>
         </div>
     );

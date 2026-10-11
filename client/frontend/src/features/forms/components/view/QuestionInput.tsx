@@ -2,6 +2,8 @@
 
 import { QUESTION_TYPE } from '../../types/question.type';
 import type { FillQuestion, Option } from '../../types/fill.type';
+import { cn } from '@/utils/cn';
+import { useId, useState } from 'react';
 
 interface QuestionInputProps {
     question: FillQuestion;
@@ -16,10 +18,78 @@ const RATING_ICONS: Record<string, string> = {
     THUMB_UP: 'thumb_up',
 };
 
-const FIELD =
-    'w-full rounded-md border bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-current';
-const FIELD_IDLE =
-    'border-theme-form-on-surface/30 text-theme-form-on-surface placeholder:text-theme-form-on-surface/40';
+/* ------------------------------------------------------------------ */
+/* Shared pieces                                                       */
+/* ------------------------------------------------------------------ */
+
+/** Bare input styling - the visible chrome is the <Underline /> below it. */
+const BARE_INPUT =
+    'w-full bg-transparent py-2 text-sm text-theme-form-on-surface outline-none placeholder:text-theme-form-on-surface/50';
+
+/**
+ * Google-Forms style underline: a thin base line plus an accent line that
+ * grows from the centre when anything inside the `group` wrapper has focus.
+ * Uses `group-focus-within` so it works no matter how deeply the input is nested.
+ */
+function Underline({ invalid }: Readonly<{ invalid?: boolean }>) {
+    return (
+        <>
+            <div
+                className={cn(
+                    'h-px w-full',
+                    invalid
+                        ? 'bg-red-500 dark:bg-red-400'
+                        : 'bg-theme-form-container-border'
+                )}
+            />
+            <div
+                className={cn(
+                    'pointer-events-none absolute bottom-0 left-1/2 h-0.5 w-0 -translate-x-1/2 transition-all duration-300 group-focus-within:w-full',
+                    invalid
+                        ? 'bg-red-500 dark:bg-red-400'
+                        : 'bg-theme-form-container-active'
+                )}
+            />
+        </>
+    );
+}
+
+/** Round radio control with a hover/focus halo (Google style). */
+function RadioMark() {
+    return (
+        <>
+            <span className="group-hover:bg-theme-form-on-surface/10 peer-focus-visible:bg-theme-form-container-active/20 absolute inset-0 rounded-full transition-colors" />
+            <span className="border-theme-form-on-surface/60 peer-checked:border-theme-form-container-active relative h-5 w-5 rounded-full border-2 transition-colors" />
+            <span className="bg-theme-form-container-active absolute h-2.5 w-2.5 scale-0 rounded-full transition-transform duration-150 peer-checked:scale-100" />
+        </>
+    );
+}
+
+/** Square checkbox control with a check mark. */
+function CheckMark() {
+    return (
+        <>
+            <span className="group-hover:bg-theme-form-on-surface/10 peer-focus-visible:bg-theme-form-container-active/20 absolute inset-0 rounded-full transition-colors" />
+            <span className="border-theme-form-on-surface/60 peer-checked:border-theme-form-container-active peer-checked:bg-theme-form-container-active relative h-4.5 w-4.5 rounded-xs border-2 transition-colors" />
+            <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                className="text-theme-form-on-active absolute h-3.5 w-3.5 scale-0 transition-transform duration-150 peer-checked:scale-100"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            >
+                <path d="M4 12.5l5 5L20 6.5" />
+            </svg>
+        </>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/* Component                                                           */
+/* ------------------------------------------------------------------ */
 
 /**
  * Renders the control for a question type.
@@ -33,13 +103,15 @@ export default function QuestionInput({
     onChange,
     invalid,
 }: Readonly<QuestionInputProps>) {
-    const border = invalid
-        ? 'border-red-500 text-red-600 dark:border-red-400'
-        : FIELD_IDLE;
+    // Hooks must run unconditionally, before the switch.
+    const inputId = useId();
+    const [hoverRating, setHoverRating] = useState(0);
 
     const options: Option[] = question.optionsConfig?.options ?? [];
     const selected = values[0] ?? '';
     const selectedSet = new Set(values);
+    const placeholder = question.placeholder ?? 'Your answer';
+    const fieldId = `q-${question._id}-${inputId}`;
 
     const setSingle = (value: string) => onChange(value ? [value] : []);
 
@@ -54,82 +126,112 @@ export default function QuestionInput({
     switch (question.type) {
         case QUESTION_TYPE.PARAGRAPH:
             return (
-                <textarea
-                    rows={4}
-                    value={selected}
-                    placeholder={question.placeholder}
-                    onChange={(e) => setSingle(e.target.value)}
-                    className={`${FIELD} ${border} resize-y`}
-                />
+                <div className="group relative w-full">
+                    <label htmlFor={fieldId} className="sr-only">
+                        {placeholder}
+                    </label>
+                    <textarea
+                        id={fieldId}
+                        rows={1}
+                        value={selected}
+                        placeholder={placeholder}
+                        onChange={(e) => setSingle(e.target.value)}
+                        onInput={(e) => {
+                            // auto-grow like Google Forms
+                            const el = e.currentTarget;
+                            el.style.height = 'auto';
+                            el.style.height = `${el.scrollHeight}px`;
+                        }}
+                        aria-invalid={invalid || undefined}
+                        className={cn(
+                            BARE_INPUT,
+                            'resize-none overflow-hidden'
+                        )}
+                    />
+                    <Underline invalid={invalid} />
+                </div>
             );
 
         case QUESTION_TYPE.DATE:
             return (
-                <input
-                    type="date"
-                    value={selected}
-                    onChange={(e) => setSingle(e.target.value)}
-                    className={`${FIELD} ${border}`}
-                />
+                <div className="group relative w-full max-w-xs">
+                    <label htmlFor={fieldId} className="sr-only">
+                        Date
+                    </label>
+                    <input
+                        type="date"
+                        id={fieldId}
+                        value={selected}
+                        onChange={(e) => setSingle(e.target.value)}
+                        aria-invalid={invalid || undefined}
+                        className={cn(BARE_INPUT, 'dark:scheme-dark')}
+                    />
+                    <Underline invalid={invalid} />
+                </div>
             );
 
         case QUESTION_TYPE.TIME:
             return (
-                <input
-                    type="time"
-                    value={selected}
-                    onChange={(e) => setSingle(e.target.value)}
-                    className={`${FIELD} ${border}`}
-                />
+                <div className="group relative w-full max-w-xs">
+                    <label htmlFor={fieldId} className="sr-only">
+                        Time
+                    </label>
+                    <input
+                        type="time"
+                        id={fieldId}
+                        value={selected}
+                        onChange={(e) => setSingle(e.target.value)}
+                        aria-invalid={invalid || undefined}
+                        className={cn(BARE_INPUT, 'dark:scheme-dark')}
+                    />
+                    <Underline invalid={invalid} />
+                </div>
             );
 
         case QUESTION_TYPE.CHOICE:
             return (
-                <div className="flex flex-col gap-2">
-                    {options.map((option) => {
-                        const checked = selectedSet.has(option.label);
-
-                        return (
-                            <label
-                                key={option.index}
-                                className={`hover:bg-theme-form-on-surface/5 flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm transition-colors ${
-                                    checked
-                                        ? 'border-theme-form-container-active bg-theme-form-container-active/10'
-                                        : 'border-theme-form-on-surface/20'
-                                }`}
-                            >
+                <div className="text-theme-form-on-surface flex flex-col">
+                    {options.map((option) => (
+                        <label
+                            key={option.index}
+                            className="group flex cursor-pointer items-center gap-2 text-sm"
+                        >
+                            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center">
                                 <input
                                     type="checkbox"
-                                    checked={checked}
+                                    checked={selectedSet.has(option.label)}
                                     onChange={() => toggleMulti(option.label)}
-                                    className="accent-current"
+                                    className="peer sr-only"
                                 />
-                                <span>{option.label}</span>
-                            </label>
-                        );
-                    })}
+                                <CheckMark />
+                            </span>
+                            <span>{option.label}</span>
+                        </label>
+                    ))}
                 </div>
             );
 
         case QUESTION_TYPE.RADIO:
             return (
-                <div className="flex flex-col gap-2">
+                <div
+                    role="radiogroup"
+                    className="text-theme-form-on-surface flex flex-col"
+                >
                     {options.map((option) => (
                         <label
                             key={option.index}
-                            className={`hover:bg-theme-form-on-surface/5 flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm transition-colors ${
-                                selected === option.label
-                                    ? 'border-theme-form-container-active bg-theme-form-container-active/10'
-                                    : 'border-theme-form-on-surface/20'
-                            }`}
+                            className="group flex cursor-pointer items-center gap-2 text-sm"
                         >
-                            <input
-                                type="radio"
-                                name={question._id}
-                                checked={selected === option.label}
-                                onChange={() => setSingle(option.label)}
-                                className="accent-current"
-                            />
+                            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center">
+                                <input
+                                    type="radio"
+                                    name={question._id}
+                                    checked={selected === option.label}
+                                    onChange={() => setSingle(option.label)}
+                                    className="peer sr-only"
+                                />
+                                <RadioMark />
+                            </span>
                             <span>{option.label}</span>
                         </label>
                     ))}
@@ -138,18 +240,42 @@ export default function QuestionInput({
 
         case QUESTION_TYPE.DROP_DOWN:
             return (
-                <select
-                    value={selected}
-                    onChange={(e) => setSingle(e.target.value)}
-                    className={`${FIELD} ${border}`}
-                >
-                    <option value="">Select an option</option>
-                    {options.map((option) => (
-                        <option key={option.index} value={option.label}>
-                            {option.label}
-                        </option>
-                    ))}
-                </select>
+                <div className="relative w-full max-w-xs">
+                    <label htmlFor={fieldId} className="sr-only">
+                        Choose an option
+                    </label>
+                    <select
+                        id={fieldId}
+                        value={selected}
+                        onChange={(e) => setSingle(e.target.value)}
+                        aria-invalid={invalid || undefined}
+                        className={cn(
+                            'w-full cursor-pointer appearance-none rounded border bg-transparent py-3 pr-10 pl-3 text-sm transition-colors outline-none',
+                            'focus:border-theme-form-container-active focus:ring-theme-form-container-active focus:ring-1',
+                            invalid
+                                ? 'border-red-500 dark:border-red-400'
+                                : 'border-theme-form-container-border',
+                            selected
+                                ? 'text-theme-form-on-surface'
+                                : 'text-theme-form-on-surface/60'
+                        )}
+                    >
+                        <option value="">Choose</option>
+                        {options.map((option) => (
+                            <option key={option.index} value={option.label}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                    <svg
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        className="text-theme-form-on-surface/60 pointer-events-none absolute top-1/2 right-3 h-5 w-5 -translate-y-1/2"
+                        fill="currentColor"
+                    >
+                        <path d="M7 10l5 5 5-5z" />
+                    </svg>
+                </div>
             );
 
         case QUESTION_TYPE.LINEAR_SCALE: {
@@ -162,32 +288,49 @@ export default function QuestionInput({
                 { length: high - low + 1 },
                 (_, i) => low + i
             );
+            const lowLabel = question.ratingConfig?.lowLabel;
+            const highLabel = question.ratingConfig?.highLabel;
 
             return (
-                <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        {points.map((point) => (
-                            <button
-                                key={point}
-                                type="button"
-                                onClick={() => setSingle(String(point))}
-                                className={`h-10 w-10 rounded-full border text-sm transition-colors ${
-                                    selected === String(point)
-                                        ? 'border-theme-form-container-active bg-theme-form-container-active text-theme-form-on-active'
-                                        : 'border-theme-form-on-surface/30 hover:bg-theme-form-on-surface/10'
-                                }`}
-                            >
-                                {point}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="text-theme-form-on-surface/60 mt-1 flex justify-between text-xs">
-                        <span>
-                            {question.ratingConfig?.lowLabel ?? String(low)}
-                        </span>
-                        <span>
-                            {question.ratingConfig?.highLabel ?? String(high)}
-                        </span>
+                <div className="text-theme-form-on-surface overflow-x-auto">
+                    <div
+                        role="radiogroup"
+                        className="flex min-w-max items-end gap-2 sm:gap-4"
+                    >
+                        {lowLabel ? (
+                            <span className="max-w-24 pb-2.5 text-sm wrap-break-word">
+                                {lowLabel}
+                            </span>
+                        ) : null}
+
+                        <div className="flex items-end">
+                            {points.map((point) => (
+                                <label
+                                    key={point}
+                                    className="group flex w-10 cursor-pointer flex-col items-center sm:w-12"
+                                >
+                                    <span className="text-sm">{point}</span>
+                                    <span className="relative flex h-10 w-10 items-center justify-center">
+                                        <input
+                                            type="radio"
+                                            name={`${question._id}-${inputId}`}
+                                            checked={selected === String(point)}
+                                            onChange={() =>
+                                                setSingle(String(point))
+                                            }
+                                            className="peer sr-only"
+                                        />
+                                        <RadioMark />
+                                    </span>
+                                </label>
+                            ))}
+                        </div>
+
+                        {highLabel ? (
+                            <span className="max-w-24 pb-2.5 text-sm wrap-break-word">
+                                {highLabel}
+                            </span>
+                        ) : null}
                     </div>
                 </div>
             );
@@ -199,34 +342,62 @@ export default function QuestionInput({
                 Math.min(Number(question.ratingConfig?.scale) || 5, 10)
             );
             const icon = RATING_ICONS[question.ratingConfig?.icon ?? 'STAR'];
+            const current = Number(selected) || 0;
+            const shown = hoverRating || current;
+            const lowLabel = question.ratingConfig?.lowLabel;
+            const highLabel = question.ratingConfig?.highLabel;
 
             return (
                 <div>
-                    <div className="flex flex-wrap items-center gap-1">
+                    <div 
+                        className="flex flex-wrap items-center"
+                        onMouseLeave={() => setHoverRating(0)}
+                    >
                         {Array.from({ length: scale }, (_, i) => i + 1).map(
-                            (point) => (
-                                <button
-                                    key={point}
-                                    type="button"
-                                    aria-label={`${point} of ${scale}`}
-                                    aria-pressed={selected === String(point)}
-                                    onClick={() => setSingle(String(point))}
-                                    className={`material-symbols-outlined p-1 text-3xl transition-transform hover:scale-110 ${
-                                        selected === String(point)
-                                            ? 'text-theme-form-container-active'
-                                            : 'text-theme-form-on-surface/40'
-                                    }`}
-                                >
-                                    {icon}
-                                </button>
-                            )
+                            (point) => {
+                                const filled = point <= shown;
+
+                                return (
+                                    <button
+                                        key={point}
+                                        type="button"
+                                        role="radio"
+                                        aria-label={`${point} of ${scale}`}
+                                        aria-checked={current === point}
+                                        onMouseEnter={() =>
+                                            setHoverRating(point)
+                                        }
+                                        onFocus={() => setHoverRating(point)}
+                                        onBlur={() => setHoverRating(0)}
+                                        // click the active value again to clear
+                                        onClick={() =>
+                                            setSingle(
+                                                current === point
+                                                    ? ''
+                                                    : String(point)
+                                            )
+                                        }
+                                        className={cn(
+                                            'material-symbols-outlined hover:bg-theme-form-on-surface/10 rounded-full p-1.5 text-4xl transition-colors',
+                                            filled
+                                                ? 'text-theme-form-container-active'
+                                                : 'text-theme-form-on-surface/40'
+                                        )}
+                                        style={{
+                                            fontVariationSettings: `'FILL' ${filled ? 1 : 0}`,
+                                        }}
+                                    >
+                                        {icon}
+                                    </button>
+                                );
+                            }
                         )}
                     </div>
-                    {question.ratingConfig?.lowLabel ||
-                    question.ratingConfig?.highLabel ? (
+
+                    {lowLabel || highLabel ? (
                         <div className="text-theme-form-on-surface/60 mt-1 flex justify-between text-xs">
-                            <span>{question.ratingConfig?.lowLabel}</span>
-                            <span>{question.ratingConfig?.highLabel}</span>
+                            <span>{lowLabel}</span>
+                            <span>{highLabel}</span>
                         </div>
                     ) : null}
                 </div>
@@ -236,13 +407,21 @@ export default function QuestionInput({
         case QUESTION_TYPE.TEXT:
         default:
             return (
-                <input
-                    type="text"
-                    value={selected}
-                    placeholder={question.placeholder}
-                    onChange={(e) => setSingle(e.target.value)}
-                    className={`${FIELD} ${border}`}
-                />
+                <div className="group relative w-full">
+                    <label htmlFor={fieldId} className="sr-only">
+                        {placeholder}
+                    </label>
+                    <input
+                        type="text"
+                        id={fieldId}
+                        value={selected}
+                        placeholder={placeholder}
+                        onChange={(e) => setSingle(e.target.value)}
+                        aria-invalid={invalid || undefined}
+                        className={BARE_INPUT}
+                    />
+                    <Underline invalid={invalid} />
+                </div>
             );
     }
 }
