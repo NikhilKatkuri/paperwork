@@ -157,7 +157,7 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
                     className={cn(
                         'grid',
                         viewAsRow
-                            ? ''
+                            ? 'w-full'
                             : 'grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4'
                     )}
                 >

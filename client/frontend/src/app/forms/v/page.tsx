@@ -1,9 +1,7 @@
-'use client';
-
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 
 function page() {
-    notFound();
+    redirect('/user');
 }
 
 export default page;

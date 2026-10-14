@@ -1,6 +1,6 @@
 import Dexie, { Table } from 'dexie';
 
-export interface SyncQueueDB {
+export interface SyncQueueDBType {
     id: string;
 
     formId: string;
@@ -16,8 +16,8 @@ export interface SyncQueueDB {
     synced: boolean;
 }
 
-export class syncQueueDB extends Dexie {
-    syncQueue!: Table<SyncQueueDB>;
+export class SyncQueueDB extends Dexie {
+    syncQueue!: Table<SyncQueueDBType>;
 
     constructor() {
         super('sync-queue-db');
@@ -38,4 +38,5 @@ export class syncQueueDB extends Dexie {
     }
 }
 
-export const db = new syncQueueDB();
+const syncQueueDB = new SyncQueueDB();
+export default syncQueueDB;

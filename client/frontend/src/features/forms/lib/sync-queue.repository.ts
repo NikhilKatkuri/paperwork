@@ -1,4 +1,6 @@
-import { db, SyncQueueDB } from './sync-queue.db';
+import syncQueueDB, { SyncQueueDBType } from './sync-queue.db';
+
+const db = syncQueueDB;
 
 /**
  * Stable primary key for a queued change.
@@ -15,12 +17,12 @@ export function syncKey(formId: string, path: string): string {
  * `synced` is a boolean, which IndexedDB cannot index, so pending/synced
  * selection has to happen in memory rather than through `where()`.
  */
-function byCreatedAt(a: SyncQueueDB, b: SyncQueueDB): number {
+function byCreatedAt(a: SyncQueueDBType, b: SyncQueueDBType): number {
     return a.createdAt - b.createdAt;
 }
 
 export class SyncQueueRepository {
-    async add(item: SyncQueueDB) {
+    async add(item: SyncQueueDBType): Promise<void> {
         return db.syncQueue.put(item);
     }
 
@@ -44,11 +46,13 @@ export class SyncQueueRepository {
         if (!ids.length) return;
 
         await db.transaction('rw', db.syncQueue, async () => {
-            for (const id of ids) {
-                await db.syncQueue.update(id, {
-                    synced: true,
-                });
-            }
+            await Promise.all(
+                ids.map((id) =>
+                    db.syncQueue.update(id, {
+                        synced: true,
+                    })
+                )
+            );
         });
     }
 
@@ -65,7 +69,7 @@ export class SyncQueueRepository {
         await db.syncQueue.where('formId').equals(formId).delete();
     }
 
-    async bulkUpsert(items: SyncQueueDB[]) {
+    async bulkUpsert(items: SyncQueueDBType[]) {
         if (!items.length) return;
 
         await db.transaction('rw', db.syncQueue, async () => {

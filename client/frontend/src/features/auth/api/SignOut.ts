@@ -9,6 +9,8 @@ import { SignOutResponse, ApiResponse } from '@/auth/types/';
 import storage_buckets from '@/config';
 import { redirect } from 'next/navigation';
 import { toast } from 'sonner';
+import { db } from '@/lib/db';
+import syncQueueDB from '@/features/forms/lib/sync-queue.db';
 
 function useSignOut() {
     const [loading, setLoading] = useState<boolean>(false);
@@ -23,6 +25,8 @@ function useSignOut() {
             if (res.status === 200 || res.status === 201) {
                 localStorage.removeItem(storage_buckets.profile);
                 localStorage.removeItem(storage_buckets.cloudinary);
+                await db.forms.clear();
+                await syncQueueDB.syncQueue.clear();
                 toast.loading(
                     'Your session has expired. Please sign in again to continue.',
                     { duration: 2000, position: 'top-center' }

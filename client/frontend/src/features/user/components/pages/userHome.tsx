@@ -5,6 +5,7 @@ import UserForms from '../../../common/ui/UserForms';
 import UserFab from '../../../common/ui/userFab';
 import UserHeader from '../ui/UserHeader';
 import UserTemplateList from '../ui/UserTemplateList';
+import { useAuth } from '@/providers';
 
 /**
  * Short terms settle fast so the box feels instant; longer ones wait, because
@@ -17,6 +18,12 @@ function UserHome() {
     // on - filtering per keystroke re-renders every card for no benefit.
     const [query, setQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
+
+    const {publicProfile} = useAuth();
+    
+    useEffect(()=>{
+        document.title = `Paperwork ${publicProfile ? '| ' + publicProfile.fullName :"" }`;
+    },[publicProfile]);
 
     useEffect(() => {
         const timer = setTimeout(

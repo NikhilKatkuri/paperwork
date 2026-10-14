@@ -60,7 +60,7 @@ function getExpiryMs(token: string): number | null {
     }
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     const auth = useAuthLogic();
     const { handleRefreshToken } = auth.refreshToken;
 

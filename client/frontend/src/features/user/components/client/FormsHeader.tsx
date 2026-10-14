@@ -21,9 +21,9 @@ function ViewFormsHeader({
             </div>
             <div
                 className={cn(
-                    'grid items-center justify-end gap-4 max-md:grid-cols-[1fr_36px]',
+                    'grid items-center justify-end gap-4 px-4',
                     viewAsRow
-                        ? 'grid-cols-[1fr_36px] min-[900px]:grid-cols-[1fr_36px] xl:grid-cols-[1fr_160px]'
+                        ? 'md:grid-cols-[1fr_36px] min-[900px]:grid-cols-[1fr_36px] xl:grid-cols-[1fr_160px]'
                         : 'grid-cols-[1fr]'
                 )}
             >

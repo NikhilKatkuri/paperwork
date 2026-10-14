@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
- 
-const Page = () => {
-    redirect('/forms/c');
-};
 
-export default Page;
+function page() {
+    redirect('/user');
+}
+
+export default page;
