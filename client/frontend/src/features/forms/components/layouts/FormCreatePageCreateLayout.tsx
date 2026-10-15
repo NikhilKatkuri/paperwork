@@ -14,7 +14,7 @@ import {
     FORM_THEME_ATTR,
     FORM_THEMES,
     type FormThemeId,
-} from '@/lib/formTheme';
+} from '@/lib/formTheme'; 
 
 function Render({ _case }: Readonly<{ _case: Tabs }>) {
     switch (_case) {

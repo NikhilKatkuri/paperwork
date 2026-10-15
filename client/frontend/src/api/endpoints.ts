@@ -74,6 +74,10 @@ export const endpoints = {
     },
     forms: {
         allForms: { path: '/forms', method: 'GET' },
+        getFormById: (formId: string): EndpointConfig => ({
+            path: `/forms/${formId}`,
+            method: 'GET',
+        }),
         createForm: { path: '/forms', method: 'POST' },
         updateForm: (formId: string): EndpointConfig => ({
             path: `/forms/${formId}`,

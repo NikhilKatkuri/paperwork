@@ -28,15 +28,16 @@ import formRepository from '../repositories/formRepository';
 import { debounce } from '@/features/common/utils';
 import { syncQueueRepository, syncKey } from '../lib/sync-queue.repository';
 import { scheduleFlush, flushFormNow } from '../lib/sync-engine';
-import { SyncQueueDB } from '../lib/sync-queue.db';
+import { SyncQueueDBType } from '../lib/sync-queue.db';
 import { generateObjectId } from '../utils';
+import getFormServerById from '../api/user/getFormServer';
 
 const FormCreateContext = createContext<FormCreateContextValue | undefined>(
     undefined
 );
 
 async function queueChangedFields(oldForm: FormDB, newForm: FormDB) {
-    const operations: SyncQueueDB[] = [];
+    const operations: SyncQueueDBType[] = [];
 
     const compare = (path: string, oldValue: unknown, newValue: unknown) => {
         if (JSON.stringify(oldValue) === JSON.stringify(newValue)) return;
@@ -418,62 +419,85 @@ export function FormCreateProvider({
             skipNextSaveRef.current = true;
 
             try {
-                const formData = await formRepository.get(activeFormID);
-                if (!formData) return;
-                const { sections, questions, ...rest } = formData;
+                // 1. Try loading from local DB first for instant UI response
+                let formData = await formRepository.get(activeFormID);
 
-                setForm({
-                    name: rest.name,
-                    isPrivate: rest.isPrivate,
-                    isPublished: rest.isPublished,
-                    allowedDomains: rest.allowedDomains ?? [],
-                    settings: { ...rest.settings },
-                    responseCount: rest.responseCount ?? 0,
-                    // Forms saved before the theme existed have no value; the
-                    // base palette is the intended default.
-                    theme: rest.theme ?? DEFAULT_FORM_THEME,
-                } satisfies Required<FormCore>);
+                // Helper function to apply form, sections, and questions to state
+                const applyFormDataToState = (data: typeof formData) => {
+                    if (!data) return;
+                    const { sections, questions, ...rest } = data;
 
-                // Records cached before sections carried an `_id` would be
-                // rejected by the bulk sync, so repair them on the way in.
-                // The save effect persists the repaired ids.
-                const withIds = <T extends { _id?: string }>(rows: T[]): T[] =>
-                    rows.map((row) =>
-                        row?._id ? row : { ...row, _id: generateObjectId() }
-                    );
+                    setForm({
+                        name: rest.name,
+                        isPrivate: rest.isPrivate,
+                        isPublished: rest.isPublished,
+                        allowedDomains: rest.allowedDomains ?? [],
+                        settings: { ...rest.settings },
+                        responseCount: rest.responseCount ?? 0,
+                        theme: rest.theme ?? DEFAULT_FORM_THEME,
+                    } satisfies Required<FormCore>);
 
-                if (sections?.length) {
-                    const sectionMap = new Map<number, SectionCore>();
+                    const withIds = <T extends { _id?: string }>(
+                        rows: T[]
+                    ): T[] =>
+                        rows.map((row) =>
+                            row?._id ? row : { ...row, _id: generateObjectId() }
+                        );
 
-                    withIds(sections)
-                        .sort((a, b) => a.index - b.index)
-                        .forEach((section) => {
-                            sectionMap.set(section.index, section);
+                    if (sections?.length) {
+                        const sectionMap = new Map<number, SectionCore>();
+                        withIds(sections)
+                            .sort((a, b) => a.index - b.index)
+                            .forEach((section) => {
+                                sectionMap.set(section.index, section);
+                            });
+                        setSections(sectionMap);
+                        nextSectionIndexRef.current = sectionMap.size;
+                    }
+
+                    if (questions?.length) {
+                        const questionMap = new Map<number, QuestionCore>();
+                        withIds(questions).forEach((question, id) => {
+                            questionMap.set(id, question);
                         });
+                        setQuestions(questionMap);
+                        nextQuestionIndexRef.current = questionMap.size;
+                    }
+                };
 
-                    setSections(sectionMap);
-                    nextSectionIndexRef.current = sectionMap.size;
+                // If local data exists, render it immediately
+                if (formData) {
+                    applyFormDataToState(formData);
                 }
 
-                if (questions?.length) {
-                    const questionMap = new Map<number, QuestionCore>();
+                // 2. Always fetch from the server every time (passing local updatedAt for silent merging)
+                const serverData = await getFormServerById(
+                    activeFormID
+                );
 
-                    withIds(questions).forEach((question, id) => {
-                        questionMap.set(id, question);
-                    });
+                if (serverData) {
+                    formData = {
+                        ...serverData,
+                    };
+                    console.log('Fetched form from server:', formData);
+                    // Seed/Update local repository with the fresh server data
+                    await formRepository.update(formData._id,formData);
 
-                    setQuestions(questionMap);
-                    nextQuestionIndexRef.current = questionMap.size;
+                    // Re-apply the fresh server data to state
+                    applyFormDataToState(formData);
+                }
+
+                if (!formData) {
+                    return;
                 }
             } catch (error) {
-                console.error('Error loading form from DB:', error);
+                console.error('Error loading form from DB or server:', error);
             } finally {
                 isLoadedRef.current = true;
             }
         }
         void loadFormFromDB();
     }, [activeFormID]);
-
     /**
      * form Saving
      * save form to DB with debounce
