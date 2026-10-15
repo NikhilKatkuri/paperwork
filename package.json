@@ -1,0 +1,44 @@
+{
+  "name": "paperwork",
+  "version": "1.0.0",
+  "description": "A high-performance monorepo workspace for paperwork processing and web applications.",
+  "private": true,
+  "type": "module",
+  "author": "Katkuri Nikhil <https://github.com/nikhilKatkuri>",
+  "license": "ISC",
+  "homepage": "https://github.com/nikhilKatkuri/paperwork#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nikhilKatkuri/paperwork.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nikhilKatkuri/paperwork/issues"
+  },
+  "keywords": [
+    "monorepo",
+    "turborepo",
+    "pnpm",
+    "paperwork",
+    "typescript"
+  ],
+ "packageManager": "pnpm@9.15.9",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^9.15.9",
+      "onFail": "download"
+    }
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "check-types": "turbo run check-types",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "clean": "turbo run clean && rimraf node_modules .turbo"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.8"
+  }
+}

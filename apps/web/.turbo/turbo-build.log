@@ -1,0 +1,47 @@
+
+> @paperwork/web@0.2.0 build /home/nikhil/developer/StartifyMinds/paperwork/apps/web
+> next build
+
+[1m[38;2;173;127;168m▲ Next.js 16.2.9[39m[22m (Turbopack)
+- Environments: .env
+
+[37m[1m [22m[39m Creating an optimized production build ...
+[32m[1m✓[22m[39m Compiled successfully in 5.4s
+[?25l[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[?25h[?25l[37m[1m [22m[39m Finished TypeScript in 7.1s  [36m.[39m[2K[1G[?25h[37m[1m [22m[39m Finished TypeScript in 7.1s    [32m[1m✓[22m[39m Finished TypeScript in 7.1s 
+[?25l[37m[1m [22m[39m Collecting page data using 7 workers  [36m.[39m[2K[1G[37m[1m [22m[39m Collecting page data using 7 workers  [36m..[39m[2K[1G[37m[1m [22m[39m Collecting page data using 7 workers  [36m...[39m[2K[1G[37m[1m [22m[39m Collecting page data using 7 workers  [36m.[39m[2K[1G[37m[1m [22m[39m Collecting page data using 7 workers  [36m..[39m[2K[1G[37m[1m [22m[39m Collecting page data using 7 workers  [36m...[39m[2K[1G[37m[1m [22m[39m Collecting page data using 7 workers  [36m.[39m[2K[1G[?25h[37m[1m [22m[39m Collecting page data using 7 workers in 1364ms    [32m[1m✓[22m[39m Collecting page data using 7 workers in 1364ms 
+[?25l[37m[1m [22m[39m Generating static pages using 7 workers (0/23)  [36m[    ][39m[2K[1G[37m[1m [22m[39m Generating static pages using 7 workers (0/23)  [36m[=   ][39m[2K[1G[37m[1m [22m[39m Generating static pages using 7 workers (0/23)  [36m[==  ][39m[2K[1G[37m[1m [22m[39m Generating static pages using 7 workers (16/23)  [36m[=== ][39m[2K[1G[?25h[32m[1m✓[22m[39m Generating static pages using 7 workers (23/23) in 712ms
+[?25l[37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G[?25h[37m[1m [22m[39m Finalizing page optimization in 23ms    [32m[1m✓[22m[39m Finalizing page optimization in 23ms 
+
+[4mRoute (app)[24m
+┌ ○ /
+├ ○ /_not-found
+├ ○ /apple-icon.png
+├ ○ /auth
+├ ○ /auth/change-password
+├ ○ /auth/forgot-password
+├ ○ /auth/reset-password
+├ ƒ /auth/reset-password/[token]
+├ ○ /auth/signin
+├ ○ /auth/signin/2fa
+├ ○ /auth/signup
+├ ○ /forms
+├ ○ /forms/c
+├ ƒ /forms/c/[id]
+├ ○ /forms/v
+├ ƒ /forms/v/[id]
+├ ○ /icon.png
+├ ○ /user
+├ ○ /user/profile
+├ ○ /user/settings
+├ ○ /user/settings/account-settings
+├ ○ /user/settings/edit-profile
+├ ○ /user/settings/password
+└ ○ /user/settings/security
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+[?25h

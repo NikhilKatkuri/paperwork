@@ -18,7 +18,7 @@ Paperwork treats the form as **data**. A schema describes the fields, rules and 
 
 ```mermaid
 flowchart LR
-    A[Web client<br/>client/frontend] -->|HTTP| B[API server<br/>server]
+    A[Web client<br/>apps/web] -->|HTTP| B[API server<br/>apps/server]
     B --> C[(MongoDB 7<br/>replica set rs0)]
     B --> D[(Redis 8)]
     D --> E[BullMQ workers<br/>email + submissions]
@@ -28,19 +28,21 @@ flowchart LR
 
 ```
 paperwork/
-├── client/
-│   └── frontend/        # Next.js web client
-├── server/              # Express API server
-│   ├── docs/            # per-module API notes
-│   └── src/
-│       ├── config/      # env config, CORS, rate-limit presets
-│       ├── middleware/  # requestId, httpLogger, securityAudit, protect, …
-│       ├── modules/     # auth, forms, signatures
-│       ├── queues/      # BullMQ queue definitions
-│       ├── redis/       # cache, form search index, trend engine
-│       ├── utils/       # logger, sanitiser, request metadata
-│       └── workers/     # email + submission workers
-└── docker-compose.yml   # local MongoDB + Redis
+├── apps/
+│   ├── web/               # Next.js web client (@paperwork/web)
+│   └── server/            # Express API server (@paperwork/server)
+│       ├── docs/          # per-module API notes
+│       └── src/
+│           ├── config/    # env config, CORS, rate-limit presets
+│           ├── middleware/# requestId, httpLogger, securityAudit, protect, …
+│           ├── modules/   # auth, forms, signatures
+│           ├── queues/    # BullMQ queue definitions
+│           ├── redis/     # cache, form search index, trend engine
+│           ├── utils/     # logger, sanitiser, request metadata
+│           └── workers/   # email + submission workers
+├── packages/              # Shared internal packages
+├── pnpm-workspace.yaml    # Workspace configuration
+└── docker-compose.yml     # local MongoDB + Redis
 ```
 
 ---
@@ -225,7 +227,7 @@ Form definitions and responses are variable-shaped documents — a question carr
 **Why Redis?**
 Three distinct jobs: an L2 cache in front of MongoDB for form payloads and the search index, the BullMQ connection for email and submission workers, and the form search index itself.
 
-**Why a monorepo with separate `client` and `server`?**
+**Why a monorepo with separate `web` and `server` apps?**
 The two deploy and version independently, have different toolchains and dependency trees, and the API is a contract rather than an implementation detail of the UI.
 
 **Why winston and morgan together?**
@@ -242,7 +244,7 @@ Morgan already owns the request lifecycle and handles the `finish`/`close` edge 
 | `server` | `pnpm format` / `format:check` | Prettier |
 | `server` | `pnpm seed:demo` | Seed a published demo form |
 | `server` | `pnpm update:disposable` | Refresh disposable-email blocklist |
-| `client/frontend` | `pnpm dev` / `build` / `lint` | Client |
+| `web` | `pnpm dev` / `build` / `lint` | Next.js web client |
 
 
 ## Performance

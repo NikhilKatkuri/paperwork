@@ -1,9 +1,10 @@
 import type { NextConfig } from 'next';
-
+import path from 'node:path';
+ 
 const nextConfig: NextConfig = {
-    allowedDevOrigins: ['192.168.31.8','172.19.0.1'],
+    allowedDevOrigins: ['192.168.31.8'],
     turbopack: {
-        root: __dirname,
+        root: path.resolve(process.cwd(), '../../'),
     },
     images: {
         remotePatterns: [
@@ -18,13 +19,7 @@ const nextConfig: NextConfig = {
                 hostname: '192.168.31.8',
                 port: '3000',
                 pathname: '/**',
-            },
-                        {
-                protocol: 'http',
-                hostname: '172.19.0.1',
-                port: '3000',
-                pathname: '/**',
-            },
+            }
         ],
     },
 };
