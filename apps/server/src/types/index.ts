@@ -1,3 +1,5 @@
+export * from './types.document';
+
 type Origins = { env: 'dev'; urls: string[] } | { env: 'prod'; urls: string[] };
 
 export type LoggerLevel =

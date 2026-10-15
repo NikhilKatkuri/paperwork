@@ -5,10 +5,10 @@ import { AppError } from '@/utils/AppError';
 import {
     userAccountDeactivationStatus,
     userAccountDeletedStatus,
-} from '../constants/enums';
-import { AccountActionService } from '../types/auth.types';
-import { SensitiveData } from '../types/profile.auth';
+} from '@paperwork/types';
+
 import UserRepoBoot from '../repository/user.repository';
+import { AccountActionService, SensitiveData } from '@paperwork/types';
 
 class UserService {
     private readonly accountDeletionPeriodInDays = 30 * 24 * 60 * 60 * 1000;
@@ -166,7 +166,6 @@ class UserService {
 
             if (method === 'update') {
                 profile.sensitiveData ??= {} as SensitiveData;
-
                 Object.assign(profile.sensitiveData, data);
             } else {
                 profile.sensitiveData = data;

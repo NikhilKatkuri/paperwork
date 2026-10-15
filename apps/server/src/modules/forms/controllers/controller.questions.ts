@@ -19,6 +19,11 @@ class QuestionsController {
         }
     }
 
+    /**
+     * Get the content from the request
+     * @param req The request object
+     * @returns The content
+     */
     private getContent(req: Request) {
         const { id: userId } = req.user!;
         if (!userId) throw AppError.Unauthorized('User identity required');
@@ -37,6 +42,12 @@ class QuestionsController {
         };
     }
 
+    /**
+     * Create a new question
+     * @param req
+     * @param res
+     * @param next
+     */
     async create(req: Request, res: Response, next: NextFunction) {
         try {
             const { questionId, ...data } = this.getContent(req);

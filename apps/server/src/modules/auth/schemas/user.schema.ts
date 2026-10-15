@@ -1,11 +1,13 @@
-import { UserDocument } from '@/modules/auth/types/user.auth';
 import mongoose, { Schema } from 'mongoose';
 import {
     userAccountDeactivationStatus,
     userAccountDeletedStatus,
-} from '../constants/enums';
+    User,
+} from '@paperwork/types';
+import { MongooseDocument } from '@/types';
+import transform from '@/schemas/tranformer';
 
-export const userSchema = new Schema<UserDocument>(
+export const userSchema = new Schema<MongooseDocument<User>>(
     {
         email: { type: String, required: true, unique: true },
         passwordHash: { type: String, required: true },
@@ -32,6 +34,9 @@ export const userSchema = new Schema<UserDocument>(
 );
 
 userSchema.index({ resetToken: 1, resetExpires: 1 });
-const UserModel = mongoose.model<UserDocument>('User', userSchema);
+userSchema.index({ accountDeleteRequestedAt: 1, accountWillbeDeletedAt: 1 });
+
+userSchema.set('toJSON', { transform });
+const UserModel = mongoose.model<MongooseDocument<User>>('User', userSchema);
 
 export default UserModel;

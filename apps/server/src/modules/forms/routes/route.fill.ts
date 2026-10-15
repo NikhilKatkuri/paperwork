@@ -1,12 +1,12 @@
 import express from 'express';
 import FillController from '@/modules/forms/controllers/controller.fill';
+import validate from '@/middleware/validate';
 import {
     fillFormSchema,
     postFormSchema,
+    responseIdSchema,
     responsesQuerySchema,
-} from '@/modules/forms/validators/validator.question';
-import validate from '@/middleware/validate';
-import { responseIdSchema } from '../validators/validator.fill';
+} from '../validators/validator.fill';
 import protect from '@/middleware/protect';
 import { lowLimiter } from '@/middleware/limiter';
 

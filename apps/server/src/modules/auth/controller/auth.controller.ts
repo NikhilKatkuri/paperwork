@@ -2,7 +2,7 @@ import { NextFunction, Response, Request } from 'express';
 import statusCodes from 'http-status-codes';
 import { AppError } from '@/utils/AppError';
 import TokenBoot from '../service/token.service';
-import { TokenPayload } from '../types/token.types';
+import { TokenPayload } from '@paperwork/types';
 import { AutoBoundController } from '@/utils/AutoBoundClass';
 import AuthServiceBoot from '@/modules/auth/service/auth.service';
 import userAgentService from '../service/userAgent.service';

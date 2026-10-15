@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { COUNTRIES, GENDERS, LANGUAGES } from '../constants/enums';
+import { COUNTRIES, GENDERS, LANGUAGES } from '@paperwork/types';
 
 export const signInSchema = z.object({
     body: z.object({

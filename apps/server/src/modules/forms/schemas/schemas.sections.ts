@@ -1,49 +1,45 @@
+import { SectionDocument } from '@/types';
+import { SectionAction, SectionRule } from '@paperwork/types';
 import mongoose, { Schema } from 'mongoose';
-import { SectionDocument } from '@/types/form/Document';
-import { SectionAction, SectionDependsOn } from '@/types/form/forms';
-
-export const sectionActionEnum = [
-    'NEXT_SECTION',
-    'GO_TO_SECTION',
-    'SUBMIT_FORM',
-] as const;
+import transform from '@/schemas/tranformer';
 
 const sectionActionSchema = new Schema<SectionAction & { sectionId?: string }>(
     {
-        actionType: {
+        type: {
             type: String,
-            enum: sectionActionEnum,
+            enum: ['NEXT_SECTION', 'GO_TO_SECTION', 'SUBMIT_FORM'],
             required: true,
             default: 'NEXT_SECTION',
         },
-        sectionId: {
+        targetSectionId: {
             type: String,
-            required: function (this: { actionType: string }) {
-                return this.actionType === 'GO_TO_SECTION';
+            required: function (this: { type: string }) {
+                return this.type === 'GO_TO_SECTION';
             },
         },
     },
     { _id: false }
 );
 
-const onAnswerSchema = new Schema<SectionDependsOn>(
-    {
-        questionId: { type: String, required: true },
-        value: { type: String, required: true },
-        action: { type: sectionActionSchema, required: true },
+const rulesSchema = new Schema<SectionRule>({
+    questionId: { type: String, required: true },
+    operator: {
+        type: String,
+        enum: ['EQUALS', 'NOT_EQUALS', 'CONTAINS', 'GREATER_THAN', 'LESS_THAN'],
+        required: true,
     },
-    { _id: false }
-);
+    expectedValue: { type: Schema.Types.Mixed, required: true },
+    action: { type: sectionActionSchema, required: true },
+});
 
 const sectionSchema = new Schema<SectionDocument>(
     {
         formId: { type: String, required: true, index: true },
-        index: { type: Number, required: true, min: 0 },
 
+        index: { type: Number, required: true, min: 0 },
         title: { type: String, required: true, maxlength: 200 },
         description: { type: String, required: false, maxlength: 1000 },
-
-        onAnswer: { type: [onAnswerSchema], default: [] },
+        rules: { type: [rulesSchema], default: [], required: false },
         defaultAction: { type: sectionActionSchema, required: false },
     },
     {
@@ -52,21 +48,21 @@ const sectionSchema = new Schema<SectionDocument>(
 );
 
 sectionSchema.pre('validate', function (this: SectionDocument) {
-    const selfId = this._id?.toString();
-    if (!selfId) return;
+    if (!this._id) return;
+    const selfId: string = this._id.toHexString();
 
     if (
-        this.defaultAction?.actionType === 'GO_TO_SECTION' &&
-        this.defaultAction?.sectionId === selfId
+        this.defaultAction?.type === 'GO_TO_SECTION' &&
+        this.defaultAction?.targetSectionId === selfId
     ) {
         throw new Error(
             'A section cannot navigate to itself via defaultAction'
         );
     }
-    for (const rule of this.onAnswer ?? []) {
+    for (const rule of this.rules ?? []) {
         if (
-            rule.action?.actionType === 'GO_TO_SECTION' &&
-            rule.action?.sectionId === selfId
+            rule.action?.type === 'GO_TO_SECTION' &&
+            rule.action?.targetSectionId === selfId
         ) {
             throw new Error('A section cannot navigate to itself via onAnswer');
         }
@@ -75,10 +71,6 @@ sectionSchema.pre('validate', function (this: SectionDocument) {
 
 sectionSchema.index({ formId: 1, index: 1 });
 
-const transform = (_doc: unknown, ret: Record<string, any>) => {
-    Reflect.deleteProperty(ret, '__v');
-    return ret;
-};
 sectionSchema.set('toObject', { transform });
 sectionSchema.set('toJSON', { transform });
 

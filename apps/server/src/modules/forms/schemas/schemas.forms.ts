@@ -1,7 +1,7 @@
-import { FormDocument } from '@/types/form/Document';
-import { FormSettings } from '@/types/form/forms';
+import { FormSettings, FORM_THEMES } from '@paperwork/types';
 import mongoose, { Schema } from 'mongoose';
-import { FORM_THEMES } from '@/types/form/themes';
+import { FormDocument } from '@/types';
+import transform from '@/schemas/tranformer';
 
 const FormsSettingSchema = new Schema<FormSettings>(
     {
@@ -43,10 +43,6 @@ const formsSchema = new Schema<FormDocument>(
         isPrivate: { type: Boolean, default: false },
         isPublished: { type: Boolean, default: false },
         allowedDomains: { type: [String], default: undefined },
-        /**
-         * Per-form colour theme, matching a `[data-form-theme]` block in the
-         * client stylesheet. `default` means the base palette.
-         */
         theme: { type: String, enum: FORM_THEMES, default: 'default' },
 
         settings: { type: FormsSettingSchema, default: () => ({}) },
@@ -66,12 +62,9 @@ formsSchema.pre('save', function () {
 });
 
 formsSchema.index({ userId: 1, createdAt: -1 });
-formsSchema.set('toObject', {
-    transform: (_, ret) => {
-        Reflect.deleteProperty(ret, '__v');
-        return ret;
-    },
-});
+
+formsSchema.set('toObject', { transform });
+formsSchema.set('toJSON', { transform });
 
 const FormsModel = mongoose.model<FormDocument>('Form', formsSchema);
 

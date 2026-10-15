@@ -12,11 +12,11 @@ import {
     lowLimiter,
 } from '@/middleware/limiter';
 import {
+    bulkPutFormSchema,
     formSchema,
     getFormSchema,
     patchRequestFormSchema,
     putRequestFormSchema,
-    bulkPutFormSchema,
     searchFormsSchema,
 } from '../validators/validator.form';
 

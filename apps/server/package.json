@@ -17,6 +17,7 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "@paperwork/types": "workspace:*",
         "argon2": "^0.44.0",
         "bullmq": "^5.77.6",
         "cloudinary": "^2.10.0",

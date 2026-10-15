@@ -4,20 +4,37 @@ import FormsModel from '@/modules/forms/schemas/schemas.forms';
 import SectionModel from '@/modules/forms/schemas/schemas.sections';
 import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
 import UserModel from '@/modules/auth/schemas/user.schema';
-import { FormCore, FormEntity, GetAllOptions } from '@/types/form/forms';
+import {
+    Form,
+    FormDto,
+    FormEntity,
+    FormEntityDto,
+    PaginationOptions,
+    QuestionDto,
+    SectionDto,
+} from '@paperwork/types';
 import { emailQueue } from '@/queues';
 import fieldsValidator from '../validators/validator.feilds';
 import { formIndexCache } from '@/redis/formIndex';
+import { FormDocument } from '@/types';
 
 class FormsService {
-    async create(data: FormCore, userId: string) {
-        const { settings, ...rest } = data;
+    /**
+     * @description Create a new form for a user.
+     * @param data: @Form
+     * @returns @Form
+     */
+
+    async create(data: Form): Promise<FormEntityDto> {
+        const { settings, userId, ...rest } = data;
         const safeSettings = settings ?? {};
-        const form = await FormsModel.create({
+
+        const form: FormDocument = await FormsModel.create({
             ...rest,
-            settings: safeSettings,
             userId,
+            settings: safeSettings,
         });
+
         if (!form) {
             throw AppError.FormCreationFailed('Failed to create form');
         }
@@ -31,7 +48,7 @@ class FormsService {
             await emailQueue.add(
                 'sendFormCreatedEmail',
                 {
-                    formId: form._id.toString(),
+                    formId: form.toObject()._id,
                     formName: form.name,
                     email: user.email,
                 },
@@ -42,77 +59,88 @@ class FormsService {
             );
         }
 
-        return form.toObject();
+        return form.toObject() satisfies FormEntityDto;
     }
 
     /**
-     * Name search across the signed-in user's forms.
-     *
-     * Only `_id` and `name` are projected - enough to render a result row and
-     * fetch the form later, without pulling whole documents into a typeahead.
+     * @description Returns a form with its sections and questions, all in one object. The sections and questions are sorted by their `index` field.
+     * @param formId
+     * @param userId
+     * @returns @formDto
      */
+
+    async get(formId: string, userId: string): Promise<FormDto> {
+        const [form, sections, questions] = await Promise.all([
+            FormsModel.findOne({ _id: formId, userId }),
+            SectionModel.find({ formId }).sort({ index: 1 }),
+            QuestionsModel.find({ formId }).sort({ index: 1 }),
+        ]);
+
+        if (!form) {
+            throw AppError.FormNotFound('Form not found');
+        }
+
+        return {
+            ...(form.toObject() as unknown as FormDto),
+            sections: sections.map(
+                (s) => s.toObject() as unknown as SectionDto
+            ),
+            questions: questions.map(
+                (q) => q.toObject() as unknown as QuestionDto
+            ),
+        };
+    }
+
     /**
-     * Name search across the signed-in user's forms.
-     *
-     * Only `{_id, name}` is needed, so the whole per-user index is cached (see
-     * `formIndexCache`) and the filter runs in memory. That removes the regex
-     * against Mongo and makes a `name` index unnecessary at ordinary volumes,
-     * while keeping substring matching.
+     * @description Search for forms by name.
+     * @param userId
+     * @param q search query
+     * @param limit number of results to return, default 10
+     * @returns a list of forms matching the search query, or an empty list if no matches are found.
      */
-    async search(userId: string, q: string, limit: number = 10) {
+    async search(
+        userId: string,
+        q: string,
+        limit: number = 10
+    ): Promise<{ _id: string; name: string }[]> {
         const term = q.trim().toLowerCase();
 
         if (!term) return [];
 
         const safeLimit = Math.min(Math.max(1, Math.trunc(limit) || 10), 25);
 
-        const index = await formIndexCache.getOrLoad(userId, () =>
-            FormsModel.find({ userId })
+        const index = await formIndexCache.getOrLoad(userId, async () => {
+            // Use .lean() to get plain objects directly for optimal performance
+            const forms = await FormsModel.find({ userId })
                 .select('_id name')
                 .sort({ updatedAt: -1 })
-                .lean()
-                .then((rows) =>
-                    rows.map((row) => ({
-                        _id: String(row._id),
-                        name: row.name ?? '',
-                    }))
-                )
-        );
+                .lean();
 
-        return (
-            index
-                .filter((entry: { _id: string; name: string }) =>
-                    entry.name.toLowerCase().includes(term)
-                )
-                // The index is already newest-first from the loader, so filtering
-                // preserves that ordering.
-                .slice(0, safeLimit)
-        );
+            return forms.map((form) => ({
+                _id: String(form.toObject()._id),
+                name: form.name ?? '',
+            }));
+        });
+
+        return index
+            .filter((entry: { _id: string; name: string }) =>
+                entry.name.toLowerCase().includes(term)
+            )
+            .slice(0, safeLimit);
     }
 
     /**
-     * A single form with its body.
-     *
-     * Sections and questions are returned flat, matching the shape the bulk
-     * endpoint accepts, so a client can hydrate its local cache in one request
-     * instead of fanning out over the section and question routers.
+     * @description Deletes a form and all its sections and questions in a single transaction.
+     * - If the form does not exist, throws a FormNotFound error.
+     * - If the deletion fails, throws a FormDeletionFailed error.
+     * - Invalidates the form index cache for the user after successful deletion.
+     * @param formId
+     * @param userId
+     * @return void
+     * @throws AppError.FormNotFound if the form does not exist.
+     * @throws AppError.FormDeletionFailed if the deletion fails.
+     * @throws AppError.Internal for any other unexpected errors.
      */
-    async get(formId: string, userId: string) {
-        const form = await FormsModel.findOne({ _id: formId, userId })
-            .select('-__v')
-            .lean();
-        if (!form) {
-            throw AppError.FormNotFound('Form not found');
-        }
-
-        const [sections, questions] = await Promise.all([
-            SectionModel.find({ formId }).sort({ index: 1 }).lean(),
-            QuestionsModel.find({ formId }).sort({ index: 1 }).lean(),
-        ]);
-
-        return { form, sections, questions };
-    }
-
     async delete(formId: string, userId: string) {
         const session = await mongoose.startSession();
         session.startTransaction();
@@ -134,7 +162,6 @@ class FormsService {
 
             await session.commitTransaction();
 
-            // The form is gone, so the cached id/name index is stale.
             await formIndexCache.invalidate(userId);
         } catch (error) {
             await session.abortTransaction();
@@ -148,7 +175,16 @@ class FormsService {
         }
     }
 
-    async put(updateData: FormCore, userId: string, formId: string) {
+    /**
+     * @description Updates a form.
+     * @param updateData The data to update the form with.
+     * @param userId The ID of the user who owns the form.
+     * @param formId The ID of the form to update.
+     * @return A promise that resolves to the updated form.
+     * @throws AppError.FormNotFound if the form does not exist.
+     * @throws AppError.BadRequest if no update data is provided.
+     */
+    async put(updateData: Form, userId: string, formId: string) {
         const form = await FormsModel.findOne({ _id: formId, userId });
         if (!form) throw AppError.FormNotFound('Form not found');
 
@@ -156,6 +192,8 @@ class FormsService {
             throw AppError.BadRequest('No update data provided');
 
         form.set(fieldsValidator.getSafeFormData(updateData));
+        form.__v = form.__v + 1;
+
         await form.save();
 
         if (updateData.name !== undefined) {
@@ -165,22 +203,30 @@ class FormsService {
         return form.toObject();
     }
 
-    async bulkPut(updateData: FormEntity, userId: string, formId: string) {
+    /**
+     * @description Updates a form and its sections and questions in a single transaction.
+     * @param updateData The data to update the form with, including sections and questions.
+     * @param userId The ID of the user who owns the form.
+     * @param formId The ID of the form to update.
+     * @return A promise that resolves to the updated form with its sections and questions.
+     * @throws AppError.FormNotFound if the form does not exist.
+     * @throws AppError.Internal if the update fails for any reason.
+     */
+    async bulkPut(updateData: FormDto, userId: string, formId: string) {
         const { sections = [], questions = [], ...rest } = updateData;
 
         const safeFormData = fieldsValidator.getSafeFormData(rest);
 
         const safeSections = sections.map((section) => ({
-            _id: section._id,
+            _id: section.id,
             formId,
             ...fieldsValidator.getSafeSectionData(section),
         }));
 
         const safeQuestions = questions.map((question) => ({
-            _id: question._id,
+            _id: question.id,
+            ...fieldsValidator.getSafeQuestionData(question),
             formId,
-            // `getSafeQuestionData` only picks schema-owned content fields, so
-            // the section link has to be re-attached here or it is lost.
             sectionId: question.sectionId,
             ...fieldsValidator.getSafeQuestionData(question),
         }));
@@ -261,7 +307,20 @@ class FormsService {
         }
     }
 
-    async patch(updateData: Partial<FormCore>, userId: string, formId: string) {
+    /**
+     * @description Updates a form.
+     * @param updateData The data to update the form with.
+     * @param userId The ID of the user who owns the form.
+     * @param formId The ID of the form to update.
+     * @return A promise that resolves to the updated form.
+     * @throws AppError.FormNotFound if the form does not exist.
+     * @throws AppError.BadRequest if no update data is provided.
+     */
+    async patch(
+        updateData: Partial<Form>,
+        userId: string,
+        formId: string
+    ): Promise<FormEntity> {
         const form = await FormsModel.findOne({ _id: formId, userId });
 
         if (!form) throw AppError.FormNotFound('Form not found');
@@ -279,6 +338,7 @@ class FormsService {
         }
 
         form.set(filteredUpdate);
+        form.__v = form.__v + 1;
         await form.save();
 
         if (updateData.name !== undefined) {
@@ -362,7 +422,7 @@ class FormsService {
                 throw AppError.FormCreationFailed('Failed to duplicate form');
             }
 
-            const newFormId = duplicatedForm._id.toString();
+            const newFormId = duplicatedForm._id.toHexString();
 
             const [sections, questions] = await Promise.all([
                 SectionModel.find({ formId }).lean(),
@@ -383,8 +443,8 @@ class FormsService {
                 newSections.forEach((newSection, i) => {
                     if (sections[i]) {
                         sectionIdMap.set(
-                            sections[i]._id.toString(),
-                            newSection._id.toString()
+                            sections[i]._id.toHexString(),
+                            newSection._id.toHexString()
                         );
                     }
                 });
@@ -405,7 +465,6 @@ class FormsService {
 
             await session.commitTransaction();
 
-            // A new form was added to this user's index.
             await formIndexCache.invalidate(userId);
             return duplicatedForm.toObject();
         } catch (error) {
@@ -416,7 +475,16 @@ class FormsService {
         }
     }
 
-    async getAll(userId: string, options: GetAllOptions) {
+    /**
+     * @description Retrieves all forms for a user with pagination and optional filtering by last updated date.
+     * @param userId The ID of the user whose forms are to be retrieved.
+     * @param options Pagination options including `limit`, `page`, and optional `lastUpdated` date for filtering.
+     * @returns A promise that resolves to an array of FormEntityDto objects.
+     */
+    async getAll(
+        userId: string,
+        options: PaginationOptions
+    ): Promise<FormEntity[]> {
         const { limit, page, lastUpdated } = options;
         const skip = (page - 1) * limit;
 
@@ -424,18 +492,13 @@ class FormsService {
         if (lastUpdated) {
             query.updatedAt = { $gt: lastUpdated };
         }
+
         const forms = await FormsModel.find(query)
-            .select(
-                // Must match formsSchema - `title`/`description` are not
-                // fields, so selecting them silently dropped `name`.
-                'name isPublished isPrivate allowedDomains settings theme createdAt updatedAt __v'
-            )
             .sort({ updatedAt: -1 })
             .skip(skip)
-            .limit(limit)
-            .lean();
+            .limit(limit);
 
-        return forms;
+        return forms.map((form) => form.toObject());
     }
 }
 

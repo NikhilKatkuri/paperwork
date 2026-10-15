@@ -1,5 +1,5 @@
 import { createObjectCsvStringifier } from 'csv-writer';
-import { ResponseCore } from '@/types/form/forms';
+import { FormResponse } from '@paperwork/types';
 
 class FileService {
     constructor() {
@@ -19,7 +19,7 @@ class FileService {
     CSVExport(
         headers: string[],
         questionIdMap: Map<string, string>,
-        responses: ResponseCore[]
+        responses: FormResponse[]
     ) {
         const stringifier = createObjectCsvStringifier({
             header: headers.map((h) => ({ id: h, title: h })),
@@ -33,8 +33,8 @@ class FileService {
                 const questionText = questionIdMap.get(
                     answer.questionId.toString()
                 );
-                if (questionText) {
-                    record[questionText] = answer.values.join('; ');
+                if (questionText && Array.isArray(answer.value)) {
+                    record[questionText] = answer.value.join('; ');
                 }
             }
 

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { SectionCore } from '@/types/form/forms';
+import { Section } from '@paperwork/types';
 import { AppError } from '@/utils/AppError';
 import SectionModel from '@/modules/forms/schemas/schemas.sections';
 import FormsModel from '@/modules/forms/schemas/schemas.forms';
@@ -17,16 +17,18 @@ class SectionService {
         userId: string,
         session?: mongoose.ClientSession
     ) {
-        const form = await FormsModel.findOne({ _id: formId, userId })
-            .session(session || null)
-            .lean();
+        const formDocument = await FormsModel.findOne({
+            _id: formId,
+            userId,
+        }).session(session || null);
+        const form = formDocument?.toJSON();
         if (!form) {
             throw AppError.Unauthorized('Form not found or access denied');
         }
         return form;
     }
 
-    async create(userId: string, formId: string, data: SectionCore) {
+    async create(userId: string, formId: string, data: Section) {
         await this.authorizeForm(formId, userId);
         const sectionCount = await SectionModel.countDocuments({ formId });
 
@@ -36,7 +38,7 @@ class SectionService {
             index: sectionCount,
         });
 
-        return createdSection.toObject();
+        return createdSection.toJSON();
     }
 
     async delete(ids: I) {
@@ -65,7 +67,7 @@ class SectionService {
             ]);
 
             await session.commitTransaction();
-            return deletedSection.toObject();
+            return deletedSection.toJSON();
         } catch (error) {
             await session.abortTransaction();
             throw error;
@@ -74,7 +76,7 @@ class SectionService {
         }
     }
 
-    async update(ids: I, data: Partial<SectionCore>) {
+    async update(ids: I, data: Partial<Section>) {
         const { sectionId, formId, userId } = ids;
         await this.authorizeForm(formId, userId);
 
@@ -82,20 +84,17 @@ class SectionService {
             sectionId,
             data,
             { returnDocument: 'after', runValidators: true }
-        )
-            .select('-__v')
-            .lean();
+        );
         if (!updatedSection) {
             throw AppError.SectionNotFound('Section not found');
         }
-        return updatedSection;
+        return updatedSection.toJSON();
     }
 
     async get(formId: string, userId: string) {
         await this.authorizeForm(formId, userId);
-        return await SectionModel.find({ formId }).select('-__v').sort({
-            index: 1,
-        });
+        const sections = await SectionModel.find({ formId }).sort({ index: 1 });
+        return sections.map((section) => section.toJSON());
     }
 
     async getById(ids: I) {
@@ -105,14 +104,12 @@ class SectionService {
         const section = await SectionModel.findOne({
             _id: sectionId,
             formId,
-        })
-            .select('-__v')
-            .lean();
+        });
         if (!section) {
             throw AppError.SectionNotFound('Section not found');
         }
 
-        return section;
+        return section.toJSON();
     }
 
     async reorder(
@@ -144,9 +141,10 @@ class SectionService {
             await SectionModel.bulkWrite(operations, { session });
             await session.commitTransaction();
 
-            return await SectionModel.find({ formId })
-                .sort({ index: 1 })
-                .lean();
+            const sections = await SectionModel.find({ formId }).sort({
+                index: 1,
+            });
+            return sections.map((section) => section.toJSON());
         } catch (error) {
             await session.abortTransaction();
             throw error;

@@ -3,7 +3,7 @@ import { AppError } from '@/utils/AppError';
 import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
 import FormsModel from '@/modules/forms/schemas/schemas.forms';
 import SectionModel from '@/modules/forms/schemas/schemas.sections';
-import { QuestionCore } from '@/types/form/forms';
+import { Question } from '@paperwork/types';
 
 interface I {
     userId: string;
@@ -19,14 +19,18 @@ class QuestionService {
     ) {
         const { formId, sectionId, userId } = ids;
 
-        const form = await FormsModel.findOne({ _id: formId, userId })
-            .session(session || null)
-            .lean();
+        const formDocument = await FormsModel.findOne({
+            _id: formId,
+            userId,
+        }).session(session || null);
+        const form = formDocument?.toJSON();
         if (!form) throw AppError.Unauthorized('Form access denied');
 
-        const section = await SectionModel.findOne({ _id: sectionId, formId })
-            .session(session || null)
-            .lean();
+        const sectionDocument = await SectionModel.findOne({
+            _id: sectionId,
+            formId,
+        }).session(session || null);
+        const section = sectionDocument?.toJSON();
         if (!section) throw AppError.NotFound('Section not found in this form');
 
         return { form, section };
@@ -36,7 +40,7 @@ class QuestionService {
         userId: string;
         formId: string;
         sectionId: string;
-        data: QuestionCore;
+        data: Question;
     }) {
         const { formId, sectionId, userId, data: questionData } = params;
 
@@ -53,7 +57,7 @@ class QuestionService {
             index: questionCount,
         });
 
-        return createdQuestion.toObject();
+        return createdQuestion.toJSON();
     }
 
     async delete(ids: I) {
@@ -67,7 +71,7 @@ class QuestionService {
             const question = await QuestionsModel.findOneAndDelete(
                 { _id: questionId, formId, sectionId },
                 { session }
-            ).lean();
+            );
 
             if (!question) throw AppError.NotFound('Question not found');
 
@@ -86,7 +90,7 @@ class QuestionService {
         }
     }
 
-    async update(ids: I, data: Partial<QuestionCore>) {
+    async update(ids: I, data: Partial<Question>) {
         const { formId, sectionId, questionId, userId } = ids;
         await this.authorizeAccess({ formId, sectionId, userId });
 
@@ -94,12 +98,10 @@ class QuestionService {
             { _id: questionId, formId, sectionId },
             { $set: data },
             { returnDocument: 'after', runValidators: true }
-        )
-            .select('-__v')
-            .lean();
+        );
 
         if (!updatedQuestion) throw AppError.NotFound('Question not found');
-        return updatedQuestion;
+        return updatedQuestion.toJSON();
     }
     async get(ids: Omit<I, 'questionId'>) {
         const { formId, sectionId, userId } = ids;
@@ -107,14 +109,12 @@ class QuestionService {
         const questions = await QuestionsModel.find({
             formId,
             sectionId,
-        })
-            .sort({ index: 1 })
-            .select('-__v')
-            .lean();
+        }).sort({ index: 1 });
+
         if (!questions) {
             throw AppError.NotFound('Questions not found');
         }
-        return questions;
+        return questions?.map((q) => q?.toJSON());
     }
 
     async getById(ids: I) {
@@ -124,13 +124,11 @@ class QuestionService {
             _id: questionId,
             formId,
             sectionId,
-        })
-            .select('-__v')
-            .lean();
+        });
         if (!question) {
             throw AppError.NotFound('Question not found');
         }
-        return question;
+        return question.toJSON();
     }
 
     async reorder(ids: Omit<I, 'questionId'>, order: string[]) {
@@ -161,8 +159,7 @@ class QuestionService {
 
             return await QuestionsModel.find({ sectionId })
                 .sort({ index: 1 })
-                .select('-__v')
-                .lean();
+                .then((questions) => questions?.map((q) => q?.toJSON()));
         } catch (error) {
             await session.abortTransaction();
             throw error;
@@ -175,7 +172,7 @@ class QuestionService {
         userId: string;
         formId: string;
         sectionId: string;
-        data: QuestionCore[];
+        data: Question[];
     }) {
         const { formId, sectionId, userId, data: questionsData } = params;
         await this.authorizeAccess({ formId, sectionId, userId });
@@ -191,7 +188,7 @@ class QuestionService {
         }));
         const createdQuestions =
             await QuestionsModel.insertMany(questionsToCreate);
-        return createdQuestions.map((q) => q.toObject());
+        return createdQuestions.map((q) => q.toJSON());
     }
 }
 

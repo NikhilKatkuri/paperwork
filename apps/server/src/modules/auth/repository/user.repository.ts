@@ -1,9 +1,12 @@
 import AutoBoundClass from '@/utils/AutoBoundClass';
 import UserModel from '@/modules/auth/schemas/user.schema';
-import { User, UserDocument } from '../types/user.auth';
 import { UpdateQuery } from 'mongoose';
+import { MongooseDocument } from '@/types';
+import { User } from '@paperwork/types';
 
-class UserRepository<T extends object = UserDocument> extends AutoBoundClass {
+class UserRepository<
+    T extends object = MongooseDocument<User>,
+> extends AutoBoundClass {
     constructor() {
         super();
     }

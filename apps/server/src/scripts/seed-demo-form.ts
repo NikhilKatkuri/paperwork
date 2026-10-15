@@ -18,7 +18,7 @@ import FormsModel from '@/modules/forms/schemas/schemas.forms';
 import SectionModel from '@/modules/forms/schemas/schemas.sections';
 import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
 import UserModel from '@/modules/auth/schemas/user.schema';
-import type { FormDocument } from '@/types/form/Document';
+import { FormDocument } from '@/types';
 
 const DEMO_NAME = 'Customer feedback (demo)';
 

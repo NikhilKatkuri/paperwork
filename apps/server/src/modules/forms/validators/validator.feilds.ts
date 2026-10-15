@@ -1,10 +1,10 @@
 import {
-    FormCore,
+    Form,
     FormSettings,
-    QuestionCore,
-    SectionCore,
-    SectionDependsOn,
-} from '@/types/form/forms';
+    Question,
+    Section,
+    SectionRule,
+} from '@paperwork/types';
 
 class FieldsValidator {
     readonly formFields = [
@@ -15,7 +15,7 @@ class FieldsValidator {
         'settings',
         'responseCount',
         'theme',
-    ] as const satisfies readonly (keyof Required<FormCore>)[];
+    ] as const satisfies readonly (keyof Required<Form>)[];
 
     readonly formSettingsFields = [
         'maxResponses',
@@ -36,19 +36,20 @@ class FieldsValidator {
         'index',
         'title',
         'description',
-        'onAnswer',
+        'rules',
         'defaultAction',
-    ] as const satisfies readonly (keyof Required<SectionCore>)[];
+    ] as const satisfies readonly (keyof Required<Section>)[];
 
-    readonly sectionDependsOnKeys = [
+    readonly SectionRule = [
         'questionId',
-        'value',
+        'operator',
+        'expectedValue',
         'action',
-    ] as const satisfies readonly (keyof SectionDependsOn)[];
+    ] as const satisfies readonly (keyof SectionRule)[];
 
-    readonly sectionActionKeys = ['actionType', 'sectionId'] as const;
+    readonly sectionActionKeys = ['type', 'sectionId'] as const;
 
-    readonly questionCoreKeys = [
+    readonly questionKeys = [
         'index',
         'type',
         'question',
@@ -59,7 +60,7 @@ class FieldsValidator {
         'validationRule',
         'placeholder',
         'isRequired',
-    ] as const satisfies readonly (keyof Required<QuestionCore>)[];
+    ] as const satisfies readonly (keyof Required<Question>)[];
 
     readonly questionRatingConfigKeys = [
         'icon',
@@ -67,38 +68,34 @@ class FieldsValidator {
         'lowLabel',
         'highLabel',
     ] as const satisfies readonly (keyof Required<
-        NonNullable<QuestionCore['ratingConfig']>
+        NonNullable<Question['ratingConfig']>
     >)[];
 
     readonly optionConfigKeys = [
-        'correctAnswer',
+        'expectedAnswer',
         'options',
     ] as const satisfies readonly (keyof Required<
-        NonNullable<QuestionCore['optionsConfig']>
+        NonNullable<Question['optionsConfig']>
     >)[];
 
     readonly optionKeys = [
         'label',
         'index',
     ] as const satisfies readonly (keyof Required<
-        NonNullable<QuestionCore['optionsConfig']>['options'][number]
+        NonNullable<Question['optionsConfig']>['options'][number]
     >)[];
 
     readonly questionDependsOnKeys = [
         'questionId',
         'value',
     ] as const satisfies readonly (keyof Required<
-        NonNullable<QuestionCore['dependsOn']>
+        NonNullable<Question['dependsOn']>
     >)[];
 
     readonly fieldValidationRuleKeys = [
         'ruleType',
-        'value',
-        'min',
-        'max',
-        'pattern',
     ] as const satisfies readonly (keyof Required<
-        NonNullable<QuestionCore['validationRule']>
+        NonNullable<Question['validationRule']>
     >)[];
 
     private pickFields<T extends object, K extends readonly (keyof T)[]>(
@@ -122,7 +119,7 @@ class FieldsValidator {
         return this.pickFields(data, this.formSettingsFields);
     }
 
-    getSafeFormData(data: Partial<FormCore>) {
+    getSafeFormData(data: Partial<Form>) {
         const safeData = this.pickFields(data, this.formFields);
 
         if (safeData.settings) {
@@ -132,47 +129,44 @@ class FieldsValidator {
         return safeData;
     }
 
-    getSafeSectionData(data: Partial<SectionCore>) {
+    getSafeSectionData(data: Partial<Section>) {
         const safeData = this.pickFields(data, this.sectionFields);
 
         if (safeData.defaultAction) {
             let _d = {
-                actionType: safeData.defaultAction.actionType,
+                type: safeData.defaultAction.type,
                 sectionId: undefined as string | undefined,
             };
             if (
-                safeData.defaultAction?.actionType === 'GO_TO_SECTION' &&
-                safeData.defaultAction.sectionId
+                safeData.defaultAction.type === 'GO_TO_SECTION' &&
+                safeData.defaultAction.targetSectionId
             ) {
-                _d.sectionId = safeData.defaultAction.sectionId;
+                _d.sectionId = safeData.defaultAction.targetSectionId;
             }
 
-            safeData.defaultAction = _d as SectionCore['defaultAction'];
+            safeData.defaultAction = _d as Section['defaultAction'];
         }
 
-        if (safeData.onAnswer) {
-            safeData.onAnswer = safeData.onAnswer.map(
+        if (safeData.rules) {
+            safeData.rules = safeData.rules.map(
                 (dependsOn) =>
-                    this.pickFields(
-                        dependsOn,
-                        this.sectionDependsOnKeys
-                    ) as SectionDependsOn
+                    this.pickFields(dependsOn, this.SectionRule) as SectionRule
             );
         }
 
         return safeData;
     }
 
-    getSafeQuestionData(data: Partial<QuestionCore>) {
-        const safeData = this.pickFields(data, this.questionCoreKeys);
+    getSafeQuestionData(data: Partial<Question>) {
+        const safeData = this.pickFields(data, this.questionKeys);
 
         if (safeData.optionsConfig) {
             safeData.optionsConfig = {
-                correctAnswer: safeData.optionsConfig.correctAnswer,
+                expectedAnswer: safeData.optionsConfig.expectedAnswer,
                 options: safeData.optionsConfig.options.map(
                     (option) =>
                         this.pickFields(option, this.optionKeys) as NonNullable<
-                            QuestionCore['optionsConfig']
+                            Question['optionsConfig']
                         >['options'][number]
                 ),
             };
@@ -182,21 +176,23 @@ class FieldsValidator {
             safeData.dependsOn = this.pickFields(
                 safeData.dependsOn,
                 this.questionDependsOnKeys
-            ) as QuestionCore['dependsOn'];
+            ) as Question['dependsOn'];
         }
 
         if (safeData.ratingConfig) {
             safeData.ratingConfig = this.pickFields(
                 safeData.ratingConfig,
                 this.questionRatingConfigKeys
-            ) as QuestionCore['ratingConfig'];
+            ) as Question['ratingConfig'];
         }
 
         if (safeData.validationRule) {
             safeData.validationRule = this.pickFields(
-                safeData.validationRule,
+                safeData.validationRule as Partial<
+                    NonNullable<Question['validationRule']>
+                >,
                 this.fieldValidationRuleKeys
-            ) as QuestionCore['validationRule'];
+            ) as Question['validationRule'];
         }
 
         return safeData;

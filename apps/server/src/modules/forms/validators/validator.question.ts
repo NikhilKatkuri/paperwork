@@ -1,13 +1,11 @@
 import { z } from 'zod';
-
-import {
-    questionDataSchema,
-    questionTypesWithIndexSchema,
-    zodObjectId,
-} from './validator.common';
+import { questionDataSchema, zodObjectId } from './validator.common';
 
 export const getAllQuestionsSchema = z.object({
-    params: z.object({ formId: zodObjectId, sectionId: zodObjectId }),
+    params: z.object({
+        formId: zodObjectId,
+        sectionId: zodObjectId,
+    }),
 });
 
 export const getQuestionSchema = z.object({
@@ -18,22 +16,42 @@ export const getQuestionSchema = z.object({
     }),
 });
 
-export const questionSchema = questionDataSchema;
-
 export const createQuestionSchema = z.object({
-    body: z.object({ data: questionSchema }),
+    params: z.object({
+        formId: zodObjectId,
+        sectionId: zodObjectId,
+    }),
+    body: z.object({
+        data: questionDataSchema,
+    }),
 });
 
 export const bulkCreateQuestionSchema = z.object({
-    body: z.object({ data: z.array(questionSchema).min(1) }),
+    params: z.object({
+        formId: zodObjectId,
+        sectionId: zodObjectId,
+    }),
+    body: z.object({
+        data: z.array(questionDataSchema).min(1),
+    }),
 });
 
 export const updateQuestionSchema = z.object({
-    body: z.object({ data: questionSchema }),
+    params: z.object({
+        formId: zodObjectId,
+        sectionId: zodObjectId,
+        questionId: zodObjectId,
+    }),
+    body: z.object({
+        data: questionDataSchema,
+    }),
 });
 
 export const reorderQuestionSchema = z.object({
-    params: z.object({ formId: zodObjectId, sectionId: zodObjectId }),
+    params: z.object({
+        formId: zodObjectId,
+        sectionId: zodObjectId,
+    }),
     body: z.object({
         data: z.array(
             z.object({
@@ -43,7 +61,3 @@ export const reorderQuestionSchema = z.object({
         ),
     }),
 });
-
-export { questionTypesWithIndexSchema };
-export { fillFormSchema, postFormSchema } from './validator.fill';
-export { responsesQuerySchema } from './validator.fill';

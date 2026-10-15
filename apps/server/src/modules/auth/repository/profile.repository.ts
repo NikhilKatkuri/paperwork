@@ -1,9 +1,11 @@
 import AutoBoundClass from '@/utils/AutoBoundClass';
 import ProfileModel from '@/modules/auth/schemas/profile.schema';
-import { ProfileDocument } from '../types/profile.auth';
+import { MongooseDocument } from '@/types';
+import { Profile } from '@paperwork/types';
+import mongoose from 'mongoose';
 
 class ProfileRepository<
-    T extends object = ProfileDocument,
+    T extends object = MongooseDocument<Profile<mongoose.Types.ObjectId>>,
 > extends AutoBoundClass {
     constructor() {
         super();
@@ -13,9 +15,9 @@ class ProfileRepository<
         userId: string,
         selectFields: Record<string, 1 | 0> = {}
     ): Promise<T | null> {
-        return (await ProfileModel.findOne({ userId })
-            .select(selectFields)
-            .lean()) as T | null;
+        return (await ProfileModel.findOne({ userId }).select(
+            selectFields
+        )) as T | null;
     }
 
     async createProfile(userId: string): Promise<T> {
@@ -24,20 +26,18 @@ class ProfileRepository<
         return doc.toObject() as unknown as T;
     }
 
-    async updateProfile<P = any>(
+    async updateProfile(
         userId: string,
         updateData: Record<string, any>,
         selectFields: Record<string, 1 | 0> = {}
-    ): Promise<P | null> {
+    ): Promise<T | null> {
         const updatedProfile = await ProfileModel.findOneAndUpdate(
             { userId },
             updateData,
             { returnDocument: 'after', runValidators: true }
-        )
-            .select(selectFields)
-            .lean();
+        ).select(selectFields);
 
-        return updatedProfile as P | null;
+        return updatedProfile as T | null;
     }
 }
 

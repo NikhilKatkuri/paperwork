@@ -7,19 +7,40 @@ export const fillFormSchema = z.object({
     }),
 });
 
+export const answerValueSchema = z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+]);
+
 export const postFormSchema = z.object({
     params: z.object({
         formId: zodObjectId,
     }),
     body: z.object({
-        data: z.array(
-            z.object({
-                questionId: zodObjectId,
-                values: z
-                    .array(z.string())
-                    .min(1, 'At least one value is required'),
-            })
-        ),
+        idempotencyKey: z.string().min(1),
+        email: z.email().optional(),
+        answers: z
+            .array(
+                z.object({
+                    questionId: zodObjectId,
+                    questionSlug: z.string().optional(),
+                    value: answerValueSchema,
+                })
+            )
+            .min(1, 'At least one answer is required'),
+        metadata: z.object({
+            userAgent: z.string(),
+            ipAddress: z.string(),
+            browser: z.string().optional(),
+            os: z.string().optional(),
+            device: z.string().optional(),
+            country: z.string().optional(),
+            timeSpentSeconds: z.number().nonnegative().optional(),
+        }),
+        isCompleted: z.boolean().default(false),
+        currentSectionId: zodObjectId.optional(),
     }),
 });
 
@@ -33,12 +54,6 @@ export const responseIdSchema = z.object({
     }),
 });
 
-/**
- * Query for the paginated response list.
- *
- * `limit` is bounded here so a caller cannot ask for an unbounded page, and
- * `q` is length-capped before it reaches a `$regex`.
- */
 export const responsesQuerySchema = z.object({
     params: z.object({
         formId: zodObjectId,

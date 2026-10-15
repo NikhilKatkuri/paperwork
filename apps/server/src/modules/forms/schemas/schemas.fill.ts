@@ -1,4 +1,4 @@
-import { FormResponseDocument } from '@/types/form/Document';
+import { FormResponseDocument } from '@/types';
 import mongoose, { Schema } from 'mongoose';
 
 const metaDataSchema = new Schema<FormResponseDocument['metadata']>(
@@ -24,7 +24,11 @@ const AnswerEntrySchema = new Schema<FormResponseDocument['answers'][number]>(
             type: String,
             required: true,
         },
-        values: {
+        questionSlug: {
+            type: String,
+            required: false,
+        },
+        value: {
             type: [String],
             required: true,
         },

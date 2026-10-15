@@ -1,10 +1,9 @@
 import { z } from 'zod';
-
 import {
     fieldValidationRuleEnum,
     ratingIconEnum,
 } from '../schemas/schemas.questions';
-import { FORM_THEMES } from '@/types/form/themes';
+import { FORM_THEMES } from '@paperwork/types';
 
 export const zodObjectId = z
     .string()
@@ -30,6 +29,8 @@ export const formSettingsSchema = z
 export const formDataSchema = z
     .object({
         name: z.string().min(1).max(255),
+        description: z.string().max(5000).optional(),
+        accessCode: z.string().max(100).optional(),
         isPrivate: z.boolean().default(false),
         isPublished: z.boolean().default(false),
         allowedDomains: z.array(z.string()).optional(),
@@ -39,18 +40,25 @@ export const formDataSchema = z
     })
     .strict();
 
-export const sectionActionSchema = z.discriminatedUnion('actionType', [
-    z.object({ actionType: z.literal('NEXT_SECTION') }),
-    z.object({ actionType: z.literal('SUBMIT_FORM') }),
+export const sectionActionSchema = z.discriminatedUnion('type', [
+    z.object({ type: z.literal('NEXT_SECTION') }),
+    z.object({ type: z.literal('SUBMIT_FORM') }),
     z.object({
-        actionType: z.literal('GO_TO_SECTION'),
-        sectionId: zodObjectId,
+        type: z.literal('GO_TO_SECTION'),
+        targetSectionId: zodObjectId,
     }),
 ]);
 
-export const sectionDependsOnSchema = z.object({
+export const SectionRules = z.object({
     questionId: zodObjectId,
-    value: z.string().min(1),
+    operator: z.enum([
+        'EQUALS',
+        'NOT_EQUALS',
+        'CONTAINS',
+        'GREATER_THAN',
+        'LESS_THAN',
+    ]),
+    expectedValue: z.union([z.string(), z.number(), z.boolean()]),
     action: sectionActionSchema,
 });
 
@@ -60,7 +68,7 @@ export const sectionDataSchema = z
         title: z.string().min(1).max(255),
         description: z.string().max(5000).optional(),
         defaultAction: sectionActionSchema.optional(),
-        onAnswer: z.array(sectionDependsOnSchema).optional(),
+        rules: z.array(SectionRules).optional(),
     })
     .strict();
 
@@ -74,14 +82,33 @@ export const optionSchema = z.object({
     label: z.string().max(100),
 });
 
-export const optionsConfigSchema = z.object({
-    correctAnswer: z.string().optional(),
-    options: z.array(optionSchema).min(1),
+export const matrixRowSchema = z.object({
+    id: z.string(),
+    label: z.string(),
+});
+
+export const matrixColumnSchema = z.object({
+    id: z.string(),
+    label: z.string(),
+});
+
+export const matrixConfigSchema = z.object({
+    rows: z.array(matrixRowSchema),
+    columns: z.array(matrixColumnSchema),
+    allowMultiplePerColumn: z.boolean().optional(),
 });
 
 export const ratingConfigSchema = z.object({
     icon: z.enum(ratingIconEnum),
-    scale: z.union([z.literal(5), z.literal(10)]),
+    scale: z.union([
+        z.literal(3),
+        z.literal(4),
+        z.literal(5),
+        z.literal(6),
+        z.literal(7),
+        z.literal(8),
+        z.literal(9),
+    ]),
     lowLabel: z.string().max(50).optional(),
     highLabel: z.string().max(50).optional(),
 });
@@ -96,69 +123,80 @@ export const validationRuleSchema = z.object({
 });
 
 export const QuestionBaseSchema = z.object({
+    slug: z.string().min(1),
+    index: z.number().int().nonnegative(),
     question: z.string().min(1).max(1000),
     helpText: z.string().max(500).optional(),
     dependsOn: dependsOnSchema.optional(),
     validationRule: validationRuleSchema.optional(),
     placeholder: z.string().max(100).optional(),
     isRequired: z.boolean().default(false),
+    correctAnswer: z
+        .union([
+            z.string(),
+            z.number(),
+            z.array(z.number()),
+            z.record(z.string(), z.string()),
+        ])
+        .optional(),
 });
 
-const questionTypes = [
-    'TEXT',
-    'PARAGRAPH',
-    'DATE',
-    'TIME',
-    'CHOICE',
-    'RADIO',
-    'DROP_DOWN',
-    'LINEAR_SCALE',
-    'RATING',
-] as const;
-
 export const questionDataSchema = z.discriminatedUnion('type', [
-    QuestionBaseSchema.extend({ type: z.literal('TEXT') }),
-    QuestionBaseSchema.extend({ type: z.literal('PARAGRAPH') }),
-    QuestionBaseSchema.extend({ type: z.literal('DATE') }),
-    QuestionBaseSchema.extend({ type: z.literal('TIME') }),
     QuestionBaseSchema.extend({
-        type: z.enum(questionTypes.slice(4, 7)),
-        optionsConfig: optionsConfigSchema,
+        type: z.enum(['TEXT', 'PARAGRAPH', 'DATE', 'TIME']),
+        options: z.undefined(),
+        ratingConfig: z.undefined(),
+        matrixConfig: z.undefined(),
     }),
     QuestionBaseSchema.extend({
-        type: z.enum(questionTypes.slice(7)),
+        type: z.enum(['CHOICE', 'RADIO', 'DROP_DOWN']),
+        options: z.array(optionSchema).min(1),
+        correctAnswer: z.union([z.number(), z.array(z.number())]).optional(),
+        ratingConfig: z.undefined(),
+        matrixConfig: z.undefined(),
+    }),
+    QuestionBaseSchema.extend({
+        type: z.enum(['LINEAR_SCALE', 'RATING']),
+        options: z.undefined(),
         ratingConfig: ratingConfigSchema,
+        matrixConfig: z.undefined(),
+    }),
+    QuestionBaseSchema.extend({
+        type: z.literal('MATRIX'),
+        options: z.undefined(),
+        ratingConfig: z.undefined(),
+        matrixConfig: matrixConfigSchema,
     }),
 ]);
-
 const indexedQuestionBaseSchema = QuestionBaseSchema.extend({
     _id: zodObjectId,
     index: z.number().int().nonnegative(),
 });
 
 export const questionTypesWithIndexSchema = z.discriminatedUnion('type', [
-    indexedQuestionBaseSchema.extend({ type: z.literal('TEXT') }),
-    indexedQuestionBaseSchema.extend({ type: z.literal('PARAGRAPH') }),
-    indexedQuestionBaseSchema.extend({ type: z.literal('DATE') }),
-    indexedQuestionBaseSchema.extend({ type: z.literal('TIME') }),
     indexedQuestionBaseSchema.extend({
-        type: z.literal('CHOICE'),
-        optionsConfig: optionsConfigSchema,
+        type: z.enum(['TEXT', 'PARAGRAPH', 'DATE', 'TIME']),
+        options: z.undefined(),
+        ratingConfig: z.undefined(),
+        matrixConfig: z.undefined(),
     }),
     indexedQuestionBaseSchema.extend({
-        type: z.literal('RADIO'),
-        optionsConfig: optionsConfigSchema,
+        type: z.enum(['CHOICE', 'RADIO', 'DROP_DOWN']),
+        options: z.array(optionSchema).min(1),
+        correctAnswer: z.union([z.number(), z.array(z.number())]).optional(),
+        ratingConfig: z.undefined(),
+        matrixConfig: z.undefined(),
     }),
     indexedQuestionBaseSchema.extend({
-        type: z.literal('DROP_DOWN'),
-        optionsConfig: optionsConfigSchema,
-    }),
-    indexedQuestionBaseSchema.extend({
-        type: z.literal('LINEAR_SCALE'),
+        type: z.enum(['LINEAR_SCALE', 'RATING']),
+        options: z.undefined(),
         ratingConfig: ratingConfigSchema,
+        matrixConfig: z.undefined(),
     }),
     indexedQuestionBaseSchema.extend({
-        type: z.literal('RATING'),
-        ratingConfig: ratingConfigSchema,
+        type: z.literal('MATRIX'),
+        options: z.undefined(),
+        ratingConfig: z.undefined(),
+        matrixConfig: matrixConfigSchema,
     }),
 ]);

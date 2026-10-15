@@ -1,7 +1,6 @@
 import { Request, NextFunction, Response } from 'express';
-import { AccountActionService } from '../types/auth.types';
+import { SensitiveData, AccountActionService } from '@paperwork/types';
 import { StatusCodes } from 'http-status-codes';
-import { SensitiveData } from '../types/profile.auth';
 import UserServiceBoot from '../service/user.service';
 import { AutoBoundController } from '@/utils/AutoBoundClass';
 

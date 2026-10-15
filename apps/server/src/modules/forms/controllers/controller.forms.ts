@@ -1,6 +1,5 @@
-import { NextFunction, Response } from 'express';
+import { NextFunction, Response, Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { Request } from 'express';
 import FormsService from '@/modules/forms/service/service.forms';
 
 class FormsController {
@@ -28,44 +27,53 @@ class FormsController {
         };
     }
 
+    /**
+     *
+     * @param req expects @Form
+     * @param res return a form of type @FormDto
+     */
     async create(req: Request, res: Response, next: NextFunction) {
         try {
-            const { userId, bodyData } = this.getRequestData(req);
+            const { bodyData, userId } = this.getRequestData(req);
 
-            const newForm = await this.service.create(
-                {
-                    ...bodyData,
-                },
-                userId
-            );
+            const newForm = await this.service.create({ ...bodyData, userId });
 
             res.status(StatusCodes.CREATED).json({
                 success: true,
                 message: 'Form created successfully',
-                data: { form: newForm },
+                data: newForm,
             });
         } catch (error) {
             next(error);
         }
     }
 
+    /**
+     * @description Search for forms by name.
+     * @req expects query parameters `q` (search query) and `limit` (number of results to return, default 10)
+     * @res returns a list of forms matching the search query, or an empty list if no matches are found.
+     */
     async get(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId, formId } = this.getRequestData(req);
-            const { form, sections, questions } = await this.service.get(
-                formId,
-                userId
-            );
+
+            const form = await this.service.get(formId, userId);
+
             res.status(StatusCodes.OK).json({
                 success: true,
                 message: 'Form retrieved successfully',
-                data: { form, sections, questions },
+                data: form,
             });
         } catch (error) {
             next(error);
         }
     }
 
+    /**
+     * @description Search for forms by name.
+     * @param req expects query parameters `q` (search query) and `limit` (number of results to return, default 10)
+     * @param res returns a list of forms matching the search query, or an empty list if no matches are found.
+     */
     async search(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId } = this.getRequestData(req);
@@ -92,6 +100,11 @@ class FormsController {
         }
     }
 
+    /**
+     * @description Deletes a form and all its sections and questions in a single transaction.
+     * @param req expects @user userId, @form formId
+     * @param res returns a 204 No Content response if the form is deleted successfully, or an error response if the deletion fails.
+     */
     async delete(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId, formId } = this.getRequestData(req);
@@ -102,6 +115,11 @@ class FormsController {
         }
     }
 
+    /**
+     * @description Updates a form.
+     * @param req expects @user userId, @form formId
+     * @param res
+     */
     async put(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId, formId } = this.getRequestData(req);
@@ -115,13 +133,18 @@ class FormsController {
             res.status(StatusCodes.OK).json({
                 success: true,
                 message: 'Form updated successfully',
-                data: { form: updatedForm },
+                data: updatedForm,
             });
         } catch (error) {
             next(error);
         }
     }
 
+    /**
+     * @description Updates a form and its sections and questions in a single transaction.
+     * @param req expects @user userId, @form formId
+     * @param res returns a 200 OK response with the updated form if the update is successful, or an error response if the update fails.
+     */
     async bulkPut(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId, formId } = this.getRequestData(req);
@@ -142,6 +165,11 @@ class FormsController {
         }
     }
 
+    /**
+     * @description Updates a form.
+     * @param req expects @user userId, @form formId
+     * @param res returns a 200 OK response with the updated form if the update is successful, or an error response if the update fails.
+     */
     async patch(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId, formId, bodyData } = this.getRequestData(req);
@@ -207,23 +235,31 @@ class FormsController {
         }
     }
 
+    /**
+     * @description Retrieves all forms for a user with pagination and optional filtering by last updated date.
+     * @param req   expects query parameters `limit`, `page`, and `lastUpdated` for pagination and filtering.
+     * @param res  returns a paginated list of forms for the user, or an empty list if no forms are found.
+     */
     async getAll(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId } = this.getRequestData(req);
             const limit = Math.min(
-                Math.max(parseInt(req.query.limit as string, 10) || 10, 1),
+                Math.max(
+                    Number.parseInt(req.query.limit as string, 10) || 10,
+                    1
+                ),
                 100
             );
 
             const page = Math.max(
-                parseInt(req.query.page as string, 10) || 1,
+                Number.parseInt(req.query.page as string, 10) || 1,
                 1
             );
 
             let lastUpdated: Date | undefined;
             if (req.query.lastUpdated) {
                 const parsedDate = new Date(req.query.lastUpdated as string);
-                if (!isNaN(parsedDate.getTime())) {
+                if (!Number.isNaN(parsedDate.getTime())) {
                     lastUpdated = parsedDate;
                 }
             }

@@ -2,7 +2,7 @@ import AutoBoundClass from '@/utils/AutoBoundClass';
 import config from '@/config';
 import jwt from 'jsonwebtoken';
 import { SystemError } from '@/utils/AppError';
-import { TokenMap, TokenType } from '../types/token.types';
+import { TokenMap, TokenType } from '@paperwork/types';
 
 class Token extends AutoBoundClass {
     private hashMap: TokenMap | null = null;

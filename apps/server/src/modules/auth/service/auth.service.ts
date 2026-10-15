@@ -12,14 +12,19 @@ import HashBoot from './hash.service';
 
 import { Request, Response } from 'express';
 import { AppError } from '@/utils/AppError';
-import { SignInService, SignUpService } from '@/modules/auth/types/auth.types';
 import { emailQueue } from '@/queues';
-import { UserDocument } from '../types/user.auth';
 import { AutoBoundController } from '@/utils/AutoBoundClass';
-import { TokenPayload } from '../types/token.types';
-import { Profile } from '../types/profile.auth';
-import mongoose from 'mongoose';
+
 import { generateHSL, HSLtoString } from '../utils/randomprofiepicture';
+
+import mongoose from 'mongoose';
+import {
+    SignInService,
+    SignUpService,
+    TokenPayload,
+    User,
+} from '@paperwork/types';
+import { MongooseDocument } from '@/types';
 
 class AuthService extends AutoBoundController {
     constructor() {
@@ -42,7 +47,9 @@ class AuthService extends AutoBoundController {
                     { session }
                 );
 
-                const userId = newUser[0]!._id.toString();
+                const userId = newUser[0]!
+                    ._id satisfies mongoose.Types.ObjectId;
+
                 const color = HSLtoString(generateHSL(fullName));
                 const avatarUrl = `randomuser:name=${encodeURIComponent(fullName)}&color=${encodeURIComponent(color)}`;
 
@@ -93,7 +100,7 @@ class AuthService extends AutoBoundController {
         res: Response;
     }) => {
         const { email, password } = payload;
-        const user: UserDocument | null =
+        const user: MongooseDocument<User> | null =
             await UserRepoBoot.findUserByEmail(email);
 
         if (
@@ -112,7 +119,7 @@ class AuthService extends AutoBoundController {
             throw AppError.Unauthorized('Invalid email or password');
         }
 
-        const userId = user._id.toString();
+        const userId = user.toObject()._id.toString();
         await UserRepoBoot.clearDeletionFlag(userId);
 
         if (user.twofactorEnabled) {
@@ -297,11 +304,10 @@ class AuthService extends AutoBoundController {
             const profile = await ProfileRepoBoot.findByUserId(userId, {
                 sensitiveData: 0,
             });
-
             if (!profile) {
                 throw AppError.NotFound('Profile not found');
             }
-            return profile;
+            return profile.toJSON();
         } catch (error) {
             if (error instanceof AppError) throw error;
             throw AppError.Internal(
@@ -315,7 +321,7 @@ class AuthService extends AutoBoundController {
         updateData: { fullName?: string; avatarUrl?: string; bio?: string }
     ) => {
         try {
-            const profile = await ProfileRepoBoot.updateProfile<Profile>(
+            const profile = await ProfileRepoBoot.updateProfile(
                 userId,
                 updateData,
                 {
@@ -325,7 +331,7 @@ class AuthService extends AutoBoundController {
             if (!profile) {
                 throw AppError.NotFound('Profile not found');
             }
-            return profile;
+            return profile.toJSON();
         } catch (error) {
             if (error instanceof AppError) throw error;
             throw AppError.Internal(
@@ -494,7 +500,7 @@ class AuthService extends AutoBoundController {
 
             if (user) {
                 user.passwordHash = await HashBoot.hashed(newPassword);
-                await UserRepoBoot.clearResets(user._id.toString());
+                await UserRepoBoot.clearResets(user.id.toString());
                 await user.save();
 
                 await emailQueue.add(

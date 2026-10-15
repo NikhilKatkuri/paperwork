@@ -10,8 +10,10 @@ interface SubmissionJob {
     formId: string;
     userId: string;
     email: string;
-    answers: { questionId: string; values: string[] }[];
+    answers: { questionId: string; slug: string; value: string[] }[];
     metadata: { userAgent: string; ipAddress: string };
+    idempotencyKey: string;
+    isCompleted: boolean;
 }
 
 const submissionKey = (submissionId: string) => `submission:${submissionId}`;
@@ -69,8 +71,16 @@ class SubmissionWorker {
     }
 
     private async process(job: Job<SubmissionJob>): Promise<void> {
-        const { submissionId, formId, userId, email, answers, metadata } =
-            job.data;
+        const {
+            submissionId,
+            formId,
+            userId,
+            email,
+            answers,
+            metadata,
+            idempotencyKey,
+            isCompleted,
+        } = job.data;
 
         // Mark processing
         await this.updateStatus(submissionId, 'processing');
@@ -82,6 +92,8 @@ class SubmissionWorker {
                 email,
                 answers,
                 metadata,
+                idempotencyKey,
+                isCompleted,
             });
 
             if (!response) throw new Error('Failed to save response');

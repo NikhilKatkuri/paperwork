@@ -2,7 +2,7 @@ import geoip from 'geoip-lite';
 import AutoBoundClass from '@/utils/AutoBoundClass';
 import type { Request } from 'express';
 import { UAParser } from 'ua-parser-js';
-import { RequestMeta } from '../types/user.auth';
+import { RequestMeta } from '@paperwork/types';
 
 class UserAgentService extends AutoBoundClass {
     constructor() {
