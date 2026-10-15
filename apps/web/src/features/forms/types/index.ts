@@ -84,7 +84,10 @@ interface FormCreateContextValue {
         value: SectionCore[K]
     ) => void;
     handleAddSection: () => void;
-    updateSectionData:(idx:number, PartialSectionCore: Partial<SectionCore>)=>void;
+    updateSectionData: (
+        idx: number,
+        PartialSectionCore: Partial<SectionCore>
+    ) => void;
     handleAddQuestion: (idx: number) => void;
     duplicateQuestion: (idx: number) => void;
     deleteQuestion: (idx: number) => void;
@@ -99,7 +102,11 @@ interface FormCreateContextValue {
         key: K,
         value: QuestionCore[K]
     ) => void;
-    reorderQuestions: (sectionIdx: number, activeId: number, overId: number) => void;
+    reorderQuestions: (
+        sectionIdx: number,
+        activeId: number,
+        overId: number
+    ) => void;
 
     reorderSections: (activeId: number, overId: number) => void;
     deleteSection: (sectionIdx: number) => void;

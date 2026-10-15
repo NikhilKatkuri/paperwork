@@ -1,5 +1,5 @@
 import { endpoints } from '@/api/endpoints';
-import { http } from '@/api/http'; 
+import { http } from '@/api/http';
 import { FormDB } from '@/lib/db';
 import SectionCore from '../../types/section.type';
 import QuestionCore from '../../types/question.type';
@@ -20,7 +20,7 @@ async function getFormServerById(id: string): Promise<FormDB | undefined> {
         const { path } = endpoints.forms.getFormById(id);
 
         const res = await http.get<GetFormDataType>(path);
-        if (res.status === 200) { 
+        if (res.status === 200) {
             console.log('Server response:', res.data);
             return {
                 ...res.data.data.form,

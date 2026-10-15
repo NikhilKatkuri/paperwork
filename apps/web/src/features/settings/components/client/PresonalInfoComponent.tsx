@@ -261,7 +261,7 @@ export default function PersonalInfoComponent() {
                                 <button
                                     type="reset"
                                     disabled={saving}
-                                    className="cursor-pointer rounded-full bg-theme-form-surface px-7 py-4 text-sm font-semibold transition-all duration-200 hover:bg-theme-form-on-surface hover:text-white disabled:opacity-50 sm:px-8"
+                                    className="bg-theme-form-surface hover:bg-theme-form-on-surface cursor-pointer rounded-full px-7 py-4 text-sm font-semibold transition-all duration-200 hover:text-white disabled:opacity-50 sm:px-8"
                                 >
                                     Cancel
                                 </button>
@@ -269,7 +269,7 @@ export default function PersonalInfoComponent() {
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="cursor-pointer rounded-full bg-theme-form-container-active/80 px-7 py-4 text-sm font-semibold text-on-brand transition-all duration-200 hover:bg-theme-form-container-active disabled:opacity-50 sm:px-8"
+                                    className="bg-theme-form-container-active/80 text-on-brand hover:bg-theme-form-container-active cursor-pointer rounded-full px-7 py-4 text-sm font-semibold transition-all duration-200 disabled:opacity-50 sm:px-8"
                                 >
                                     {saving ? 'Saving...' : 'Save Changes'}
                                 </button>

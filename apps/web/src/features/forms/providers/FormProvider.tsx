@@ -9,8 +9,10 @@ const FormProviderContext = createContext<FormProviderContextValue | undefined>(
     undefined
 );
 
-export function FormProviderProvider({ children }: Readonly<{ children: ReactNode }>) {
-    const [value, setvalue] = useState<string>("");
+export function FormProviderProvider({
+    children,
+}: Readonly<{ children: ReactNode }>) {
+    const [value, setvalue] = useState<string>('');
 
     return (
         <FormProviderContext.Provider value={{ value, setvalue }}>

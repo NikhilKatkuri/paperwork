@@ -4,7 +4,10 @@ interface controller {
     onCancel: () => void;
 }
 
-export default function FormController({ saving, onCancel }: Readonly<controller>) {
+export default function FormController({
+    saving,
+    onCancel,
+}: Readonly<controller>) {
     return (
         <div className="flex w-full items-center justify-end gap-4 pt-6">
             <button

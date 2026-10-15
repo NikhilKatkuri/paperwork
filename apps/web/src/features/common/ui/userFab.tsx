@@ -14,7 +14,7 @@ import { useRef } from 'react';
 function UserFab() {
     const { loading, createForm } = useCreateForm();
     const stateRef = useRef(false);
-    
+
     const handleClick = async () => {
         if (stateRef.current || loading) return;
 

@@ -7,4 +7,4 @@ export type sectionMetaKeys = keyof sectionMeta;
 export type sectionMetaChange = {
     key: sectionMetaKeys;
     value: string;
-}
+};

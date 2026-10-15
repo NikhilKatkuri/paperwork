@@ -19,11 +19,11 @@ function UserHome() {
     const [query, setQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
 
-    const {publicProfile} = useAuth();
-    
-    useEffect(()=>{
-        document.title = `Paperwork ${publicProfile ? '| ' + publicProfile.fullName :"" }`;
-    },[publicProfile]);
+    const { publicProfile } = useAuth();
+
+    useEffect(() => {
+        document.title = `Paperwork ${publicProfile ? '| ' + publicProfile.fullName : ''}`;
+    }, [publicProfile]);
 
     useEffect(() => {
         const timer = setTimeout(

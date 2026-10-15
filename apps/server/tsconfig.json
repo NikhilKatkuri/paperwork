@@ -48,8 +48,9 @@
     "include": [
         "src/**/*",
         "src/@types/**/*",
-        "src/modules/auth/schemas/user.schema.ts"
-, "src/modules/auth/utils/randomprofiepicture.ts"    ] /* Only compile code inside the src folder */,
+        "src/modules/auth/schemas/user.schema.ts",
+        "src/modules/auth/utils/randomprofiepicture.ts"
+    ] /* Only compile code inside the src folder */,
     "exclude": [
         "node_modules",
         "dist",

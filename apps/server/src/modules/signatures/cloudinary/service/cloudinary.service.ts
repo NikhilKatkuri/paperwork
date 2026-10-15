@@ -39,7 +39,7 @@ class CloudinaryService {
         });
     }
 
-    private  generateSignature(
+    private generateSignature(
         bucketTimestamp: number,
         expiresAt: number
     ): UploadSignature {
@@ -50,7 +50,7 @@ class CloudinaryService {
             folder: this.folder,
         };
 
-        const signature =  cloudinary.utils.api_sign_request(
+        const signature = cloudinary.utils.api_sign_request(
             paramsToSign,
             config.cloudinary.api_secret
         );

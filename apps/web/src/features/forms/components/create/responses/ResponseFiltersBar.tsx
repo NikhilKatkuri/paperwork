@@ -68,7 +68,7 @@ export default function ResponseFiltersBar({
                     })
                 }
                 aria-label="Filter by question"
-                className={cn(CONTROL, 'py-2.5 sm:max-w-70 px-4')}
+                className={cn(CONTROL, 'px-4 py-2.5 sm:max-w-70')}
             >
                 <option value="">All questions</option>
                 {questions.map((question) => (
@@ -87,7 +87,7 @@ export default function ResponseFiltersBar({
                     })
                 }
                 aria-label="Sort responses"
-                className={cn(CONTROL, 'py-2.5 px-4')}
+                className={cn(CONTROL, 'px-4 py-2.5')}
             >
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>

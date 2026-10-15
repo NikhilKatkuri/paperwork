@@ -182,7 +182,7 @@ function sanitizePrimitive(input: unknown): unknown {
 function sanitizeBuiltInInstance(
     input: unknown,
     context: SanitizeContext
-): unknown  {
+): unknown {
     if (input instanceof Date) {
         return input.toISOString();
     }
@@ -207,7 +207,7 @@ function sanitizeBuiltInInstance(
  */
 function sanitizeCollection(
     input: unknown[] | Map<unknown, unknown> | Set<unknown>,
-    childContext: SanitizeContext,
+    childContext: SanitizeContext
 ): unknown {
     if (Array.isArray(input)) {
         const items = input

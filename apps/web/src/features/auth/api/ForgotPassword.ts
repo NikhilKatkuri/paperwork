@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { ForgotPasswordResponse,  ForgotPasswordRequest, ApiResponse } from '../types';
+import {
+    ForgotPasswordResponse,
+    ForgotPasswordRequest,
+    ApiResponse,
+} from '../types';
 import axios, { AxiosError } from 'axios';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';

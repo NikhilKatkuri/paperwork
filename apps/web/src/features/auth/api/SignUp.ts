@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { ApiResponse, SignUpRequestBody , SignUpResponse } from '@/auth/types'; 
+import { ApiResponse, SignUpRequestBody, SignUpResponse } from '@/auth/types';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
 
 import axios, { AxiosError } from 'axios';
- 
+
 function useSignUp() {
     const [loading, setLoading] = useState<boolean>(false);
 

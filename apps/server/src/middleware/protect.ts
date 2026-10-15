@@ -40,11 +40,7 @@ const classifyTokenError = (
  * logged — only the failure classification — so the audit trail stays useful
  * without becoming a credential store.
  */
-const protect = (
-    req: Request,
-    _res: Response,
-    next: NextFunction
-): void => {
+const protect = (req: Request, _res: Response, next: NextFunction): void => {
     const authorizationHeader = req.headers.authorization;
 
     if (!authorizationHeader?.startsWith('Bearer ')) {

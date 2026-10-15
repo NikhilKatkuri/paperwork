@@ -26,7 +26,8 @@ type Mode = 'resend' | 'nodemailer';
 
 class MailService {
     private readonly transporter: Transporter | Resend;
-    private readonly mode: Mode = config.env === 'production' ? 'resend' : 'nodemailer';
+    private readonly mode: Mode =
+        config.env === 'production' ? 'resend' : 'nodemailer';
     private number: number = 0;
 
     constructor() {

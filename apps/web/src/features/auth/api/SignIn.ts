@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { ApiResponse, SignInRequestBody , SignInResponse } from '@/auth/types';
+import { ApiResponse, SignInRequestBody, SignInResponse } from '@/auth/types';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
 
 import axios, { AxiosError } from 'axios';
- 
+
 function useSignIn() {
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -18,7 +18,7 @@ function useSignIn() {
         try {
             const { path } = endpoints.auth.signIn;
             const res = await http.post<SignInResponse>(path, credential);
-            console.log(res)
+            console.log(res);
             if (res.status === 200) {
                 return { ok: true, data: res.data as SignInResponse };
             }

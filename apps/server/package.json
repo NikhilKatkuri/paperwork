@@ -15,7 +15,7 @@
     },
     "keywords": [],
     "author": "",
-    "license": "ISC", 
+    "license": "ISC",
     "dependencies": {
         "argon2": "^0.44.0",
         "bullmq": "^5.77.6",

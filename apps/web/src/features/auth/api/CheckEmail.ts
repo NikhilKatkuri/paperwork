@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import axios, { AxiosError } from 'axios';
-import { ApiResponse, EmailCheckRequestBody, EmailCheckResponse } from '../types';
+import {
+    ApiResponse,
+    EmailCheckRequestBody,
+    EmailCheckResponse,
+} from '../types';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
 

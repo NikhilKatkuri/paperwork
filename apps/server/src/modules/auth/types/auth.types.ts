@@ -11,9 +11,6 @@ export interface SignInService {
 
 export interface AccountActionService {
     action:
-        | 'delete-account'
-        | 'enable-2fa'
-        | 'disable-2fa'
-        | 'deactivate-account';
+        'delete-account' | 'enable-2fa' | 'disable-2fa' | 'deactivate-account';
     password: string;
 }

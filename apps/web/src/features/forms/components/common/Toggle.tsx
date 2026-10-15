@@ -10,7 +10,13 @@ interface ToggleProps {
     label?: string;
 }
 
-function Toggle({ checked, defaultChecked = false, onChange, disabled = false, label }: ToggleProps) {
+function Toggle({
+    checked,
+    defaultChecked = false,
+    onChange,
+    disabled = false,
+    label,
+}: ToggleProps) {
     const [internalChecked, setInternalChecked] = useState(defaultChecked);
 
     // Support both controlled and uncontrolled usage
@@ -33,7 +39,9 @@ function Toggle({ checked, defaultChecked = false, onChange, disabled = false, l
             disabled={disabled}
             onClick={handleClick}
             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${
-                isChecked ? 'bg-theme-form-container-active' : 'bg-theme-form-container-border'
+                isChecked
+                    ? 'bg-theme-form-container-active'
+                    : 'bg-theme-form-container-border'
             } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
         >
             <span

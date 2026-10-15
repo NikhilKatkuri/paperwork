@@ -292,7 +292,7 @@ export default function FormViewPageLayout() {
         <div
             {...themeScope}
             ref={scrollRef}
-            className="bg-theme-form-surface scrollbar-none h-dvh w-full overflow-y-auto overscroll-contain"
+            className="bg-theme-form-surface h-dvh w-full scrollbar-none overflow-y-auto overscroll-contain"
         >
             {children}
         </div>

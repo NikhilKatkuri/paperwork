@@ -75,7 +75,7 @@ class Token extends AutoBoundClass {
             const decoded = jwt.verify(token, currentTokenConfig.token) as T;
             return decoded;
         } catch (error) {
-            if(error instanceof jwt.TokenExpiredError) {
+            if (error instanceof jwt.TokenExpiredError) {
                 throw new SystemError('[jwt-token]', 'Token has expired');
             }
             throw new SystemError('[jwt-token]', 'Invalid or expired token');

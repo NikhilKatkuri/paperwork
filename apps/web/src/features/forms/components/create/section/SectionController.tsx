@@ -13,9 +13,9 @@ function SectionController({ size, idx }: Readonly<SectionControllerProps>) {
     const { updateSectionData, sections } = useFormCreate();
     const [showModal, setShowModal] = useState<boolean>(false);
     const containerRef = useRef<HTMLDivElement>(null);
- 
+
     const currentSection = sections.get(idx);
-    
+
     const sectionAction: SectionAction = currentSection?.defaultAction ?? {
         actionType: 'NEXT_SECTION',
     };
@@ -39,7 +39,7 @@ function SectionController({ size, idx }: Readonly<SectionControllerProps>) {
                 return 'Continue to Next Section';
         }
     }
- 
+
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (
@@ -57,7 +57,7 @@ function SectionController({ size, idx }: Readonly<SectionControllerProps>) {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [showModal]);
-    
+
     if (size <= 1 || idx >= size - 1) return null;
 
     return (

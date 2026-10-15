@@ -65,8 +65,8 @@ const boot = async (): Promise<void> => {
         });
     };
 
-    process.on('SIGTERM', () =>  shutdown('SIGTERM'));
-    process.on('SIGINT', () =>  shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 
     /**
      * Both handlers are bugs by definition: a rejected promise that reaches

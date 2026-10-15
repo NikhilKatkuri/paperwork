@@ -1,4 +1,4 @@
- import config from '@/config';
+import config from '@/config';
 import UserModel from '@/modules/auth/schemas/user.schema';
 import ProfileModel from '@/modules/auth/schemas/profile.schema';
 import crypto from 'node:crypto';
@@ -520,7 +520,7 @@ class AuthService extends AutoBoundController {
             const user = await UserRepoBoot.findUserByEmail(email);
             return !!user;
         } catch (error) {
-            if(error instanceof AppError) throw error;
+            if (error instanceof AppError) throw error;
             throw AppError.Internal(
                 'Failed to check email. Please try again later.'
             );

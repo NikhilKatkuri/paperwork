@@ -43,7 +43,7 @@ const MenuButton = ({
         >
             <span className="material-symbols-outlined">more_vert</span>
         </button>
- 
+
         {showMenu && (
             <div className="absolute top-12 right-0 z-50 w-36 rounded-md border border-gray-200 bg-white py-1 shadow-lg *:text-sm">
                 <button
@@ -99,7 +99,7 @@ export default function FormsView({
     const title = form?.name || 'Untitled Form';
     const dateText = toDateString(form?.updatedAt);
     const formUrl = `/forms/c/${form?._id}`;
- 
+
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (
@@ -123,14 +123,14 @@ export default function FormsView({
             <Link
                 href={formUrl}
                 className={cn(
-                    'hover:bg-brand-light relative grid h-14 w-full cursor-pointer grid-cols-[1fr_auto]  md:grid-cols-[1fr_0.5fr] items-center rounded-md border border-transparent px-4 transition-all duration-150 ease-in-out *:text-sm'
+                    'hover:bg-brand-light relative grid h-14 w-full cursor-pointer grid-cols-[1fr_auto] items-center rounded-md border border-transparent px-4 transition-all duration-150 ease-in-out *:text-sm md:grid-cols-[1fr_0.5fr]'
                 )}
             >
                 <div className="grid grid-cols-[36px_1fr] items-center gap-4">
                     <Icon />
                     <p className="font-medium">{title}</p>
                 </div>
-                <div className="grid items-center gap-4 md:grid-cols-[1fr_36px] min-[900px]:grid-cols-[1fr_36px] xl:grid-cols-[1fr_160px] xl:justify-end">
+                <div className="grid items-center gap-4 min-[900px]:grid-cols-[1fr_36px] md:grid-cols-[1fr_36px] xl:grid-cols-[1fr_160px] xl:justify-end">
                     <p className="text-md max-[900px]:hidden">{dateText}</p>
                     <div className="flex items-center justify-end">
                         <MenuButton
@@ -147,9 +147,9 @@ export default function FormsView({
     return (
         <Link
             href={formUrl}
-            className="hover:bg-brand-light border-theme-skeletion-surface relative grid w-full cursor-pointer items-center gap-2 rounded-md border p-4  transition-all duration-150 ease-in-out *:text-sm"
+            className="hover:bg-brand-light border-theme-skeletion-surface relative grid w-full cursor-pointer items-center gap-2 rounded-md border p-4 transition-all duration-150 ease-in-out *:text-sm"
         >
-            <div className="flex flex-col gap-2 ">
+            <div className="flex flex-col gap-2">
                 <div className="grid h-8 grid-cols-[36px_1fr_20px] items-center gap-1">
                     <Icon />
                     <p className="font-medium">{title}</p>
@@ -158,9 +158,9 @@ export default function FormsView({
                         showMenu={showMenu}
                         setShowMenu={setShowMenu}
                     />
-                </div> 
+                </div>
             </div>
-            <p className="text-sm my-2">{dateText}</p>
+            <p className="my-2 text-sm">{dateText}</p>
         </Link>
     );
 }

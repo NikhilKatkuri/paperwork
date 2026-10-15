@@ -1,7 +1,10 @@
 class LocalStorageService {
     // Check if window/localStorage is available (prevents SSR errors in Next.js)
     private static isAvailable(): boolean {
-        return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+        return (
+            typeof window !== 'undefined' &&
+            typeof window.localStorage !== 'undefined'
+        );
     }
 
     /**
@@ -16,7 +19,9 @@ class LocalStorageService {
         try {
             const dataToStore = {
                 value,
-                expiry: ttlInMinutes ? Date.now() + ttlInMinutes * 60 * 1000 : null,
+                expiry: ttlInMinutes
+                    ? Date.now() + ttlInMinutes * 60 * 1000
+                    : null,
             };
 
             window.localStorage.setItem(key, JSON.stringify(dataToStore));
@@ -42,7 +47,11 @@ class LocalStorageService {
             const item = JSON.parse(itemStr);
 
             // Handle non-wrapper legacy raw strings if any exist
-            if (typeof item !== 'object' || item === null || !('value' in item)) {
+            if (
+                typeof item !== 'object' ||
+                item === null ||
+                !('value' in item)
+            ) {
                 return item as T;
             }
 

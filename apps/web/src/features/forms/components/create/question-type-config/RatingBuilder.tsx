@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useFormCreate } from '../../../providers/FormCreate'; 
+import { useFormCreate } from '../../../providers/FormCreate';
 import { RatingConfig } from '@/features/forms/types/question.type';
 
 type RateIcon = 'kid_star' | 'favorite' | 'thumb_up';

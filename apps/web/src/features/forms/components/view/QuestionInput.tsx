@@ -349,7 +349,7 @@ export default function QuestionInput({
 
             return (
                 <div>
-                    <div 
+                    <div
                         className="flex flex-wrap items-center"
                         onMouseLeave={() => setHoverRating(0)}
                     >

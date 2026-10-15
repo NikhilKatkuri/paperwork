@@ -471,9 +471,7 @@ export function FormCreateProvider({
                 }
 
                 // 2. Always fetch from the server every time (passing local updatedAt for silent merging)
-                const serverData = await getFormServerById(
-                    activeFormID
-                );
+                const serverData = await getFormServerById(activeFormID);
 
                 if (serverData) {
                     formData = {
@@ -481,7 +479,7 @@ export function FormCreateProvider({
                     };
                     console.log('Fetched form from server:', formData);
                     // Seed/Update local repository with the fresh server data
-                    await formRepository.update(formData._id,formData);
+                    await formRepository.update(formData._id, formData);
 
                     // Re-apply the fresh server data to state
                     applyFormDataToState(formData);

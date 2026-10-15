@@ -1,4 +1,4 @@
-import { Request ,NextFunction, Response } from 'express';
+import { Request, NextFunction, Response } from 'express';
 import { AccountActionService } from '../types/auth.types';
 import { StatusCodes } from 'http-status-codes';
 import { SensitiveData } from '../types/profile.auth';

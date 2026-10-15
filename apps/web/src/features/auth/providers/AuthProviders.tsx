@@ -48,7 +48,9 @@ export function useAuthLogic() {
     };
 }
 
-const AuthContext = createContext<AuthContextType<ReturnType<typeof useAuthLogic>> | undefined>(undefined);
+const AuthContext = createContext<
+    AuthContextType<ReturnType<typeof useAuthLogic>> | undefined
+>(undefined);
 
 function getExpiryMs(token: string): number | null {
     try {

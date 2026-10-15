@@ -4,10 +4,7 @@ import { useState } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuthLogic } from '@/providers';
-import {
-    EmailCheckResponse,
-    ForgotPasswordResponse,
-} from '@/auth/types';
+import { EmailCheckResponse, ForgotPasswordResponse } from '@/auth/types';
 import { validateEmail } from '@/utils/validations';
 import { INTENT_CONFIG } from '@/auth/constants/data';
 import AuthFlow from '@/auth/constants/config';

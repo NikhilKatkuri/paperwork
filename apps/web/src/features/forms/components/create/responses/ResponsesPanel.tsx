@@ -215,7 +215,7 @@ export default function ResponsesPanel() {
     const filtering = Boolean(filters.q || filters.questionId);
 
     return (
-        <div className="mx-auto flex h-full w-full max-w-4xl bg-white my-2 rounded-lg scrollbar-none flex-col gap-4 overflow-y-auto px-4 py-6 md:p-6">
+        <div className="mx-auto my-2 flex h-full w-full max-w-4xl scrollbar-none flex-col gap-4 overflow-y-auto rounded-lg bg-white px-4 py-6 md:p-6">
             {/* Header: title, count, and the view switch */}
             <header className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">

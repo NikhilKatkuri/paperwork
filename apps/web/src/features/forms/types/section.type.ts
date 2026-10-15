@@ -19,6 +19,6 @@ interface SectionCore {
     defaultAction?: SectionAction;
 }
 
-export type defualtSectionCore = Map<number, SectionCore>
+export type defualtSectionCore = Map<number, SectionCore>;
 export type { SectionAction, SectionDependsOn };
 export default SectionCore;

@@ -1,6 +1,6 @@
 'use client';
-import React from 'react'; 
-import OptionBuilder from './OptionBuilder'; 
+import React from 'react';
+import OptionBuilder from './OptionBuilder';
 import ScaleBuilder from './ScaleBuilder';
 import RatingBuilder from './RatingBuilder';
 import { QUESTION_TYPE, QuestionType } from '../../common/types';
@@ -46,14 +46,29 @@ const AnswerTemplateObject: Record<Partial<QuestionType>, React.ReactNode> = {
 };
 
 function AnswerTemplate({ type, update, id }: Readonly<AnswerTemplateProps>) {
-    if(type === QUESTION_TYPE.CHOICE || type === QUESTION_TYPE.RADIO || type === QUESTION_TYPE.DROP_DOWN) {
-            return <OptionBuilder id={id} type={type} onOptionsChange={(data)=> update({ options: data })} />;
+    if (
+        type === QUESTION_TYPE.CHOICE ||
+        type === QUESTION_TYPE.RADIO ||
+        type === QUESTION_TYPE.DROP_DOWN
+    ) {
+        return (
+            <OptionBuilder
+                id={id}
+                type={type}
+                onOptionsChange={(data) => update({ options: data })}
+            />
+        );
     }
-    if(type === QUESTION_TYPE.RATING) {
-        return <RatingBuilder id={id} onChange={(config) => update({ ratingConfig: config })} />
+    if (type === QUESTION_TYPE.RATING) {
+        return (
+            <RatingBuilder
+                id={id}
+                onChange={(config) => update({ ratingConfig: config })}
+            />
+        );
     }
-    if(type === QUESTION_TYPE.LINEAR_SCALE) {
-        return <ScaleBuilder id={id} />
+    if (type === QUESTION_TYPE.LINEAR_SCALE) {
+        return <ScaleBuilder id={id} />;
     }
     return <div>{AnswerTemplateObject[type]}</div>;
 }

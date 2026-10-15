@@ -25,13 +25,16 @@ export default function AccountActionComponent() {
             if (response.ok) {
                 // Handle success directly
                 setIsModalOpen(false);
-                toast.success(response.data?.message || 'Action completed successfully.', {
-                    position: 'top-right',
-                    duration: 2000,
-                });
+                toast.success(
+                    response.data?.message || 'Action completed successfully.',
+                    {
+                        position: 'top-right',
+                        duration: 2000,
+                    }
+                );
             } else {
                 // Handle API error response explicitly
-                setModalError(response.error|| 'Failed to perform action.');
+                setModalError(response.error || 'Failed to perform action.');
             }
         } catch (error) {
             if (error instanceof Error) {
@@ -66,7 +69,9 @@ export default function AccountActionComponent() {
                             <button
                                 type="button"
                                 disabled={saving}
-                                onClick={() => handleAction('deactivate-account')}
+                                onClick={() =>
+                                    handleAction('deactivate-account')
+                                }
                                 className="bg-theme-form-on-surface/10 hover:bg-theme-form-on-surface/90 h-14 rounded-full p-2 px-8 text-sm transition-all duration-200 hover:text-white"
                             >
                                 Deactivate account

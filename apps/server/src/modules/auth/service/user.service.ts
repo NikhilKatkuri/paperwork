@@ -130,7 +130,7 @@ class UserService {
                     data: updatedUser,
                 };
             } catch (error) {
-                if(error instanceof AppError) {
+                if (error instanceof AppError) {
                     throw error;
                 }
 

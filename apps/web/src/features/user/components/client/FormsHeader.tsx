@@ -12,7 +12,7 @@ function ViewFormsHeader({
     return (
         <div
             className={cn(
-                'bg-theme-surface sticky top-16 z-50 grid w-full grid-cols-[1fr_0.5fr] items-center py-2 *:text-sm md:top-22 transition-all ease-in-out duration-300',
+                'bg-theme-surface sticky top-16 z-50 grid w-full grid-cols-[1fr_0.5fr] items-center py-2 transition-all duration-300 ease-in-out *:text-sm md:top-22',
                 viewAsRow ? 'px-4' : 'px-0'
             )}
         >
@@ -23,7 +23,7 @@ function ViewFormsHeader({
                 className={cn(
                     'grid items-center justify-end gap-4 px-4',
                     viewAsRow
-                        ? 'md:grid-cols-[1fr_36px] min-[900px]:grid-cols-[1fr_36px] xl:grid-cols-[1fr_160px]'
+                        ? 'min-[900px]:grid-cols-[1fr_36px] md:grid-cols-[1fr_36px] xl:grid-cols-[1fr_160px]'
                         : 'grid-cols-[1fr]'
                 )}
             >

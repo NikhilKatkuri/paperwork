@@ -394,7 +394,7 @@ class FillService {
             const questionIdMap = new Map<string, string>();
 
             questions.forEach((q) =>
-                questionIdMap.set(q._id?.toString() , q.question)
+                questionIdMap.set(q._id?.toString(), q.question)
             );
 
             const headers = questions.map((q) => q.question);
@@ -409,7 +409,7 @@ class FillService {
 
             throw AppError.BadRequest('Unsupported export type');
         } catch (error) {
-             if(error instanceof AppError) throw error;
+            if (error instanceof AppError) throw error;
             throw AppError.Internal('Failed to export responses');
         }
     }

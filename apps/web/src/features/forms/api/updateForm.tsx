@@ -30,8 +30,7 @@ export function useUpdateForm() {
                 formId: id,
                 changes: 0,
                 sent: false,
-                message:
-                    error instanceof Error ? error.message : 'Sync failed',
+                message: error instanceof Error ? error.message : 'Sync failed',
             };
 
             setOutcome(failure);

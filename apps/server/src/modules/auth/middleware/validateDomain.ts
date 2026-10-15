@@ -20,11 +20,7 @@ const disposableDomains = new Set<string>(domains);
  * masked, since a blocklist hit is exactly the case where the address itself
  * is not needed.
  */
-function validateDomain(
-    req: Request,
-    res: Response,
-    next: NextFunction
-): void {
+function validateDomain(req: Request, res: Response, next: NextFunction): void {
     const email = (req.body as { email?: unknown } | undefined)?.email;
 
     if (typeof email !== 'string' || !email.includes('@')) {

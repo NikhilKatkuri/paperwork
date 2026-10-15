@@ -1,6 +1,6 @@
 import type { NextConfig } from 'next';
 import path from 'node:path';
- 
+
 const nextConfig: NextConfig = {
     allowedDevOrigins: ['192.168.31.8'],
     turbopack: {
@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
                 hostname: '192.168.31.8',
                 port: '3000',
                 pathname: '/**',
-            }
+            },
         ],
     },
 };

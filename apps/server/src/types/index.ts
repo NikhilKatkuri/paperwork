@@ -1,13 +1,7 @@
 type Origins = { env: 'dev'; urls: string[] } | { env: 'prod'; urls: string[] };
 
 export type LoggerLevel =
-    | 'error'
-    | 'warn'
-    | 'info'
-    | 'http'
-    | 'verbose'
-    | 'debug'
-    | 'silly';
+    'error' | 'warn' | 'info' | 'http' | 'verbose' | 'debug' | 'silly';
 
 export interface LoggerConfig {
     /**

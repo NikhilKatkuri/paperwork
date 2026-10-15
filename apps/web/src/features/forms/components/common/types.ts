@@ -1,4 +1,3 @@
-
 export enum QUESTION_TYPE {
     TEXT = 'TEXT',
     PARAGRAPH = 'PARAGRAPH',
@@ -11,7 +10,8 @@ export enum QUESTION_TYPE {
     RATING = 'RATING',
 }
 
-export type OptionType = QUESTION_TYPE.CHOICE | QUESTION_TYPE.RADIO | QUESTION_TYPE.DROP_DOWN;
+export type OptionType =
+    QUESTION_TYPE.CHOICE | QUESTION_TYPE.RADIO | QUESTION_TYPE.DROP_DOWN;
 export type QuestionType = (typeof QUESTION_TYPE)[keyof typeof QUESTION_TYPE];
 
 export const questionTypesMap = {
