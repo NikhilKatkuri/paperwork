@@ -1,22 +1,33 @@
 'use client';
 
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+
 import FormsView from '../../user/components/client/FormsView';
 import ViewFormsHeader from '../../user/components/client/FormsHeader';
-import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/utils/cn';
-import useGetAllForms from '@/features/forms/api/user/allForms';
-import { toast } from 'sonner';
-import { FormDB } from '@/lib/db';
+import useGetForms from '@/features/forms/api/user/getAllForms';
 import { uiPreferencesDB } from '@/features/user/components/lib/UiPreferences';
+import type { FormDB } from '@/types';
 
 interface UserFormsProps {
     /** Already debounced by the parent. */
     query?: string;
 }
 
+type SortMethod = 'plain' | 'alphabetical-forward' | 'alphabetical-reverse';
+
 function UserForms({ query = '' }: Readonly<UserFormsProps>) {
     const [viewAsRow, setViewAsRow] = useState(true);
     const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+    const [data, setData] = useState<FormDB[]>([]);
+    const [sortMethod, setSortMethod] = useState<SortMethod>('plain');
+    const [fetchComplete, setFetchComplete] = useState(false);
+
+    // 1. Memoize options to ensure `next` function reference remains stable across renders
+    const getFormsOptions = useMemo(() => ({ page: 1, limit: 20 }), []);
+
+    const { loading, next } = useGetForms(getFormsOptions);
 
     useEffect(() => {
         let cancelled = false;
@@ -47,10 +58,6 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
         };
     }, []);
 
-    function toggleView() {
-        setViewAsRow((current) => !current);
-    }
-
     useEffect(() => {
         if (!preferencesLoaded) return;
 
@@ -64,79 +71,87 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
             });
     }, [viewAsRow, preferencesLoaded]);
 
-    const { loading, handler } = useGetAllForms();
+    const toggleView = useCallback(() => {
+        setViewAsRow((current) => !current);
+    }, []);
 
-    const [data, setData] = useState<FormDB[] | null>(null);
-
-    const [sortMethod, setSortMethod] = useState<
-        'plain' | 'alphabetical-forward' | 'alphabetical-reverse'
-    >('plain');
-
-    const displayedForms = useMemo(() => {
-        const items = (data ?? []).filter((form) =>
-            (form.name ?? '').toLowerCase().includes(query.trim().toLowerCase())
-        );
-
-        if (sortMethod === 'plain') {
-            items.sort(
-                (a, b) =>
-                    new Date(b.updatedAt!).getTime() -
-                    new Date(a.updatedAt!).getTime()
-            );
-        } else if (sortMethod === 'alphabetical-forward') {
-            items.sort((a, b) => a.name.localeCompare(b.name));
-        } else {
-            items.sort((a, b) => b.name.localeCompare(a.name));
-        }
-
-        return items;
-    }, [data, query, sortMethod]);
-
-    function sort() {
+    const sort = useCallback(() => {
         setSortMethod((current) =>
             current === 'plain' || current === 'alphabetical-reverse'
                 ? 'alphabetical-forward'
                 : 'alphabetical-reverse'
         );
-    }
+    }, []);
 
-    /**
-     * StrictMode mounts, unmounts, then remounts this effect in dev. The first
-     * request is aborted rather than merely ignored, so its result can never be
-     * discarded after the remount - and no `loaded` ref is needed to suppress
-     * the second call, which is what would otherwise strand `data` at null.
-     */
     useEffect(() => {
-        const controller = new AbortController();
+        let cancelled = false;
 
-        handler(controller.signal)
-            .then((forms) => setData(forms))
-            .catch((e: unknown) => {
-                if (controller.signal.aborted) return;
-                toast.error(
-                    e instanceof Error ? e.message : 'Failed to load forms'
-                );
-            });
+        async function fetchForms() {
+            try {
+                const allForms: FormDB[] = [];
 
-        return () => controller.abort();
-    }, [handler]);
+                while (!cancelled) {
+                    const forms = await next();
 
-    /**
-     * Filtered locally: every page of forms is already fetched and cached, so
-     * this covers the whole list without another round-trip.
-     */
-    const filtered = useMemo(() => {
-        const all = data ?? [];
+                    if (cancelled) return;
+
+                    // Stop pagination if no forms are returned or if forms is null/undefined
+                    if (!forms || forms.length === 0) break;
+
+                    allForms.push(...forms);
+                }
+
+                if (!cancelled) {
+                    setData(allForms);
+                }
+            } catch (error: unknown) {
+                if (!cancelled) {
+                    toast.error(
+                        error instanceof Error
+                            ? error.message
+                            : 'Failed to load forms'
+                    );
+                }
+            } finally {
+                // Ensure loading state finishes cleanly
+                if (!cancelled) {
+                    setFetchComplete(true);
+                }
+            }
+        }
+
+        void fetchForms();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [next]);
+
+    const displayedForms = useMemo(() => {
         const term = query.trim().toLowerCase();
 
-        if (!term) return all;
-
-        return all.filter((form) =>
+        const forms = data.filter((form) =>
             (form.name ?? '').toLowerCase().includes(term)
         );
-    }, [data, query]);
+
+        return forms.sort((a, b) => {
+            if (sortMethod === 'alphabetical-forward') {
+                return (a.name ?? '').localeCompare(b.name ?? '');
+            }
+
+            if (sortMethod === 'alphabetical-reverse') {
+                return (b.name ?? '').localeCompare(a.name ?? '');
+            }
+
+            const updatedA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+            const updatedB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+
+            return updatedB - updatedA;
+        });
+    }, [data, query, sortMethod]);
 
     const isSearching = query.trim().length > 0;
+    const isLoading = loading || !fetchComplete;
 
     return (
         <>
@@ -145,12 +160,13 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
                 setViewAsRow={toggleView}
                 sort={sort}
             />
-            {isSearching && data && data.length > 0 ? (
+
+            {isSearching && data.length > 0 && (
                 <p className="text-theme-on-surface/60 mt-4 text-xs">
-                    {filtered.length} of {data.length}{' '}
+                    {displayedForms.length} of {data.length}{' '}
                     {data.length === 1 ? 'form' : 'forms'} match
                 </p>
-            ) : null}
+            )}
 
             <div className="mt-5 h-auto flex-1">
                 <div
@@ -161,27 +177,30 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
                             : 'grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4'
                     )}
                 >
-                    {/* Nothing rendered while loading - otherwise the empty
-                        state flashes before the first response lands. */}
-                    {!loading && displayedForms.length > 0 ? (
+                    {isLoading ? (
+                        <div className="text-theme-on-surface/60 col-span-full py-8 text-center">
+                            Loading forms...
+                        </div>
+                    ) : displayedForms.length > 0 ? (
                         displayedForms.map((form) => (
                             <FormsView
-                                key={form._id}
+                                key={form.id}
                                 viewAsRow={viewAsRow}
                                 form={form}
                             />
                         ))
                     ) : (
-                        <div className="text-theme-on-surface/80 flex h-full w-full flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
-                            <h1 className="font-semibold">
+                        <div className="text-theme-on-surface/80 col-span-full flex w-full flex-col items-center justify-center gap-2 py-8 text-center">
+                            <h2 className="font-semibold">
                                 {isSearching
                                     ? 'No matching forms'
                                     : 'No forms yet'}
-                            </h1>
+                            </h2>
+
                             <p>
                                 {isSearching
                                     ? `Nothing matches “${query.trim()}”. Try a different search.`
-                                    : 'Select a blank form or choose another template above to get started'}
+                                    : 'Select a blank form or choose another template above to get started.'}
                             </p>
                         </div>
                     )}

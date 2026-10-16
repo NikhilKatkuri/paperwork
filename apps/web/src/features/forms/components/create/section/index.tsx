@@ -13,23 +13,28 @@ import {
     SortableContext,
     useSortable,
     verticalListSortingStrategy,
+    arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { useFormCreate } from '@/features/forms/providers/FormCreate';
-import InputField from '../question/QuestionFeild';
 import SectionController from './SectionController';
+import { useForm } from '@/features/forms/providers/form';
+import QuestionCard from '../question/QuestionCard';
 
 interface SectionProps {
-    sectionIdx: number;
+    sectionId: string;
 }
 
-function Section({ sectionIdx }: Readonly<SectionProps>) {
-    const { questions, reorderQuestions, sections } = useFormCreate();
-
-    const [activeQuestionId, setActiveQuestionId] = useState<number | null>(
+function Section({ sectionId }: Readonly<SectionProps>) {
+    const { getQuestionsBySectionId, sectionsMap, reorderQuestions } =
+        useForm();
+ 
+    const [activeQuestionId, setActiveQuestionId] = useState<string | null>(
         null
     );
+    
+    const sectionQuestions = getQuestionsBySectionId(sectionId);
+    const questionIds = sectionQuestions.map((q) => q.id);
 
     const {
         attributes,
@@ -39,7 +44,7 @@ function Section({ sectionIdx }: Readonly<SectionProps>) {
         transition,
         isDragging,
     } = useSortable({
-        id: sectionIdx,
+        id: sectionId,
     });
 
     const sectionStyle = {
@@ -49,50 +54,41 @@ function Section({ sectionIdx }: Readonly<SectionProps>) {
     };
 
     function handleQuestionDragStart(event: DragStartEvent) {
-        setActiveQuestionId(event.active.id as number);
+        setActiveQuestionId(event.active.id as string);
     }
 
     function handleQuestionDragEnd(event: DragEndEvent) {
         const { active, over } = event;
-
-        if (over && active.id !== over.id) {
-            reorderQuestions(
-                sectionIdx,
-                active.id as number,
-                over.id as number
-            );
-        }
-
         setActiveQuestionId(null);
+
+        if (!over || active.id === over.id) return;
+ 
+        const oldIndex = questionIds.indexOf(String(active.id));
+        const newIndex = questionIds.indexOf(String(over.id));
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+            const newSectionQuestions = arrayMove(sectionQuestions, oldIndex, newIndex);
+            reorderQuestions(newSectionQuestions, sectionId);
+        }
     }
-
-    const filteredQuestions = Array.from(questions.entries())
-        .filter(([, question]) => question.sectionIdx === sectionIdx)
-        .sort((a, b) => a[1].index - b[1].index);
-
-    const orderedQuestionIds = filteredQuestions.map(([id]) => id);
-
-    const activeQuestionIndex =
-        activeQuestionId !== null
-            ? orderedQuestionIds.indexOf(activeQuestionId)
-            : -1;
 
     return (
         <section
             ref={setNodeRef}
             style={sectionStyle}
-            id={`section-${sectionIdx}`}
+            id={`section-${sectionId}`}
             className="floating-toolbar-area flex w-full flex-col gap-4 rounded-xl"
         >
             <div className="w-full">
-                {sections.size > 1 && (
+                {sectionsMap.size > 1 && (
                     <div
                         {...attributes}
                         {...listeners}
                         className="bg-theme-form-container-active flex h-12 w-full cursor-grab items-center justify-between rounded-t-xl px-4 select-none active:cursor-grabbing sm:w-64"
                     >
                         <p className="font-medium text-white">
-                            Section {sectionIdx + 1} of {sections.size}
+                            Section {sectionsMap.get(sectionId)!.index + 1} of{' '}
+                            {sectionsMap.size}
                         </p>
 
                         <span className="material-symbols-outlined text-white">
@@ -101,7 +97,10 @@ function Section({ sectionIdx }: Readonly<SectionProps>) {
                     </div>
                 )}
 
-                <MetaInputFeilds sectionIdx={sectionIdx} />
+                <MetaInputFeilds
+                    sectionId={sectionId}
+                    hasMultipleSections={sectionsMap.size > 1}
+                />
             </div>
 
             <DndContext
@@ -110,31 +109,29 @@ function Section({ sectionIdx }: Readonly<SectionProps>) {
                 onDragEnd={handleQuestionDragEnd}
             >
                 <SortableContext
-                    items={orderedQuestionIds}
+                    items={questionIds}
                     strategy={verticalListSortingStrategy}
                 >
-                    {orderedQuestionIds.map((id, index) => (
-                        <InputField
-                            key={id}
-                            id={id}
-                            index={index}
-                            sectionIdx={sectionIdx}
+                    {sectionQuestions.map((q) => (
+                        <QuestionCard
+                            key={q.id}
+                            sectionId={q.sectionId}
+                            id={q.id}
                         />
                     ))}
                 </SortableContext>
 
                 <DragOverlay>
                     {activeQuestionId !== null && (
-                        <InputField
+                        <QuestionCard
                             id={activeQuestionId}
-                            index={activeQuestionIndex}
-                            sectionIdx={sectionIdx}
+                            sectionId={sectionId}
                             isOverlay
                         />
                     )}
                 </DragOverlay>
             </DndContext>
-            <SectionController size={sections.size} idx={sectionIdx} />
+            <SectionController size={sectionsMap.size} id={sectionId} index={0} />
         </section>
     );
 }

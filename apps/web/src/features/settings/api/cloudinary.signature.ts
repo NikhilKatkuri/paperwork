@@ -58,7 +58,7 @@ export async function getCloudinarySignature(): Promise<SignatureResult> {
 
     // Fetch fresh signature
     try {
-        const { path } = endpoints.signature.cloudinary;
+        const path = endpoints.signature.cloudinary;
         const res = await http.get<{ data: CloudinarySignature }>(path);
 
         const data = res.data?.data;

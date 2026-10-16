@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/utils/cn';
 import type { ResponseFilters } from '../../../api/user/formResponses';
-import type QuestionCore from '../../../types/question.type';
+import { QuestionDoc } from '@paperwork/types';
 
 const CONTROL =
     'rounded-lg border border-theme-form-container-border/60 bg-theme-form-container text-sm text-theme-form-on-surface outline-none transition-colors placeholder:text-theme-form-on-surface/40 hover:border-theme-form-container-active/40 focus:border-theme-form-container-active';
 
 interface ResponseFiltersProps {
     filters: ResponseFilters;
-    questions: QuestionCore[];
+    questions: QuestionDoc[];
     onChange: (next: ResponseFilters) => void;
 }
 
@@ -72,7 +72,7 @@ export default function ResponseFiltersBar({
             >
                 <option value="">All questions</option>
                 {questions.map((question) => (
-                    <option key={question._id} value={question._id}>
+                    <option key={question.id} value={question.id}>
                         {question.question.replace(/<[^>]*>/g, ' ').trim()}
                     </option>
                 ))}

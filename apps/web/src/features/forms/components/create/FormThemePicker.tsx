@@ -8,17 +8,10 @@ import {
     FormThemeSwatch,
     type FormThemeId,
 } from '@/lib/formTheme';
-import { useFormCreate } from '../../providers/FormCreate';
+import { useForm } from '../../providers/form';
 
-/**
- * Chooses the colour theme of the form being edited.
- *
- * The choice is stored on the form document and synced like any other field, so
- * it travels with the form to whoever fills it in - see `FormViewPageLayout`,
- * which scopes the theme to its own container.
- */
 export default function FormThemePicker() {
-    const { form, handleFormChange, activeFormID } = useFormCreate();
+    const { form, formId, updateFormState } = useForm();
 
     const [open, setOpen] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
@@ -45,7 +38,7 @@ export default function FormThemePicker() {
         };
     }, [open]);
 
-    if (!activeFormID) return null;
+    if (!formId) return null;
 
     const current = form?.theme ?? DEFAULT_FORM_THEME;
     const active =
@@ -79,7 +72,10 @@ export default function FormThemePicker() {
                                 aria-selected={theme.id === current}
                                 type="button"
                                 onClick={() => {
-                                    handleFormChange('theme', theme.id);
+                                    updateFormState((prev) => ({
+                                        ...prev,
+                                        theme: theme.id,
+                                    }));
                                     setOpen(false);
                                 }}
                                 className={cn(

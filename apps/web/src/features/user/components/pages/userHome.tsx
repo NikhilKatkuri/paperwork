@@ -7,15 +7,9 @@ import UserHeader from '../ui/UserHeader';
 import UserTemplateList from '../ui/UserTemplateList';
 import { useAuth } from '@/providers';
 
-/**
- * Short terms settle fast so the box feels instant; longer ones wait, because
- * they are far more likely to be extended.
- */
 const debounceFor = (term: string) => (term.length <= 3 ? 120 : 250);
 
 function UserHome() {
-    // `query` is what the box shows, `debouncedQuery` is what the list filters
-    // on - filtering per keystroke re-renders every card for no benefit.
     const [query, setQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
 

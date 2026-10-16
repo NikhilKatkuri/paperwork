@@ -3,20 +3,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { cn } from '@/utils/cn';
 import { toast } from 'sonner';
-import { useFormCreate } from '../../providers/FormCreate';
 import { useUpdateForm } from '../../api/updateForm';
 import { syncQueueRepository } from '../../lib/sync-queue.repository';
 import { onSyncChange } from '../../lib/sync-engine';
+import { useForm } from '../../providers/form';
 
-/**
- * Live sync state for the editor navbar.
- *
- * Pending work is counted from the queue rather than held in React state, so it
- * stays correct no matter who queued the change (typing, drag-reorder, a
- * settings toggle).
- */
 function SyncStatus() {
-    const { activeFormID } = useFormCreate();
+    const { formId: activeFormID } = useForm();
     const { handleUpdate, saving } = useUpdateForm();
 
     const [queued, setQueued] = useState<{
@@ -45,9 +38,6 @@ function SyncStatus() {
             void refresh();
         });
     }, [activeFormID]);
-
-    // Derived during render rather than reset inside the effect, so switching
-    // forms cannot show the previous form's count.
     const pending = queued.formId === activeFormID ? queued.count : 0;
 
     const saveNow = useCallback(async () => {
@@ -58,7 +48,6 @@ function SyncStatus() {
         if (!result.sent) {
             toast.error(result.message ?? 'Nothing to sync yet');
         } else if (result.message) {
-            // Partial success - e.g. some questions had no matching section.
             toast.warning(result.message);
         }
     }, [activeFormID, handleUpdate]);

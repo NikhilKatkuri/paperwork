@@ -1,5 +1,8 @@
-import { QUESTION_TYPE, QuestionType, Option } from './question.type';
-import SectionCore from './section.type';
+import {
+    QuestionOptionConfig,
+    QuestionType,
+    SectionDoc,
+} from '@paperwork/types';
 import FormCore from './form.type';
 
 type RuleType =
@@ -48,7 +51,7 @@ interface FillQuestion {
     type: QuestionType;
     question: string;
     helpText?: string;
-    optionsConfig?: { correctAnswer?: string; options?: Option[] };
+    optionsConfig?: QuestionOptionConfig;
     ratingConfig?: RatingConfig;
     validationRule?: ValidationRule;
     placeholder?: string;
@@ -56,7 +59,7 @@ interface FillQuestion {
 }
 
 /** A section as returned by `GET /forms/:id/fill`, with its questions nested. */
-interface FillSection extends Omit<SectionCore, '_id'> {
+interface FillSection extends Omit<SectionDoc, '_id'> {
     _id: string;
     questions: FillQuestion[];
 }
@@ -74,11 +77,10 @@ export type {
     FillForm,
     FillQuestion,
     FillSection,
-    Option,
     QuestionType,
     RatingConfig,
     RuleType,
     ValidationRule,
 };
-export { QUESTION_TYPE };
+
 export default AnswerMap;

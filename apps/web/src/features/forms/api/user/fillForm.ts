@@ -5,23 +5,6 @@ import { ApiError, http } from '@/api/http';
 import { endpoints } from '@/api/endpoints';
 import type { FillForm } from '../../types/fill.type';
 
-interface FillResponse {
-    success: boolean;
-    message: string;
-    data: FillForm;
-}
-
-interface SubmitResponse {
-    success: boolean;
-    message: string;
-    data: { submissionId: string };
-}
-
-interface StatusResponse {
-    success: boolean;
-    data: { status?: string; submissionId: string };
-}
-
 export type SubmissionState = 'idle' | 'sending' | 'accepted' | 'failed';
 
 export interface SubmitResult {
@@ -54,25 +37,22 @@ export function useFillForm(formId: string | undefined) {
 
         const controller = new AbortController();
 
-        http.get<FillResponse>(endpoints.forms.fill(formId).path, {
+        http.get<FillForm>(endpoints.forms.fill(formId), {
             signal: controller.signal,
         })
             .then((res) => {
                 if (controller.signal.aborted) return;
 
-                if (!res.data.success) {
-                    throw new Error(res.data.message || 'Failed to load form');
-                }
-
+                const form = res.data as unknown as FillForm;
                 // A success with no payload would otherwise leave the view with
                 // a null form and no reason to show.
-                if (!res.data.data?.sections) {
+                if (!form?.sections) {
                     throw new Error('This form has no content yet');
                 }
 
                 setResult({
                     formId,
-                    form: res.data.data,
+                    form,
                     error: null,
                 });
             })
@@ -131,14 +111,17 @@ export function useSubmitForm(formId: string | undefined) {
                 if (cancelledRef.current) return;
 
                 try {
-                    const res = await http.get<StatusResponse>(
+                    const res = await http.get<{
+                        status?: string;
+                        submissionId: string;
+                    }>(
                         endpoints.forms.submissionStatus(
                             formId as string,
                             submissionId
-                        ).path
+                        )
                     );
 
-                    const status = res.data?.data?.status;
+                    const status = res.data?.status;
 
                     // Worker states are 'pending' | 'processing' | 'done' |
                     // 'failed'; the extra spellings are tolerated in case the
@@ -166,8 +149,10 @@ export function useSubmitForm(formId: string | undefined) {
 
             if (cancelledRef.current) return;
 
-            setState('accepted');
-            setMessage('Response recorded');
+            // Do not claim success after exhausting polls: the worker may
+            // still be processing or may have failed silently.
+            setState('failed');
+            setMessage('Submission is still processing. Please check back later.');
         },
         [formId]
     );
@@ -184,21 +169,39 @@ export function useSubmitForm(formId: string | undefined) {
             setMessage(undefined);
 
             try {
-                const res = await http.post<SubmitResponse>(
-                    endpoints.forms.submitFill(formId).path,
-                    { data: payload }
+                const answers = payload.map((p) => ({
+                    questionId: p.questionId,
+                    value: p.values,
+                }));
+                const res = await http.post<{ submissionId: string }>(
+                    endpoints.forms.submitFill(formId),
+                    {
+                        idempotencyKey:
+                            typeof crypto !== 'undefined' &&
+                            'randomUUID' in crypto
+                                ? crypto.randomUUID()
+                                : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                        answers,
+                        metadata: {
+                            userAgent:
+                                typeof navigator !== 'undefined'
+                                    ? navigator.userAgent.slice(0, 500)
+                                    : 'Unknown',
+                            ipAddress: 'client',
+                        },
+                    }
                 );
 
-                if (!res.data.success) {
-                    throw new Error(res.data.message || 'Failed to submit');
+                const submissionId = res.data?.submissionId;
+
+                if (!submissionId) {
+                    throw new Error('Failed to submit');
                 }
 
                 setState('accepted');
-                setMessage('Response recorded');
+                setMessage('Submission received. Confirming...');
 
-                const submissionId = res.data.data?.submissionId;
-
-                if (submissionId) void poll(submissionId);
+                void poll(submissionId);
 
                 return { state: 'accepted', submissionId };
             } catch (e) {

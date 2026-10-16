@@ -23,7 +23,7 @@ import {
     toSubmissionPayload,
     validateSection,
 } from '../../lib/fill-validation';
-import type { FillSection } from '../../types/fill.type';
+import { FillSection } from '../../types/fill.type';
 
 function Loading() {
     return (
@@ -103,7 +103,9 @@ export default function FormViewPageLayout() {
                 (sum, section) =>
                     sum +
                     section.questions.filter((question) =>
-                        (answers[question._id] ?? []).some((v) => v.trim())
+                        (answers[question._id] ?? []).some((v) =>
+                            String(v).trim()
+                        )
                     ).length,
                 0
             ),
@@ -234,14 +236,14 @@ export default function FormViewPageLayout() {
         // A section may jump somewhere other than the next one.
         const action = section.defaultAction;
 
-        if (action?.actionType === 'SUBMIT_FORM') {
+        if (action?.targetSectionId === 'SUBMIT_FORM') {
             void handleSubmit();
             return;
         }
 
-        if (action?.actionType === 'GO_TO_SECTION' && action.sectionId) {
+        if (action?.type === 'GO_TO_SECTION' && action.targetSectionId) {
             const target = sections.findIndex(
-                (s) => s._id === action.sectionId
+                (s) => s._id === action.targetSectionId
             );
 
             if (target >= 0 && target !== current) {

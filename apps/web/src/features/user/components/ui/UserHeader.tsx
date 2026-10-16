@@ -117,7 +117,7 @@ function UserHeader({ query, onQueryChange }: Readonly<UserHeaderProps>) {
 
             if (hit) {
                 event.preventDefault();
-                void select(hit._id);
+                void select(hit.id);
             }
         }
     }
@@ -160,7 +160,7 @@ function UserHeader({ query, onQueryChange }: Readonly<UserHeaderProps>) {
                         aria-autocomplete="list"
                         aria-activedescendant={
                             showResults && hits[activeIndex]
-                                ? `search-hit-${hits[activeIndex]._id}`
+                                ? `search-hit-${hits[activeIndex].id}`
                                 : undefined
                         }
                         value={query}
@@ -218,24 +218,24 @@ function UserHeader({ query, onQueryChange }: Readonly<UserHeaderProps>) {
                         ) : (
                             <ul className="max-h-80 overflow-y-auto py-1">
                                 {hits.map((hit, index) => (
-                                    <li key={hit._id}>
+                                    <li key={hit.id}>
                                         <button
-                                            id={`search-hit-${hit._id}`}
+                                            id={`search-hit-${hit.id}`}
                                             role="option"
                                             aria-selected={
                                                 index === activeIndex
                                             }
                                             type="button"
-                                            disabled={loadingId === hit._id}
+                                            disabled={loadingId === hit.id}
                                             onMouseEnter={() =>
                                                 setActive(index)
                                             }
-                                            onClick={() => void select(hit._id)}
+                                            onClick={() => void select(hit.id)}
                                             className={cn(
                                                 'hover:bg-theme-form-on-surface/5 flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors',
                                                 index === activeIndex &&
                                                     'bg-theme-form-on-surface/5',
-                                                loadingId === hit._id &&
+                                                loadingId === hit.id &&
                                                     'opacity-60'
                                             )}
                                         >

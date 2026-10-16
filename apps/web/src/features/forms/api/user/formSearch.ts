@@ -5,11 +5,11 @@ import { http } from '@/api/http';
 import { endpoints } from '@/api/endpoints';
 import storageService from '@/providers/StorageService';
 import formRepository from '../../repositories/formRepository';
-import { FormDB } from '@/lib/db';
+import { FormDB } from '@/types';
 
 /** A search hit carries only what a result row needs. */
 export interface FormSearchHit {
-    _id: string;
+    id: string;
     name: string;
 }
 
@@ -23,7 +23,7 @@ interface FormResponse {
     success: boolean;
     message: string;
     data: {
-        form: Partial<FormDB> & { _id: string };
+        form: Partial<FormDB>;
         sections: FormDB['sections'];
         questions: (FormDB['questions'][number] & { sectionId?: string })[];
     };
@@ -110,10 +110,9 @@ export function useFormSearch(query: string) {
                 }
 
                 return http
-                    .get<SearchResponse>(
-                        endpoints.forms.searchForms(term).path,
-                        { signal: controller.signal }
-                    )
+                    .get<SearchResponse>(endpoints.forms.searchForms(term), {
+                        signal: controller.signal,
+                    })
                     .then((res) => {
                         if (controller.signal.aborted) return;
 
@@ -178,7 +177,7 @@ export function useEnsureForm() {
 
         try {
             const res = await http.get<FormResponse>(
-                endpoints.forms.formById(formId).path
+                endpoints.forms.formById(formId)
             );
 
             if (!res.data.success) {
@@ -188,7 +187,7 @@ export function useEnsureForm() {
             const { form, sections, questions } = res.data.data;
 
             const sectionIndexById = new Map(
-                sections.map((section) => [section._id, section.index])
+                sections.map((section) => [section.id, section.index])
             );
 
             const hydrated: FormDB = {
@@ -199,13 +198,12 @@ export function useEnsureForm() {
 
                     return {
                         ...rest,
-                        sectionIdx:
-                            question.sectionIdx ??
-                            (sectionId
-                                ? (sectionIndexById.get(sectionId) ?? 0)
-                                : 0),
+                        id: question.id ?? question.id,
+                        sectionIdx: sectionId
+                            ? (sectionIndexById.get(sectionId) ?? 0)
+                            : 0,
                     };
-                }),
+                }) as unknown as FormDB['questions'],
             };
 
             /**

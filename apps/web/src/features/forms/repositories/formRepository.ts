@@ -1,5 +1,11 @@
-import { db, FormDB } from '@/lib/db';
-import { toTimestamp, toVersion } from '@/features/forms/types/db.types';
+import { db } from '@/lib/db';
+import {
+    toISOString,
+    toTimestamp,
+    toVersion,
+} from '@/features/forms/types/db.types';
+import { FormDB } from '@/types';
+import { FormDto } from '@paperwork/types';
 
 /**
  * Project a server record onto the local cache.
@@ -15,36 +21,62 @@ import { toTimestamp, toVersion } from '@/features/forms/types/db.types';
  */
 function mergeServerForm(local: FormDB | undefined, remote: FormDB): FormDB {
     return {
-        ...(local ?? {}),
+        ...local,
         ...remote,
-        createdAt: toTimestamp(remote.createdAt ?? local?.createdAt),
-        updatedAt: toTimestamp(remote.updatedAt ?? local?.updatedAt),
-        __v: toVersion(remote.__v ?? local?.__v),
+        createdAt: toISOString(remote.createdAt ?? local?.createdAt),
+        updatedAt: toISOString(remote.updatedAt ?? local?.updatedAt),
+        v: toVersion(remote.v ?? local?.v),
         sections: remote.sections ?? local?.sections ?? [],
         questions: remote.questions ?? local?.questions ?? [],
         isDirty: false,
-        syncedAt: undefined,
+        lastSyncedAt: null,
     };
 }
 
-/** Most recently touched first. */
 function byRecency(a: FormDB, b: FormDB): number {
     return toTimestamp(b.updatedAt) - toTimestamp(a.updatedAt);
 }
 
 class FormRepository {
-    /**
-     * Apply a server snapshot to the local cache.
-     *
-     * Records with pending local edits are skipped so an incoming snapshot can
-     * never destroy unsaved work; everything else is overwritten with the
-     * server's copy.
-     */
+    async get(uid: string): Promise<FormDB | undefined> {
+        return db.forms.get(uid);
+    }
+
+    async exists(uid: string): Promise<boolean> {
+        return (await db.forms.get(uid)) !== undefined;
+    }
+
+    async delete(uid: string): Promise<void> {
+        await db.forms.delete(uid);
+    }
+
+    async getAll(): Promise<FormDB[]> {
+        return db.forms.orderBy('updatedAt').reverse().toArray();
+    }
+
+    async save(form: FormDto): Promise<void> {
+        await db.forms.put({
+            ...form,
+            createdAt: toISOString(form.createdAt),
+            updatedAt: toISOString(form.updatedAt),
+            v: toVersion(form.v) + 1,
+            isDirty: true,
+            lastSyncedAt: null,
+        });
+    }
+
+    async markSynced(uid: string): Promise<void> {
+        await db.forms.update(uid, {
+            isDirty: false,
+            lastSyncedAt: toISOString(Date.now()),
+        });
+    }
+
     async seedMany(forms: FormDB[]): Promise<void> {
         if (!forms.length) return;
 
         await db.transaction('rw', db.forms, async () => {
-            const locals = await db.forms.bulkGet(forms.map((f) => f._id));
+            const locals = await db.forms.bulkGet(forms.map((f) => f.id));
             const rows: FormDB[] = [];
 
             forms.forEach((remote, i) => {
@@ -56,40 +88,8 @@ class FormRepository {
         });
     }
 
-    // Apply a single server snapshot.
     async seed(form: FormDB): Promise<void> {
         await this.seedMany([form]);
-    }
-
-    // Create or update from a local edit.
-    async save(form: FormDB): Promise<void> {
-        await db.forms.put({
-            ...form,
-            createdAt: toTimestamp(form.createdAt, Date.now()),
-            updatedAt: Date.now(),
-            __v: toVersion(form.__v) + 1,
-            isDirty: true,
-        });
-    }
-
-    // Get one form draft
-    async get(uid: string): Promise<FormDB | undefined> {
-        return db.forms.get(uid);
-    }
-
-    // Check if draft exists
-    async exists(uid: string): Promise<boolean> {
-        return (await db.forms.get(uid)) !== undefined;
-    }
-
-    // Delete draft
-    async delete(uid: string): Promise<void> {
-        await db.forms.delete(uid);
-    }
-
-    // Get all drafts (latest first)
-    async getAll(): Promise<FormDB[]> {
-        return db.forms.orderBy('updatedAt').reverse().toArray();
     }
 
     async select<K extends keyof FormDB>(
@@ -108,23 +108,11 @@ class FormRepository {
         });
     }
 
-    // Mark as synced after successful API call
-    async markSynced(uid: string): Promise<void> {
-        await db.forms.update(uid, {
-            isDirty: false,
-            syncedAt: Date.now(),
-        });
-    }
-
-    // Get all forms waiting for sync.
-    // `isDirty` is a boolean, which IndexedDB cannot index - filter in memory.
     async getDirtyForms(): Promise<FormDB[]> {
         const dirty = await db.forms.filter((form) => form.isDirty).toArray();
         return dirty.sort(byRecency);
     }
 
-    // Merge a partial local edit into an existing record.
-    // The version is derived from the stored record, never from `updates`.
     async update(uid: string, updates: Partial<FormDB>): Promise<void> {
         await db.transaction('rw', db.forms, async () => {
             const existing = await db.forms.get(uid);
@@ -133,31 +121,30 @@ class FormRepository {
             await db.forms.put({
                 ...existing,
                 ...updates,
-                _id: uid,
-                createdAt: toTimestamp(existing.createdAt),
-                updatedAt: Date.now(),
-                __v: toVersion(existing.__v) + 1,
+                id: uid,
+                createdAt: toISOString(existing.createdAt),
+                updatedAt: toISOString(Date.now()),
+                v: toVersion(existing.v) + 1,
                 isDirty: true,
             });
         });
     }
 
-    /**
-     * Search form names already cached locally.
-     *
-     * Every form the user owns is seeded into IndexedDB by the forms list, so
-     * this answers a query with no network at all. Ranked exact, then prefix,
-     * then substring; ties keep the newest-first order `getAll` returns.
-     */
+    private rankMatch(haystack: string, needle: string): number {
+        if (haystack === needle) return 0;
+        if (haystack.startsWith(needle)) return 1;
+        return 2;
+    }
+
     async searchLocal(
         term: string,
         limit: number = 10
-    ): Promise<{ _id: string; name: string }[]> {
+    ): Promise<{ id: string; name: string }[]> {
         const needle = term.trim().toLowerCase();
 
         if (!needle) return [];
 
-        const ranked: { hit: { _id: string; name: string }; rank: number }[] =
+        const ranked: { hit: { id: string; name: string }; rank: number }[] =
             [];
 
         for (const form of await this.getAll()) {
@@ -167,13 +154,8 @@ class FormRepository {
             if (!haystack.includes(needle)) continue;
 
             ranked.push({
-                hit: { _id: form._id, name: name.trim() || 'Untitled form' },
-                rank:
-                    haystack === needle
-                        ? 0
-                        : haystack.startsWith(needle)
-                          ? 1
-                          : 2,
+                hit: { id: form.id, name: name.trim() ?? 'Untitled form' },
+                rank: this.rankMatch(haystack, needle),
             });
         }
 

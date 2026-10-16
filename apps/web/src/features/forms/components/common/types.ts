@@ -1,36 +1,23 @@
-export enum QUESTION_TYPE {
-    TEXT = 'TEXT',
-    PARAGRAPH = 'PARAGRAPH',
-    DATE = 'DATE',
-    TIME = 'TIME',
-    CHOICE = 'CHOICE',
-    RADIO = 'RADIO',
-    DROP_DOWN = 'DROP_DOWN',
-    LINEAR_SCALE = 'LINEAR_SCALE',
-    RATING = 'RATING',
-}
+import { QuestionType, QuestionTypeEnum } from '@paperwork/types';
 
-export type OptionType =
-    QUESTION_TYPE.CHOICE | QUESTION_TYPE.RADIO | QUESTION_TYPE.DROP_DOWN;
-export type QuestionType = (typeof QUESTION_TYPE)[keyof typeof QUESTION_TYPE];
-
-export const questionTypesMap = {
-    [QUESTION_TYPE.TEXT]: { label: 'Short Answer', icon: 'short_text' },
-    [QUESTION_TYPE.PARAGRAPH]: { label: 'Paragraph', icon: 'notes' },
-    [QUESTION_TYPE.DATE]: { label: 'Date', icon: 'calendar_today' },
-    [QUESTION_TYPE.TIME]: { label: 'Time', icon: 'schedule' },
-    [QUESTION_TYPE.CHOICE]: { label: 'Multiple Choice', icon: 'check_box' },
-    [QUESTION_TYPE.RADIO]: {
+export const questionTypesMap: Record<QuestionType, { label: string; icon: string }> = {
+    [QuestionTypeEnum.TEXT]: { label: 'Short Answer', icon: 'short_text' },
+    [QuestionTypeEnum.PARAGRAPH]: { label: 'Paragraph', icon: 'notes' },
+    [QuestionTypeEnum.DATE]: { label: 'Date', icon: 'calendar_today' },
+    [QuestionTypeEnum.TIME]: { label: 'Time', icon: 'schedule' },
+    [QuestionTypeEnum.CHOICE]: { label: 'Multiple Choice', icon: 'check_box' },
+    [QuestionTypeEnum.RADIO]: {
         label: 'Single Choice',
         icon: 'radio_button_checked',
     },
-    [QUESTION_TYPE.DROP_DOWN]: {
+    [QuestionTypeEnum.DROP_DOWN]: {
         label: 'Dropdown',
         icon: 'arrow_drop_down_circle',
     },
-    [QUESTION_TYPE.LINEAR_SCALE]: {
+    [QuestionTypeEnum.LINEAR_SCALE]: {
         label: 'Linear Scale',
         icon: 'linear_scale',
     },
-    [QUESTION_TYPE.RATING]: { label: 'Rating', icon: 'star' },
+    [QuestionTypeEnum.RATING]: { label: 'Rating', icon: 'star' },
+    [QuestionTypeEnum.MATRIX]: { label: 'Matrix', icon: 'grid_view' },
 } as const;

@@ -27,13 +27,11 @@
     },
     "include": [
         "next-env.d.ts",
-        "**/*.ts",
-        "**/*.tsx",
+        "src/**/*.ts",
+        "src/**/*.tsx",
         ".next/types/**/*.ts",
         ".next/dev/types/**/*.ts",
-        "**/*.mts",
-        "../../server/src/modules/auth/utils/randomprofiepicture.ts",
-        "src/features/auth/types/api.response.ts"
+        "src/**/*.mts"
     ],
     "exclude": ["node_modules"]
 }

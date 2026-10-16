@@ -2,6 +2,60 @@
 import { cn } from '@/utils/cn';
 import { useRef, useEffect } from 'react';
 
+const ALLOWED_TAGS = new Set(['B', 'I', 'U', 'STRONG', 'EM', 'A', 'UL', 'OL', 'LI', 'P', 'BR', 'SPAN']);
+
+function sanitizeRichHtml(dirty: string): string {
+    if (typeof window === 'undefined') return dirty;
+    try {
+        const doc = new DOMParser().parseFromString(
+            `<div>${dirty}</div>`,
+            'text/html'
+        );
+        const container = doc.body.firstElementChild;
+        if (!container) return '';
+        const clean = (node: Element) => {
+            for (const child of [...node.children]) {
+                if (!ALLOWED_TAGS.has(child.tagName)) {
+                    // Unwrap disallowed tags but keep text.
+                    child.replaceWith(...[...child.childNodes]);
+                    continue;
+                }
+                // Strip all attributes except safe href on links.
+                for (const attr of [...child.attributes]) {
+                    const name = attr.name.toLowerCase();
+                    if (child.tagName === 'A' && name === 'href') {
+                        const href = attr.value.trim();
+                        if (!/^https?:\/\//i.test(href) && href !== '#') {
+                            child.removeAttribute(attr.name);
+                        }
+                        continue;
+                    }
+                    child.removeAttribute(attr.name);
+                }
+                // Remove javascript: even if allowlisted above.
+                if (child.tagName === 'A') {
+                    const href = child.getAttribute('href') ?? '';
+                    if (/^\s*javascript:/i.test(href)) {
+                        child.removeAttribute('href');
+                    }
+                }
+                clean(child);
+            }
+            // Remove event-handler text artifacts is handled by attribute strip.
+        };
+        clean(container);
+        return container.innerHTML;
+    } catch {
+        return '';
+    }
+}
+
+function sanitizeUrlInput(url: string): string | null {
+    const trimmed = url.trim();
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return null;
+}
+
 type TextSize = 'caption' | 'sm' | 'normal' | 'md' | 'heading' | 'display';
 
 interface RichTextInputProps {
@@ -37,7 +91,7 @@ function RichTextInput({
             value !== undefined &&
             editorRef.current.innerHTML !== value
         ) {
-            editorRef.current.innerHTML = value;
+            editorRef.current.innerHTML = sanitizeRichHtml(value);
         }
     }, [value]);
 
@@ -48,13 +102,23 @@ function RichTextInput({
     ) => {
         document.execCommand(command, false, cmdValue);
         if (editorRef.current && onChange) {
-            onChange(editorRef.current.innerHTML);
+            const clean = sanitizeRichHtml(editorRef.current.innerHTML);
+            if (clean !== editorRef.current.innerHTML) {
+                editorRef.current.innerHTML = clean;
+            }
+            onChange(clean);
         }
     };
 
     const handleLink = () => {
-        const url = prompt('Enter URL:');
-        if (url) formatText('createLink', url);
+        const url = prompt('Enter URL (https://...):');
+        if (!url) return;
+        const safe = sanitizeUrlInput(url);
+        if (!safe) {
+            alert('Only https:// links are allowed');
+            return;
+        }
+        formatText('createLink', safe);
     };
 
     const preventFocusLoss = (e: React.MouseEvent) => {
@@ -72,7 +136,14 @@ function RichTextInput({
                     className
                 )}
                 data-placeholder={placeholder}
-                onInput={() => onChange?.(editorRef.current?.innerHTML || '')}
+                onInput={() => {
+                    const raw = editorRef.current?.innerHTML || '';
+                    const clean = sanitizeRichHtml(raw);
+                    if (clean !== raw && editorRef.current) {
+                        editorRef.current.innerHTML = clean;
+                    }
+                    onChange?.(clean);
+                }}
             />
 
             <div className="bg-theme-form-container-border group-hover:bg-theme-form-container-active h-px w-full rounded-xl" />

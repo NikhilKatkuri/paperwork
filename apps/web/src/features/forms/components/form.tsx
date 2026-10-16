@@ -4,24 +4,28 @@ import { closestCenter, DndContext, DragEndEvent } from '@dnd-kit/core';
 import {
     SortableContext,
     verticalListSortingStrategy,
+    arrayMove,
 } from '@dnd-kit/sortable';
 
-import { useFormCreate } from '../providers/FormCreate';
 import FloatingTootbar from './create/FloatingTootbar';
 import Section from './create/section';
+import { useForm } from '../providers/form';
 
 function FormLayout() {
-    const { sections, reorderSections } = useFormCreate();
-    const orderedSections = Array.from(sections.entries())
-        .sort((a, b) => a[1].index - b[1].index)
-        .map(([key]) => key);
+    const { sectionOrder, reorderSections } = useForm();
 
     function handleSectionDragEnd(event: DragEndEvent) {
         const { active, over } = event;
 
         if (!over || active.id === over.id) return;
 
-        reorderSections(active.id as number, over.id as number);
+        const oldIndex = sectionOrder.indexOf(String(active.id));
+        const newIndex = sectionOrder.indexOf(String(over.id));
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+            const newOrder = arrayMove(sectionOrder, oldIndex, newIndex);
+            reorderSections(newOrder);
+        }
     }
 
     return (
@@ -31,11 +35,11 @@ function FormLayout() {
                 onDragEnd={handleSectionDragEnd}
             >
                 <SortableContext
-                    items={orderedSections}
+                    items={sectionOrder}
                     strategy={verticalListSortingStrategy}
                 >
-                    {orderedSections.map((sectionKey) => (
-                        <Section key={sectionKey} sectionIdx={sectionKey} />
+                    {sectionOrder.map((sectionKey) => (
+                        <Section key={sectionKey} sectionId={sectionKey} />
                     ))}
                 </SortableContext>
             </DndContext>

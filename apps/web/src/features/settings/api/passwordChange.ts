@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
-import { validatePassword } from '@/utils/validations';
+import { validatePassword, validateSignInPassword } from '@/utils/validations';
 import { AxiosError } from 'axios';
 
 interface ChangePasswordProps {
@@ -23,7 +23,7 @@ export default function usePasswordChange() {
         setSaving(true);
 
         try {
-            const cpe = validatePassword(currentPassword);
+            const cpe = validateSignInPassword(currentPassword);
             const npe = validatePassword(newPassword);
             const cnpe = validatePassword(confirmNewPassword);
 
@@ -45,7 +45,7 @@ export default function usePasswordChange() {
                 );
             }
 
-            const { path } = endpoints.auth.changePassword;
+            const path = endpoints.auth.changePassword;
 
             const response = await http.post(
                 path,

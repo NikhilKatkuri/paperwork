@@ -1,24 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useFormCreate } from '../../providers/FormCreate';
+import { useForm } from '../../providers/form';
 
 function FloatingTootbar() {
-    const { handleAddQuestion, handleAddSection: addNewSection } =
-        useFormCreate();
+    const { addQuestion, addSection } = useForm();
 
     const [topPosition, setTopPosition] = useState<number | null>(null);
-    const [activeSectionIdx, setActiveSectionIdx] = useState<number>(0);
+    const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
     const positionRef = useRef<number | null>(null);
     const activeElementRef = useRef<HTMLElement | null>(null);
-
-    function cleanNearestId(nearestId: string | null): number {
-        if (!nearestId) return 0;
-
-        const match = nearestId.match(/section-(\d+)/);
-        return match ? Number(match[1]) : 0;
-    }
 
     useEffect(() => {
         function handleClick(e: MouseEvent) {
@@ -37,7 +29,7 @@ function FloatingTootbar() {
 
                 positionRef.current = newTop;
                 setTopPosition(newTop);
-                setActiveSectionIdx(cleanNearestId(selectedElement.id));
+                setActiveSectionId(selectedElement.id);
 
                 return;
             }
@@ -50,7 +42,7 @@ function FloatingTootbar() {
                 activeElementRef.current = null;
                 positionRef.current = null;
                 setTopPosition(null);
-                setActiveSectionIdx(0);
+                setActiveSectionId(null);
             }
         }
 
@@ -92,7 +84,9 @@ function FloatingTootbar() {
         >
             <div className="grid h-full w-full grid-cols-1 grid-rows-2">
                 <button
-                    onClick={() => handleAddQuestion(activeSectionIdx)}
+                    onClick={() =>
+                        activeSectionId && addQuestion(activeSectionId)
+                    }
                     className="hover:bg-theme-form-container-active/50 aspect-square w-12 cursor-pointer bg-transparent"
                 >
                     <span className="material-symbols-outlined text-theme-form-container-icon">
@@ -101,7 +95,7 @@ function FloatingTootbar() {
                 </button>
 
                 <button
-                    onClick={addNewSection}
+                    onClick={addSection}
                     className="hover:bg-theme-form-container-active/50 aspect-square w-12 cursor-pointer bg-transparent"
                 >
                     <span className="material-symbols-outlined text-theme-form-container-icon">

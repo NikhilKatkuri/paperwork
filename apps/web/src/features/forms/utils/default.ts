@@ -1,9 +1,12 @@
-import { generateObjectId } from './index';
-import FormCore, { FormSettings } from '../types/form.type';
-import QuestionCore, { QUESTION_TYPE } from '../types/question.type';
-import SectionCore from '../types/section.type';
+import {
+    CreateFormDoc,
+    FormSettings,
+    Question,
+    QuestionTypeEnum,
+    Section,
+} from '@paperwork/types';
 
-const DEFAULT_FORM_SETTINGS: FormSettings = {
+const defaultFormSettings: FormSettings = {
     maxResponses: undefined,
     maxResponsesPerUser: undefined,
     closeDate: undefined,
@@ -21,46 +24,39 @@ const DEFAULT_FORM_SETTINGS: FormSettings = {
     redirectUrl: undefined,
 };
 
-const DEFAULT_FORM_CORE: FormCore = {
-    name: `Untitled form`,
-    isPrivate: false,
-    isPublished: false,
-    allowedDomains: undefined,
-    settings: DEFAULT_FORM_SETTINGS,
-    responseCount: 0,
+const createDefaultForm: () => CreateFormDoc = () => {
+    const obj: CreateFormDoc = {
+        name: `Untitled form`,
+        isPrivate: false,
+        isPublished: false,
+        allowedDomains: undefined,
+        settings: defaultFormSettings,
+        responseCount: 0,
+        section: defaultSection,
+        questions: [],
+    };
+
+    obj.questions.push(defaultQuestion);
+    return obj;
 };
 
-/**
- * Factories rather than shared constants: every section and question needs its
- * own `_id`, and a module-level object would hand the same id to every form.
- */
-const createDefaultSection = (): SectionCore => ({
-    _id: generateObjectId(),
+const defaultSection: Section = {
     index: 0,
     title: 'Untitled section',
     description: 'This is a default section description.',
-    onAnswer: undefined,
-    defaultAction: { actionType: 'NEXT_SECTION' },
-});
+    defaultAction: { type: 'NEXT_SECTION' },
+};
 
-const createDefaultQuestion = (): QuestionCore => ({
-    _id: generateObjectId(),
+const defaultQuestion: Question = {
     index: 0,
-    sectionIdx: 0,
-    type: QUESTION_TYPE.TEXT,
+    type: QuestionTypeEnum.TEXT,
     question: 'Untitled Question',
-    helpText: undefined,
-    options: undefined,
-    dependsOn: undefined,
-    ratingConfig: undefined,
-    validationRule: undefined,
-    placeholder: undefined,
-    isRequired: false,
-});
+    slug: 'untitled-question-slug',
+};
 
 export {
-    DEFAULT_FORM_SETTINGS,
-    DEFAULT_FORM_CORE,
-    createDefaultSection,
-    createDefaultQuestion,
+    defaultFormSettings,
+    createDefaultForm,
+    defaultSection,
+    defaultQuestion,
 };

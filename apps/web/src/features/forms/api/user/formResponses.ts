@@ -3,23 +3,19 @@
 import { useEffect, useState } from 'react';
 import { ApiError, http } from '@/api/http';
 import { endpoints } from '@/api/endpoints';
-import type {
-    FormResponse,
-    ResponsePagination,
-    ResponseSummary,
-} from '../../types/response.type';
+import { FormResponse } from '@paperwork/types';
 
 interface ResponsesResponse {
     success: boolean;
     message: string;
     data: FormResponse[] | null;
-    pagination?: ResponsePagination;
+    // pagination?: ResponsePagination;
 }
 
 interface SummaryResponse {
     success: boolean;
     message: string;
-    data: ResponseSummary;
+    // data: ResponseSummary;
 }
 
 export interface ResponseFilters {
@@ -34,7 +30,7 @@ interface ListState {
     key: string;
     status: Status;
     responses: FormResponse[];
-    pagination: ResponsePagination | null;
+    // pagination: ResponsePagination | null;
     error: string | null;
 }
 
@@ -42,7 +38,7 @@ const IDLE: ListState = {
     key: '',
     status: 'loading',
     responses: [],
-    pagination: null,
+    // pagination: null,
     error: null,
 };
 
@@ -77,7 +73,7 @@ export function useFormResponses(
                 q,
                 questionId,
                 sort,
-            }).path,
+            }),
             { signal: controller.signal }
         )
             .then((res) => {
@@ -93,7 +89,7 @@ export function useFormResponses(
                     responses: Array.isArray(res.data.data)
                         ? res.data.data
                         : [],
-                    pagination: res.data.pagination ?? null,
+                    // pagination: res.data.pagination ?? null,
                     error: null,
                 });
             })
@@ -104,7 +100,7 @@ export function useFormResponses(
                     key,
                     status: 'error',
                     responses: [],
-                    pagination: null,
+                    // pagination: null,
                     error:
                         e instanceof ApiError || e instanceof Error
                             ? e.message
@@ -119,7 +115,7 @@ export function useFormResponses(
 
     return {
         responses: current.responses,
-        pagination: current.pagination,
+        // pagination: current.pagination,
         loading: current.status === 'loading',
         error: current.error,
     };
@@ -135,9 +131,9 @@ export function useResponseSummary(
     const [state, setState] = useState<{
         key: string;
         loading: boolean;
-        summary: ResponseSummary | null;
+        // summary: ResponseSummary | null;
         error: string | null;
-    }>({ key: '', loading: true, summary: null, error: null });
+    }>({ key: '', loading: true, error: null });
 
     useEffect(() => {
         if (!formId) return;
@@ -148,7 +144,7 @@ export function useResponseSummary(
             endpoints.forms.formResponsesSummary(formId, {
                 q,
                 questionId,
-            }).path,
+            }),
             { signal: controller.signal }
         )
             .then((res) => {
@@ -163,7 +159,7 @@ export function useResponseSummary(
                 setState({
                     key,
                     loading: false,
-                    summary: res.data.data,
+                    // summary: res.data.data,
                     error: null,
                 });
             })
@@ -173,7 +169,7 @@ export function useResponseSummary(
                 setState({
                     key,
                     loading: false,
-                    summary: null,
+                    // summary: null,
                     error:
                         e instanceof Error
                             ? e.message
@@ -187,7 +183,7 @@ export function useResponseSummary(
     const current = state.key === key ? state : null;
 
     return {
-        summary: current?.summary ?? null,
+        // summary: current?.summary ?? null,
         loading: current ? current.loading : true,
         error: current?.error ?? null,
     };

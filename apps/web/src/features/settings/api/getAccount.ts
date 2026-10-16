@@ -62,7 +62,7 @@ function useAccountMetaOnly() {
         setLoading(true);
 
         try {
-            const { path } = endpoints.auth.account;
+            const path = endpoints.auth.account;
             const res = await http.get<AccountResponse>(path);
 
             if (res.data.success && res.data.data) {

@@ -1,1 +1,1 @@
-export * from './user/allForms';
+export * from './user/getAllForms';

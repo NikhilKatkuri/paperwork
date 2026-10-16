@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
+import { useApiAction } from '@/hooks/useApiAction';
 import {
     flushFormNow,
     flushAllPending,
@@ -15,47 +16,54 @@ import {
  * one, and a status the UI can render.
  */
 export function useUpdateForm() {
-    const [saving, setSaving] = useState(false);
     const [outcome, setOutcome] = useState<SyncOutcome | null>(null);
 
-    const handleUpdate = useCallback(async (id: string) => {
-        setSaving(true);
+    const { loading: updating, execute: executeUpdate } = useApiAction(
+        async (id: string) => ({
+            data: await flushFormNow(id),
+        })
+    );
+    const { loading: updatingAll, execute: executeUpdateAll } = useApiAction(
+        async () => ({
+            data: await flushAllPending(),
+        })
+    );
 
-        try {
-            const result = await flushFormNow(id);
-            setOutcome(result);
-            return result;
-        } catch (error) {
-            const failure: SyncOutcome = {
-                formId: id,
-                changes: 0,
-                sent: false,
-                message: error instanceof Error ? error.message : 'Sync failed',
-            };
+    const handleUpdate = async (id: string) => {
+        const response = await executeUpdate(id);
+        const result: SyncOutcome = response.ok
+            ? response.data
+            : {
+                  formId: id,
+                  changes: 0,
+                  sent: false,
+                  message: response.error,
+              };
 
-            setOutcome(failure);
-            return failure;
-        } finally {
-            setSaving(false);
+        setOutcome(result);
+        return result;
+    };
+
+    const handleUpdateAll = async () => {
+        const response = await executeUpdateAll();
+        if (!response.ok) {
+            throw new Error(response.error);
         }
-    }, []);
 
-    const handleUpdateAll = useCallback(async () => {
-        setSaving(true);
+        const results = response.data;
+        setOutcome(
+            results.find((r) => !r.sent && r.message) ??
+                results.find((r) => r.sent) ??
+                null
+        );
+    };
 
-        try {
-            const results = await flushAllPending();
-            setOutcome(
-                results.find((r) => !r.sent && r.message) ??
-                    results.find((r) => r.sent) ??
-                    null
-            );
-        } finally {
-            setSaving(false);
-        }
-    }, []);
-
-    return { handleUpdate, handleUpdateAll, saving, outcome };
+    return {
+        handleUpdate,
+        handleUpdateAll,
+        saving: updating || updatingAll,
+        outcome,
+    };
 }
 
 export default useUpdateForm;

@@ -52,9 +52,24 @@ const AuthContext = createContext<
     AuthContextType<ReturnType<typeof useAuthLogic>> | undefined
 >(undefined);
 
+function base64UrlDecode(input: string): string {
+    const base64 = input.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(
+        base64.length + ((4 - (base64.length % 4)) % 4),
+        '='
+    );
+    if (typeof window !== 'undefined' && typeof window.atob === 'function') {
+        return window.atob(padded);
+    }
+    // Node fallback (SSR): Buffer handles base64.
+    return Buffer.from(padded, 'base64').toString('utf-8');
+}
+
 function getExpiryMs(token: string): number | null {
     try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const part = token.split('.')[1];
+        if (!part) return null;
+        const payload = JSON.parse(base64UrlDecode(part));
         if (!payload.exp) return null;
         return payload.exp * 1000;
     } catch {
@@ -90,6 +105,10 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         if (!expiryMs) return;
 
         const delay = expiryMs - Date.now() - 60 * 1000;
+        // If the token is already expired or expires within the 60s window,
+        // do not hot-loop: leave the session to the next user action / 401
+        // recovery instead of firing an immediate refresh storm.
+        if (delay <= 5000) return;
 
         refreshTimerRef.current = setTimeout(
             async () => {

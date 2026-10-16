@@ -1,4 +1,9 @@
-function getErrorMessage(status?: number, data?: { message?: string }): string {
+export interface ApiErrorResponse {
+    message?: string;
+    errors?: Record<string, string[]>;
+}
+
+function getErrorMessage(status?: number, data?: ApiErrorResponse): string {
     if (status === undefined) {
         return 'Network error. Please check your internet connection.';
     }
@@ -11,6 +16,14 @@ function getErrorMessage(status?: number, data?: { message?: string }): string {
         return 'You do not have permission to perform this action.';
     }
 
+    if (status === 404) {
+        return data?.message || 'The requested resource was not found.';
+    }
+
+    if (status === 429) {
+        return 'Too many requests. Please try again later.';
+    }
+
     if (status === 400 || status === 422) {
         return data?.message || 'Please check the entered information.';
     }
@@ -19,7 +32,7 @@ function getErrorMessage(status?: number, data?: { message?: string }): string {
         return 'Server error. Please try again later.';
     }
 
-    return 'An error occurred. Please try again.';
+    return data?.message || 'An error occurred. Please try again.';
 }
 
 export { getErrorMessage };

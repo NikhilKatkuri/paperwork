@@ -1,16 +1,16 @@
 'use client';
-
-import { useFormCreate } from '@/features/forms/providers/FormCreate';
-import QuestionCore from '@/features/forms/types/question.type';
+ 
+import { useForm } from '@/features/forms/providers/form';
 import Toggle from '../../common/Toggle';
+import { QuestionDoc } from '@paperwork/types';
 
 interface QuestionToolingProps {
     isRequired: boolean;
     helpText?: string;
     showMoreOptions: boolean;
     setShowMoreOptions: (value: boolean) => void;
-    updateConfig: (patch: Partial<QuestionCore>) => void;
-    id: number;
+    updateConfig: (patch: Partial<QuestionDoc>) => void;
+    id: string;
     sectionIdx: number;
     placeholder?: string;
 }
@@ -24,7 +24,7 @@ function QuestionTooling({
     updateConfig,
     id,
 }: Readonly<QuestionToolingProps>) {
-    const { duplicateQuestion, deleteQuestion } = useFormCreate();
+    const { duplicateQuestion, deleteQuestion } = useForm();
 
     return (
         <div className="border-theme-form-container-border/70 mt-2 grid grid-rows-[0fr] border-t opacity-0 transition-all duration-300 ease-in-out group-focus-within/question-body:grid-rows-[1fr] group-focus-within/question-body:opacity-100 group-hover/question-body:grid-rows-[1fr] group-hover/question-body:opacity-100">

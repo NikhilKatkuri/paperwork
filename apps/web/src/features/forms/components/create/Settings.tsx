@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Toggle from '../common/Toggle';
-import { useFormCreate } from '../../providers/FormCreate';
+import { useForm } from '../../providers/form';
 
 export interface FormSettingsData {
     maxResponses?: number;
@@ -146,7 +146,6 @@ export interface FormSettingsProps {
     onSave?: (settings: FormSettingsData) => void;
 }
 
-/** Helper to transform ISO strings to Date objects for the provider */
 function toProviderPayload(settings: FormSettingsData) {
     return {
         ...settings,
@@ -160,7 +159,7 @@ function toProviderPayload(settings: FormSettingsData) {
 }
 
 export default function FormSettings({ onSave }: Readonly<FormSettingsProps>) {
-    const { form, handleFormChange } = useFormCreate();
+    const { form, updateFormState } = useForm();
 
     const [settings, setSettings] = useState<FormSettingsData>(() => {
         return {
@@ -168,7 +167,6 @@ export default function FormSettings({ onSave }: Readonly<FormSettingsProps>) {
         };
     });
 
-    // Sync when initial hydration occurs
     useEffect(() => {
         function sync() {
             if (form?.settings) {
@@ -220,7 +218,10 @@ export default function FormSettings({ onSave }: Readonly<FormSettingsProps>) {
     }
 
     const handleSave = () => {
-        handleFormChange('settings', toProviderPayload(settings));
+        updateFormState((prev) => ({
+            ...prev,
+            settings: toProviderPayload(settings),
+        }));
         onSave?.(settings);
     };
 

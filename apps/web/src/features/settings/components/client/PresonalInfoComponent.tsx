@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/providers';
 import React, { useEffect, useState } from 'react';
-import { COUNTRIES, GENDERS, LANGUAGES } from '../../constants/enums';
+import { COUNTRIES, GENDERS, LANGUAGES } from '@paperwork/types';
 import { sensitiveData } from '@/types';
 import useUserPersonalInfo, {
     useRetrievePersonalInfo,

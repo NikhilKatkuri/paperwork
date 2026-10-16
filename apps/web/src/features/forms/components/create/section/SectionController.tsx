@@ -1,38 +1,43 @@
 'use client';
-
-import { useFormCreate } from '@/features/forms/providers/FormCreate';
-import { SectionAction } from '@/features/forms/types/section.type';
+  
+import { useForm } from '@/features/forms/providers/form';
+import { SectionAction } from '@paperwork/types';
 import { useEffect, useRef, useState } from 'react';
 
 interface SectionControllerProps {
-    size: number;
-    idx: number;
+    size: number; 
+    id: string;
+    index: number;
 }
 
-function SectionController({ size, idx }: Readonly<SectionControllerProps>) {
-    const { updateSectionData, sections } = useFormCreate();
+function SectionController({ size, id, index }: Readonly<SectionControllerProps>) {
+    const { sectionsMap, updateSection, sectionOrder } = useForm();
+
     const [showModal, setShowModal] = useState<boolean>(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    const currentSection = sections.get(idx);
+    const currentSection = sectionsMap.get(id);
 
     const sectionAction: SectionAction = currentSection?.defaultAction ?? {
-        actionType: 'NEXT_SECTION',
-    };
+        type: 'NEXT_SECTION',
+    } satisfies SectionAction;
 
     const handleActionChange = (newAction: SectionAction) => {
-        updateSectionData(idx, {
+        updateSection(id, (prev) => ({
+            ...prev,
             defaultAction: newAction,
-        });
+        }));
         setShowModal(false);
     };
 
     function getLabelForAction(action: SectionAction) {
-        switch (action.actionType) {
+        switch (action.type) {
             case 'NEXT_SECTION':
                 return 'Continue to Next Section';
-            case 'GO_TO_SECTION':
-                return `Go to Section ${action.sectionId + 1}`;
+            case 'GO_TO_SECTION': {
+                const targetSec = sectionsMap.get(action.targetSectionId!);
+                return targetSec ? `Go to Section ${targetSec.index + 1}` : 'Go to Section';
+            }
             case 'SUBMIT_FORM':
                 return 'Submit Form';
             default:
@@ -58,12 +63,12 @@ function SectionController({ size, idx }: Readonly<SectionControllerProps>) {
         };
     }, [showModal]);
 
-    if (size <= 1 || idx >= size - 1) return null;
+    if (size <= 1 || index >= size - 1) return null;
 
     return (
         <div className="relative py-2 text-sm" ref={containerRef}>
             <div className="flex items-center gap-3">
-                <p>After Section {idx + 1}</p>
+                <p>After Section {index + 1}</p>
 
                 <div className="relative inline-block w-full md:max-w-64">
                     <button
@@ -85,41 +90,42 @@ function SectionController({ size, idx }: Readonly<SectionControllerProps>) {
                                 className="hover:bg-theme-form-container-active/20 h-12 w-full px-4 text-start"
                                 onClick={() =>
                                     handleActionChange({
-                                        actionType: 'NEXT_SECTION',
+                                        type: 'NEXT_SECTION',
                                     })
                                 }
                             >
                                 Continue to Next Section
                             </button>
+ 
+                            {sectionOrder.map((secId) => {
+                                const section = sectionsMap.get(secId);
+                                if (!section) return null;
+ 
+                                if (section.index === index + 1) return null;
 
-                            {Array.from({ length: size }, (_, i) => i).map(
-                                (sectionId) => {
-                                    if (idx + 1 === sectionId) return null;
-                                    return (
-                                        <button
-                                            key={sectionId}
-                                            type="button"
-                                            className="hover:bg-theme-form-container-active/20 h-12 w-full px-4 text-start"
-                                            onClick={() =>
-                                                handleActionChange({
-                                                    actionType: 'GO_TO_SECTION',
-                                                    sectionId:
-                                                        sectionId.toString(),
-                                                })
-                                            }
-                                        >
-                                            Go to Section {sectionId + 1}
-                                        </button>
-                                    );
-                                }
-                            )}
+                                return (
+                                    <button
+                                        key={secId}
+                                        type="button"
+                                        className="hover:bg-theme-form-container-active/20 h-12 w-full px-4 text-start"
+                                        onClick={() =>
+                                            handleActionChange({
+                                                type: 'GO_TO_SECTION',
+                                                targetSectionId: secId,
+                                            })
+                                        }
+                                    >
+                                        Go to Section {section.index + 1}
+                                    </button>
+                                );
+                            })}
 
                             <button
                                 type="button"
                                 className="hover:bg-theme-form-container-active/20 h-12 w-full px-4 text-start"
                                 onClick={() =>
                                     handleActionChange({
-                                        actionType: 'SUBMIT_FORM',
+                                        type: 'SUBMIT_FORM',
                                     })
                                 }
                             >

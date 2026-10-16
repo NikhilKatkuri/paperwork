@@ -1,5 +1,5 @@
 /**
- * Validates a password string.
+ * Validates a password string for sign-up (strict policy).
  * Returns an error string if invalid, or null if valid.
  */
 const validatePassword = (password: string): string | null => {
@@ -9,6 +9,10 @@ const validatePassword = (password: string): string | null => {
 
     if (password.length < 8) {
         return 'Password must be at least 8 characters';
+    }
+
+    if (password.length > 128) {
+        return 'Password is too long';
     }
 
     // Optimized regex: removed redundant lookahead syntax wrappers
@@ -21,6 +25,20 @@ const validatePassword = (password: string): string | null => {
 };
 
 /**
+ * Sign-in must not enforce sign-up complexity: legacy/weak passwords must
+ * still be submittable so the server can reject with the correct message.
+ */
+const validateSignInPassword = (password: string): string | null => {
+    if (!password) {
+        return 'Password is required';
+    }
+    if (password.length > 128) {
+        return 'Password is too long';
+    }
+    return null;
+};
+
+/**
  * Validates an email string.
  * Returns an error string if invalid, or null if valid.
  */
@@ -29,7 +47,11 @@ const validateEmail = (email: string): string | null => {
         return 'Email is required';
     }
 
-    const emailRegex = /^\S+@\S+\.\S+$/;
+    if (email.length > 254) {
+        return 'Email is too long';
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         return 'Email is invalid';
     }
@@ -53,4 +75,4 @@ const validateString = (value: string, fieldName: string): string | null => {
     return null;
 };
 
-export { validatePassword, validateEmail, validateString };
+export { validatePassword, validateSignInPassword, validateEmail, validateString };

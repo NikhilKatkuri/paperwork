@@ -1,11 +1,10 @@
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
-import { FormDB } from '@/lib/db';
-import QuestionCore from '../types/question.type';
-import SectionCore, { SectionAction } from '../types/section.type';
 import formRepository from '../repositories/formRepository';
 import { syncQueueRepository } from './sync-queue.repository';
 import { generateObjectId } from '../utils';
+import { FormDB } from '@/types';
+import { QuestionDoc, SectionAction, SectionDoc } from '@paperwork/types';
 
 interface SyncResponse {
     success: boolean;
@@ -35,7 +34,7 @@ function bodyChanged(paths: string[]): boolean {
  *
  * The Dexie migration and the editor's load path both cover this, but a record
  * written by an older tab after the migration would still send an undefined
- * `_id` and fail the batch with "expected string, received undefined". The
+ * `id` and fail the batch with "expected string, received undefined". The
  * repair is written back so the id stays stable across later flushes.
  */
 async function repairIds(form: FormDB): Promise<FormDB> {
@@ -43,18 +42,18 @@ async function repairIds(form: FormDB): Promise<FormDB> {
     const questions = form.questions ?? [];
 
     const needsRepair =
-        sections.some((s) => !s._id) || questions.some((q) => !q._id);
+        sections.some((s) => !s.id) || questions.some((q) => !q.id);
 
     if (!needsRepair) return form;
 
     const repairedSections = sections.map((s) =>
-        s._id ? s : { ...s, _id: generateObjectId() }
+        s.id ? s : { ...s, id: generateObjectId() }
     );
     const repairedQuestions = questions.map((q) =>
-        q._id ? q : { ...q, _id: generateObjectId() }
+        q.id ? q : { ...q, id: generateObjectId() }
     );
 
-    await formRepository.update(form._id, {
+    await formRepository.update(form.id, {
         sections: repairedSections,
         questions: repairedQuestions,
     });
@@ -70,7 +69,7 @@ type SectionWire = Record<string, unknown>;
 type QuestionWire = Record<string, unknown>;
 
 /** `zodObjectId` on the server only accepts 24-char hex. */
-const OBJECT_ID = /^[0-9a-fA-F]{24}$/;
+const OBJECTid = /^[0-9a-fA-F]{24}$/;
 
 function toSectionAction(
     action: SectionAction | undefined,
@@ -78,20 +77,22 @@ function toSectionAction(
 ): SectionWire | undefined {
     if (!action) return undefined;
 
-    if (action.actionType !== 'GO_TO_SECTION') {
-        return { actionType: action.actionType };
+    if (action.type !== 'GO_TO_SECTION') {
+        return { type: action.type };
     }
 
     // The editor stores the target section's *position*, not its id, so it has
     // to be resolved here - sending the raw value fails validation with
     // "Invalid Database ID format" and takes the whole batch down with it.
     const resolved =
-        sectionIdByIndex.get(Number(action.sectionId)) ??
-        (OBJECT_ID.test(action.sectionId) ? action.sectionId : undefined);
+        sectionIdByIndex.get(Number(action.targetSectionId)) ??
+        (OBJECTid.test(action.targetSectionId as string)
+            ? action.targetSectionId
+            : undefined);
 
     if (!resolved) return undefined;
 
-    return { actionType: action.actionType, sectionId: resolved };
+    return { type: action.type, targetSectionId: resolved };
 }
 
 /**
@@ -102,23 +103,24 @@ function toSectionAction(
  * here, and a question pointing at a section that no longer exists is dropped
  * rather than sent as a dangling reference.
  */
-function toBody(sections: SectionCore[], questions: QuestionCore[]) {
+function toBody(sections: SectionDoc[], questions: QuestionDoc[]) {
     const sectionIdByIndex = new Map<number, string>(
-        sections.map((s) => [s.index, s._id])
+        sections.map((s) => [s.index, s.id])
     );
 
     // Duplicate ids would make the server upsert both rows onto one document.
     const seenSectionIds = new Set<string>();
+    const seenQuestionIds = new Set<string>();
 
     const wireSections: SectionWire[] = [];
     const skipped: string[] = [];
 
     sections.forEach((s) => {
-        if (seenSectionIds.has(s._id)) {
-            skipped.push(s._id);
+        if (seenSectionIds.has(s.id)) {
+            skipped.push(s.id);
             return;
         }
-        seenSectionIds.add(s._id);
+        seenSectionIds.add(s.id);
 
         const defaultAction = toSectionAction(
             s.defaultAction,
@@ -126,11 +128,11 @@ function toBody(sections: SectionCore[], questions: QuestionCore[]) {
         );
 
         wireSections.push({
-            _id: s._id,
+            id: s.id,
             index: s.index,
             title: s.title,
             ...(s.description ? { description: s.description } : {}),
-            ...(s.onAnswer ? { onAnswer: s.onAnswer } : {}),
+            ...(s.rules ? { rules: s.rules } : {}),
             ...(defaultAction ? { defaultAction } : {}),
         });
     });
@@ -138,16 +140,16 @@ function toBody(sections: SectionCore[], questions: QuestionCore[]) {
     const wireQuestions: QuestionWire[] = [];
 
     questions.forEach((q) => {
-        const sectionId = sectionIdByIndex.get(q.sectionIdx);
+        const sectionId = q.sectionId;
 
-        if (!sectionId || seenSectionIds.has(q._id)) {
-            skipped.push(q._id);
+        if (!sectionId || !seenSectionIds.has(sectionId) || seenQuestionIds.has(q.id)) {
+            skipped.push(q.id);
             return;
         }
-        seenSectionIds.add(q._id);
+        seenQuestionIds.add(q.id);
 
         wireQuestions.push({
-            _id: q._id,
+            id: q.id,
             index: q.index,
             sectionId,
             type: q.type,
@@ -155,8 +157,11 @@ function toBody(sections: SectionCore[], questions: QuestionCore[]) {
             isRequired: Boolean(q.isRequired),
             ...(q.helpText ? { helpText: q.helpText } : {}),
             ...(q.placeholder ? { placeholder: q.placeholder } : {}),
-            ...(q.options?.length
-                ? { optionsConfig: { options: q.options } }
+            ...(q.optionsConfig
+                ? {
+                      expectedAnswer: q.optionsConfig?.expectedAnswer,
+                      optionsConfig: { options: q.optionsConfig?.options },
+                  }
                 : {}),
             ...(q.ratingConfig ? { ratingConfig: q.ratingConfig } : {}),
             ...(q.validationRule ? { validationRule: q.validationRule } : {}),
@@ -171,7 +176,7 @@ function toBody(sections: SectionCore[], questions: QuestionCore[]) {
  * Build the wire payload.
  *
  * `formDataSchema` on the server is `.strict()`, so unknown keys are rejected -
- * only real `FormCore` fields may be sent. `name` is required non-empty, so a
+ * only real `Form` fields may be sent. `name` is required non-empty, so a
  * form mid-rename is skipped rather than failing the whole batch.
  */
 function toPayload(form: FormDB): Record<string, unknown> | null {
@@ -261,7 +266,7 @@ async function sendForm(
         skipped = mapped.skipped.length;
     }
 
-    const { path } = useBulk
+    const path = useBulk
         ? endpoints.forms.bulkUpdateForm(formId)
         : endpoints.forms.updateForm(formId);
 

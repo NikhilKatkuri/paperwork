@@ -1,9 +1,9 @@
 'use client';
 
-import { QUESTION_TYPE } from '../../types/question.type';
-import type { FillQuestion, Option } from '../../types/fill.type';
 import { cn } from '@/utils/cn';
 import { useId, useState } from 'react';
+import { FillQuestion } from '../../types/fill.type';
+import { QuestionOption, QuestionTypeEnum } from '@paperwork/types';
 
 interface QuestionInputProps {
     question: FillQuestion;
@@ -18,19 +18,9 @@ const RATING_ICONS: Record<string, string> = {
     THUMB_UP: 'thumb_up',
 };
 
-/* ------------------------------------------------------------------ */
-/* Shared pieces                                                       */
-/* ------------------------------------------------------------------ */
-
-/** Bare input styling - the visible chrome is the <Underline /> below it. */
 const BARE_INPUT =
     'w-full bg-transparent py-2 text-sm text-theme-form-on-surface outline-none placeholder:text-theme-form-on-surface/50';
 
-/**
- * Google-Forms style underline: a thin base line plus an accent line that
- * grows from the centre when anything inside the `group` wrapper has focus.
- * Uses `group-focus-within` so it works no matter how deeply the input is nested.
- */
 function Underline({ invalid }: Readonly<{ invalid?: boolean }>) {
     return (
         <>
@@ -54,7 +44,6 @@ function Underline({ invalid }: Readonly<{ invalid?: boolean }>) {
     );
 }
 
-/** Round radio control with a hover/focus halo (Google style). */
 function RadioMark() {
     return (
         <>
@@ -65,7 +54,6 @@ function RadioMark() {
     );
 }
 
-/** Square checkbox control with a check mark. */
 function CheckMark() {
     return (
         <>
@@ -87,27 +75,16 @@ function CheckMark() {
     );
 }
 
-/* ------------------------------------------------------------------ */
-/* Component                                                           */
-/* ------------------------------------------------------------------ */
-
-/**
- * Renders the control for a question type.
- *
- * `values` is always a list so CHOICE (multi) and everything else (single) share
- * one shape - the API takes `values: string[]` regardless.
- */
 export default function QuestionInput({
     question,
     values,
     onChange,
     invalid,
 }: Readonly<QuestionInputProps>) {
-    // Hooks must run unconditionally, before the switch.
     const inputId = useId();
     const [hoverRating, setHoverRating] = useState(0);
 
-    const options: Option[] = question.optionsConfig?.options ?? [];
+    const options: QuestionOption[] = question.optionsConfig?.options ?? [];
     const selected = values[0] ?? '';
     const selectedSet = new Set(values);
     const placeholder = question.placeholder ?? 'Your answer';
@@ -124,7 +101,7 @@ export default function QuestionInput({
     };
 
     switch (question.type) {
-        case QUESTION_TYPE.PARAGRAPH:
+        case QuestionTypeEnum.PARAGRAPH:
             return (
                 <div className="group relative w-full">
                     <label htmlFor={fieldId} className="sr-only">
@@ -137,7 +114,6 @@ export default function QuestionInput({
                         placeholder={placeholder}
                         onChange={(e) => setSingle(e.target.value)}
                         onInput={(e) => {
-                            // auto-grow like Google Forms
                             const el = e.currentTarget;
                             el.style.height = 'auto';
                             el.style.height = `${el.scrollHeight}px`;
@@ -152,7 +128,7 @@ export default function QuestionInput({
                 </div>
             );
 
-        case QUESTION_TYPE.DATE:
+        case QuestionTypeEnum.DATE:
             return (
                 <div className="group relative w-full max-w-xs">
                     <label htmlFor={fieldId} className="sr-only">
@@ -170,7 +146,7 @@ export default function QuestionInput({
                 </div>
             );
 
-        case QUESTION_TYPE.TIME:
+        case QuestionTypeEnum.TIME:
             return (
                 <div className="group relative w-full max-w-xs">
                     <label htmlFor={fieldId} className="sr-only">
@@ -188,7 +164,7 @@ export default function QuestionInput({
                 </div>
             );
 
-        case QUESTION_TYPE.CHOICE:
+        case QuestionTypeEnum.CHOICE:
             return (
                 <div className="text-theme-form-on-surface flex flex-col">
                     {options.map((option) => (
@@ -211,7 +187,7 @@ export default function QuestionInput({
                 </div>
             );
 
-        case QUESTION_TYPE.RADIO:
+        case QuestionTypeEnum.RADIO:
             return (
                 <div
                     role="radiogroup"
@@ -238,7 +214,7 @@ export default function QuestionInput({
                 </div>
             );
 
-        case QUESTION_TYPE.DROP_DOWN:
+        case QuestionTypeEnum.DROP_DOWN:
             return (
                 <div className="relative w-full max-w-xs">
                     <label htmlFor={fieldId} className="sr-only">
@@ -278,7 +254,7 @@ export default function QuestionInput({
                 </div>
             );
 
-        case QUESTION_TYPE.LINEAR_SCALE: {
+        case QuestionTypeEnum.LINEAR_SCALE: {
             const low = 1;
             const high = Math.max(
                 2,
@@ -336,7 +312,7 @@ export default function QuestionInput({
             );
         }
 
-        case QUESTION_TYPE.RATING: {
+        case QuestionTypeEnum.RATING: {
             const scale = Math.max(
                 1,
                 Math.min(Number(question.ratingConfig?.scale) || 5, 10)
@@ -369,7 +345,6 @@ export default function QuestionInput({
                                         }
                                         onFocus={() => setHoverRating(point)}
                                         onBlur={() => setHoverRating(0)}
-                                        // click the active value again to clear
                                         onClick={() =>
                                             setSingle(
                                                 current === point
@@ -404,7 +379,7 @@ export default function QuestionInput({
             );
         }
 
-        case QUESTION_TYPE.TEXT:
+        case QuestionTypeEnum.TEXT:
         default:
             return (
                 <div className="group relative w-full">

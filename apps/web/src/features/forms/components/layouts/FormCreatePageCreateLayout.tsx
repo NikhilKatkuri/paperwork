@@ -4,10 +4,7 @@ import { useEffect, useState } from 'react';
 import Navbar from '../create/Navbar';
 import FormLayout from '../form';
 import Settings from '../create/Settings';
-import ResponsesPanel from '../create/responses/ResponsesPanel';
-import { Tabs } from '../../types';
 import { useParams } from 'next/navigation';
-import { useFormCreate } from '../../providers/FormCreate';
 import { pageTitle, useDocumentTitle } from '@/lib/useDocumentTitle';
 import {
     DEFAULT_FORM_THEME,
@@ -15,6 +12,8 @@ import {
     FORM_THEMES,
     type FormThemeId,
 } from '@/lib/formTheme';
+import { useForm } from '../../providers/form';
+import { Tabs } from '@/types';
 
 function Render({ _case }: Readonly<{ _case: Tabs }>) {
     switch (_case) {
@@ -23,31 +22,23 @@ function Render({ _case }: Readonly<{ _case: Tabs }>) {
         case 'settings':
             return <Settings />;
         case 'responses':
-            return <ResponsesPanel />;
+            return null;
     }
 }
 
 function FormCreatePageCreateLayout() {
     const [mode, setMode] = useState<Tabs>('questions');
-    const { id } = useParams();
 
-    const { setActiveFormID, form } = useFormCreate();
-
+    const { setFormId, form } = useForm();
     useDocumentTitle(pageTitle(form?.name));
-    useEffect(() => {
-        function updateFormId() {
-            if (!id || typeof id !== 'string') return;
-            setActiveFormID(id);
-        }
-        updateFormId();
-    }, [id, setActiveFormID]);
 
-    /*
-     * The editor previews the form in the theme the form itself carries, so
-     * what you see while designing is what a respondent gets. The account-wide
-     * theme on <html> is left alone - only this subtree is overridden - so the
-     * rest of the app keeps the user's own preference.
-     */
+    const { id } = useParams<{ id: string | string[] }>();
+
+    useEffect(() => {
+        if (typeof id !== 'string' || !id) return;
+        setFormId(id);
+    }, [id, setFormId]);
+
     const requested = form?.theme;
     const formTheme: FormThemeId =
         requested && FORM_THEMES.some((t) => t.id === requested)

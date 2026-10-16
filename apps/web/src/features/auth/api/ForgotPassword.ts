@@ -1,65 +1,18 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import {
-    ForgotPasswordResponse,
-    ForgotPasswordRequest,
-    ApiResponse,
-} from '../types';
-import axios, { AxiosError } from 'axios';
+import { ForgotPasswordResponse, ForgotPasswordRequest } from '../types';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
+import { useApiAction } from '@/hooks/useApiAction';
 
 const useForgotPassword = () => {
-    const [loading, setLoading] = useState<boolean>(false);
-
-    const handleForgotPassword = useCallback(
-        async (
-            credentials: ForgotPasswordRequest
-        ): Promise<ApiResponse<ForgotPasswordResponse>> => {
-            setLoading(true);
-            try {
-                const { path } = endpoints.auth.forgotPassword;
-                const res = await http.post<ForgotPasswordResponse>(
-                    path,
-                    credentials
-                );
-
-                if (res.status === 200) {
-                    return {
-                        ok: true,
-                        data: res.data as ForgotPasswordResponse,
-                    };
-                }
-
-                return { ok: false, error: 'Unexpected response from server.' };
-            } catch (e: unknown) {
-                let msg = 'An unexpected error occurred. Please try again.';
-
-                if (axios.isAxiosError(e)) {
-                    const err = e as AxiosError<{ message?: string }>;
-
-                    if (err.response) {
-                        const { status, data } = err.response;
-
-                        if (status >= 400 && status < 500 && data?.message) {
-                            msg = data.message;
-                        } else if (status >= 500) {
-                            msg = 'Server error. Please try again later.';
-                        } else {
-                            msg = 'An error occurred. Please try again.';
-                        }
-                    } else if (err.request) {
-                        msg = 'Network error. Please check your connection.';
-                    }
-                }
-
-                return { ok: false, error: msg };
-            } finally {
-                setLoading(false);
-            }
-        },
-        []
+    const { loading, execute: handleForgotPassword } = useApiAction(
+        async (credentials: ForgotPasswordRequest) => {
+            return await http.post<ForgotPasswordResponse>(
+                endpoints.auth.forgotPassword,
+                credentials
+            );
+        }
     );
 
     return { loading, handleForgotPassword };

@@ -1,72 +1,72 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-    QUESTION_TYPE,
-    QuestionType,
-    questionTypesMap,
-} from '../../common/types';
-import QuestionTooling from './QuestionTooling';
-import { cn } from '@/utils/cn';
-import QuestionCore from '@/features/forms/types/question.type';
-import { useFormCreate } from '@/features/forms/providers/FormCreate';
-import AnswerTemplate from '../question-type-config/AnswerTemplate';
-import RichTextInput from '../../common/RichTextInput';
-import { generateObjectId } from '@/features/forms/utils';
 
-interface InputFieldProps {
-    id: number;
-    initialType?: QuestionType;
-    index?: number;
+import {
+    QuestionTypeEnum,
+    type QuestionDoc,
+    type QuestionType,
+} from '@paperwork/types';
+import { useForm } from '@/features/forms/providers/form';
+import { generateObjectId } from '@/features/forms/utils';
+import { cn } from '@/utils/cn';
+
+import RichTextInput from '../../common/RichTextInput';
+import QuestionActions from './QuestionActions';
+import QuestionTypeRenderer from '../question-types/QuestionTypeRenderer';
+import { questionTypesMap } from '../../common/types';
+
+interface QuestionCardProps {
+    id: string;
+    sectionId: string;
     isOverlay?: boolean;
-    sectionIdx: number;
 }
 
-const createOverlayFallback = (type: QuestionType): QuestionCore => ({
-    _id: generateObjectId(),
+const createOverlayFallback = (type: QuestionType): QuestionDoc => ({
+    id: generateObjectId(),
     index: 0,
     type,
     question: 'Untitled Question',
     isRequired: false,
-    helpText: undefined,
-    sectionIdx: 0,
+    slug: '',
+    v: 0,
+    updatedAt: '',
+    createdAt: '',
+    sectionId: '',
+    formId: '',
 });
 
-export default function InputField({
+export default function QuestionCard({
     id,
-    initialType = QUESTION_TYPE.TEXT,
-    index = 0,
-    sectionIdx = 0,
+    sectionId,
     isOverlay = false,
-}: Readonly<InputFieldProps>) {
-    const [mounted, setMounted] = useState(false);
-    const { updateQuestion, questions } = useFormCreate();
+}: Readonly<QuestionCardProps>) {
+    const { updateQuestion, getQuestionById } = useForm();
 
     const [overlayFallback] = useState(() =>
-        createOverlayFallback(initialType ?? QUESTION_TYPE.TEXT)
+        createOverlayFallback(QuestionTypeEnum.TEXT)
     );
 
-    const config = questions.get(id) ?? overlayFallback;
+    const question = getQuestionById(id);
+    const config = question ?? overlayFallback;
+    const currentOption = questionTypesMap[config.type];
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [showMoreOptions, setShowMoreOptions] = useState(false);
-
-    const [menuStyle, setMenuStyle] = useState<{
-        top: number;
-        left: number;
-        width: number;
-    }>({ top: 0, left: 0, width: 0 });
+    const [mounted, setMounted] = useState(false);
+    const [menuStyle, setMenuStyle] = useState({
+        top: 0,
+        left: 0,
+        width: 0,
+    });
 
     const wrapperRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    const currentOption = questionTypesMap[config.type];
-
-    const sortable = useSortable({ id, disabled: isOverlay });
     const {
         attributes,
         listeners,
@@ -74,7 +74,7 @@ export default function InputField({
         transform,
         transition,
         isDragging,
-    } = sortable;
+    } = useSortable({ id, disabled: isOverlay });
 
     const style = isOverlay
         ? undefined
@@ -85,15 +85,17 @@ export default function InputField({
           };
 
     useEffect(() => {
-        function updateMount() {
+        function updateMounted() {
             setMounted(true);
         }
-        updateMount();
+
+        updateMounted();
     }, []);
 
     const updatePosition = useCallback(() => {
         const rect = buttonRef.current?.getBoundingClientRect();
         if (!rect) return;
+
         setMenuStyle({
             top: rect.bottom + window.scrollY + 4,
             left: rect.left + window.scrollX,
@@ -103,9 +105,12 @@ export default function InputField({
 
     useEffect(() => {
         if (!isDropdownOpen) return;
+
         updatePosition();
+
         window.addEventListener('scroll', updatePosition, true);
         window.addEventListener('resize', updatePosition);
+
         return () => {
             window.removeEventListener('scroll', updatePosition, true);
             window.removeEventListener('resize', updatePosition);
@@ -117,83 +122,103 @@ export default function InputField({
 
         function handleClickOutside(event: MouseEvent) {
             const target = event.target as Node;
-            if (
-                wrapperRef.current &&
-                !wrapperRef.current.contains(target) &&
-                menuRef.current &&
-                !menuRef.current.contains(target)
-            ) {
+
+            const insideWrapper = wrapperRef.current?.contains(target);
+            const insideMenu = menuRef.current?.contains(target);
+
+            if (!insideWrapper && !insideMenu) {
                 setIsDropdownOpen(false);
             }
         }
 
         function handleEscape(event: KeyboardEvent) {
-            if (event.key === 'Escape') setIsDropdownOpen(false);
+            if (event.key === 'Escape') {
+                setIsDropdownOpen(false);
+            }
         }
 
         document.addEventListener('mousedown', handleClickOutside);
         document.addEventListener('keydown', handleEscape);
+
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             document.removeEventListener('keydown', handleEscape);
         };
     }, [isDropdownOpen]);
 
+    function patch<K extends keyof QuestionDoc>(key: K, value: QuestionDoc[K]) {
+        updateQuestion(id, (previous) => ({
+            ...previous,
+            [key]: value,
+        }));
+    }
+
+    function mergePatch(changes: Partial<QuestionDoc>) {
+        updateQuestion(id, (previous) => ({
+            ...previous,
+            ...changes,
+        }));
+    }
+
     return (
         <div
-            id={`section-${sectionIdx}:question-${index}`}
+            id={`section-${sectionId}:question-${id}`}
             ref={isOverlay ? undefined : setNodeRef}
             style={style}
             className={cn(
-                'floating-toolbar-selector group/question-body bg-theme-form-container before:bg-theme-form-container-border/0 focus-within:before:bg-theme-form-container-border relative flex w-full flex-col rounded-xl p-3',
-                'hover:before:bg-theme-form-container-border before:absolute before:top-0 before:left-0 before:z-50 before:h-full before:w-2 before:rounded-l-xl before:transition-all before:duration-200 before:ease-in-out'
+                'floating-toolbar-selector group/question-body bg-theme-form-container relative flex w-full flex-col rounded-xl p-3',
+                'before:bg-theme-form-container-border/0 focus-within:before:bg-theme-form-container-border',
+                'before:absolute before:top-0 before:left-0 before:z-10 before:h-full before:w-2 before:rounded-l-xl before:transition-all',
+                'hover:before:bg-theme-form-container-border'
             )}
         >
             <div className="flex items-center justify-center">
                 <button
                     type="button"
-                    aria-label="Drag handle"
+                    aria-label="Drag question"
                     {...(isOverlay ? {} : attributes)}
                     {...(isOverlay ? {} : listeners)}
+                    className="cursor-grab active:cursor-grabbing"
                 >
-                    <span className="material-symbols-outlined rotate-90 cursor-grab text-gray-400">
+                    <span className="material-symbols-outlined rotate-90 text-gray-400">
                         drag_indicator
                     </span>
                 </button>
             </div>
 
-            <div className="relative flex items-start max-md:flex-wrap md:gap-3">
-                <div className="flex-1">
+            <div className="relative flex items-start gap-3 max-md:flex-wrap">
+                <div className="min-w-0 flex-1">
                     <RichTextInput
                         placeholder="Untitled Question"
                         className="h-8"
                         value={config.question}
-                        onChange={(value) =>
-                            updateQuestion(id, { question: value })
-                        }
+                        onChange={(value) => patch('question', value)}
                     />
                 </div>
 
                 <div
-                    className="relative w-full max-md:mt-2 md:w-54"
                     ref={wrapperRef}
+                    className="relative w-full max-md:mt-2 md:w-54"
                 >
                     <button
                         ref={buttonRef}
                         type="button"
-                        onClick={() => setIsDropdownOpen((prev) => !prev)}
+                        onClick={() =>
+                            setIsDropdownOpen((previous) => !previous)
+                        }
                         aria-haspopup="listbox"
                         aria-expanded={isDropdownOpen}
                         className="border-theme-form-container-border active:bg-theme-form-container-hover flex h-12 w-full items-center justify-between rounded-md border p-2 text-sm"
                     >
-                        <div className="flex items-center gap-2 truncate">
+                        <span className="flex min-w-0 items-center gap-2">
                             <span className="material-symbols-outlined text-[20px]">
                                 {currentOption.icon}
                             </span>
                             <span className="truncate">
                                 {currentOption.label}
                             </span>
-                        </div>
+                        </span>
+
                         <span className="material-symbols-outlined text-[20px]">
                             arrow_drop_down
                         </span>
@@ -205,6 +230,7 @@ export default function InputField({
                             <div
                                 ref={menuRef}
                                 role="listbox"
+                                aria-label="Question type"
                                 style={{
                                     position: 'absolute',
                                     top: menuStyle.top,
@@ -217,28 +243,25 @@ export default function InputField({
                                     Object.keys(
                                         questionTypesMap
                                     ) as QuestionType[]
-                                ).map((key) => {
-                                    const option = questionTypesMap[key];
-                                    const isSelected = key === config.type;
+                                ).map((type) => {
+                                    const option = questionTypesMap[type];
+                                    const selected = type === config.type;
 
                                     return (
                                         <button
-                                            key={key}
+                                            key={type}
                                             type="button"
                                             role="option"
-                                            aria-selected={isSelected}
+                                            aria-selected={selected}
                                             onClick={() => {
-                                                updateQuestion(id, {
-                                                    type: key,
-                                                });
-                                                // FIXED: Close the dropdown correctly instead of toggling showMoreOptions
+                                                patch('type', type);
                                                 setIsDropdownOpen(false);
                                             }}
-                                            className={`hover:bg-theme-form-container-hover flex h-10 w-full items-center gap-2 rounded-md p-2 text-left text-sm ${
-                                                isSelected
-                                                    ? 'bg-theme-form-container-hover font-medium'
-                                                    : ''
-                                            }`}
+                                            className={cn(
+                                                'hover:bg-theme-form-container-hover flex h-10 w-full items-center gap-2 rounded-md p-2 text-left text-sm',
+                                                selected &&
+                                                    'bg-theme-form-container-hover font-medium'
+                                            )}
                                         >
                                             <span className="material-symbols-outlined text-[20px]">
                                                 {option.icon}
@@ -261,9 +284,7 @@ export default function InputField({
                         placeholder="Help text (optional)"
                         className="h-8"
                         value={config.helpText ?? ''}
-                        onChange={(value) =>
-                            updateQuestion(id, { helpText: value })
-                        }
+                        onChange={(value) => patch('helpText', value)}
                     />
                 </div>
             )}
@@ -274,29 +295,28 @@ export default function InputField({
                         placeholder="Placeholder text (optional)"
                         className="h-8"
                         value={config.placeholder ?? ''}
-                        onChange={(value) =>
-                            updateQuestion(id, { placeholder: value })
-                        }
+                        onChange={(value) => patch('placeholder', value)}
                     />
                 </div>
             )}
 
-            <AnswerTemplate
+            <QuestionTypeRenderer
                 id={id}
                 type={config.type}
-                update={(patch) => updateQuestion(id, patch)}
+                update={(changes) =>
+                    updateQuestion(id, (prev) => ({ ...prev, ...changes }))
+                }
             />
-            <QuestionTooling
+
+            <QuestionActions
                 id={id}
-                sectionIdx={sectionIdx}
                 isRequired={config.isRequired ?? false}
                 showMoreOptions={showMoreOptions}
                 setShowMoreOptions={setShowMoreOptions}
-                updateConfig={(patch: Partial<QuestionCore>) =>
-                    updateQuestion(id, patch)
-                }
+                updateConfig={mergePatch}
                 helpText={config.helpText}
                 placeholder={config.placeholder}
+                sectionIdx={0}
             />
         </div>
     );

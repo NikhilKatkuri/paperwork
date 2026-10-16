@@ -1,8 +1,11 @@
 'use client';
 
+import {
+    QuestionDoc,
+    QuestionTypeEnum,
+    AnswerValue as AnswerValueType,
+} from '@paperwork/types';
 import { useState } from 'react';
-import { QUESTION_TYPE } from '../../../types/question.type';
-import type QuestionCore from '../../../types/question.type';
 
 const RATING_ICONS: Record<string, string> = {
     STAR: 'star',
@@ -50,10 +53,12 @@ export default function AnswerValue({
     values,
     question,
 }: Readonly<{
-    values: string[];
-    question?: QuestionCore;
+    values: AnswerValueType;
+    question?: QuestionDoc;
 }>) {
-    const answers = values.filter((v) => v.trim());
+    const answers = (Array.isArray(values) ? values : [values])
+        .map(String)
+        .filter((v) => v.trim());
 
     if (!answers.length) {
         return (
@@ -64,7 +69,7 @@ export default function AnswerValue({
     }
 
     switch (question?.type) {
-        case QUESTION_TYPE.RATING: {
+        case QuestionTypeEnum.RATING: {
             const scale = Math.max(
                 1,
                 Math.min(Number(question.ratingConfig?.scale) || 5, 10)
@@ -91,7 +96,7 @@ export default function AnswerValue({
             );
         }
 
-        case QUESTION_TYPE.LINEAR_SCALE: {
+        case QuestionTypeEnum.LINEAR_SCALE: {
             const value = Number(answers[0]);
             const high = Math.max(
                 2,
@@ -119,7 +124,7 @@ export default function AnswerValue({
             );
         }
 
-        case QUESTION_TYPE.CHOICE:
+        case QuestionTypeEnum.CHOICE:
             return (
                 <span className="flex flex-wrap gap-1">
                     {answers.map((value) => (
@@ -128,12 +133,12 @@ export default function AnswerValue({
                 </span>
             );
 
-        case QUESTION_TYPE.RADIO:
-        case QUESTION_TYPE.DROP_DOWN:
+        case QuestionTypeEnum.RADIO:
+        case QuestionTypeEnum.DROP_DOWN:
             return <Chip>{answers[0]}</Chip>;
 
-        case QUESTION_TYPE.DATE:
-        case QUESTION_TYPE.TIME:
+        case QuestionTypeEnum.DATE:
+        case QuestionTypeEnum.TIME:
             return (
                 <span className="text-theme-form-on-surface text-xs">
                     {new Date(answers[0]).toLocaleDateString(undefined, {
@@ -144,8 +149,8 @@ export default function AnswerValue({
                 </span>
             );
 
-        case QUESTION_TYPE.PARAGRAPH:
-        case QUESTION_TYPE.TEXT:
+        case QuestionTypeEnum.PARAGRAPH:
+        case QuestionTypeEnum.TEXT:
         default:
             return (
                 <span className="text-theme-form-on-surface text-xs whitespace-pre-wrap">

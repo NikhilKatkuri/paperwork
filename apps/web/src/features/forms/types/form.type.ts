@@ -1,36 +1,10 @@
+import { Form } from '@paperwork/types';
 import Document from './db.types';
-import { FormThemeId } from '@/lib/formTheme';
 
-interface FormSettings {
-    maxResponses?: number;
-    maxResponsesPerUser?: number;
-    closeDate?: Date;
-    startDate?: Date;
-    timeLimitPerResponse?: number;
+export type FormSettings = NonNullable<Form['settings']>;
 
-    collectEmail?: boolean;
-
-    shuffleQuestions?: boolean;
-    allowEditResponse?: boolean;
-    saveAndContinueLater?: boolean;
-    progressBar?: boolean;
-
-    customConfirmationMessage?: string;
-    redirectUrl?: string;
-}
-
-interface FormCore {
-    name: string;
-    isPrivate: boolean;
-    isPublished: boolean;
-    allowedDomains?: string[];
-    settings?: FormSettings;
-    responseCount?: number;
-    /** Per-form colour theme; defaults to the base palette when unset. */
-    theme?: FormThemeId;
-}
-
+type FormCore = Omit<Form, 'userId'>;
 type FormDocument = Document<FormCore>;
 
-export type { FormSettings, FormDocument };
+export type { FormDocument };
 export default FormCore;

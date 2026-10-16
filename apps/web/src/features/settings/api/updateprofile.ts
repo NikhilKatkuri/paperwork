@@ -56,7 +56,7 @@ function useProfileUpdate() {
                 avatarUrl: updatedAvatarUrl,
             };
             console.log('Payload for profile update:', payload);
-            const { path } = endpoints.auth.me;
+            const path = endpoints.auth.me;
 
             console.log('Sending profile update request to server...');
             const res = await http.post<{

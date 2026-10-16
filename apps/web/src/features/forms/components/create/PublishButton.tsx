@@ -6,7 +6,7 @@ import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
 import formRepository from '../../repositories/formRepository';
 import { flushFormNow } from '../../lib/sync-engine';
-import { useFormCreate } from '../../providers/FormCreate';
+import { useForm } from '../../providers/form';
 
 interface PublishResponse {
     success: boolean;
@@ -14,23 +14,16 @@ interface PublishResponse {
     data?: { form?: { isPublished?: boolean } };
 }
 
-/**
- * Publishes or unpublishes the form being edited.
- *
- * Pending local changes are flushed first: the publish endpoint flips a flag on
- * the stored document, so publishing with unsaved edits would publish the
- * previous version while the editor shows the new one.
- */
 function PublishButton() {
-    const { activeFormID, form, handleFormChange, questions, sections } =
-        useFormCreate();
+    const { formId, form, updateFormState, questionsMap, sectionsMap } =
+        useForm();
 
     const [busy, setBusy] = useState(false);
 
     const isPublished = Boolean(form?.isPublished);
 
     const toggle = useCallback(async () => {
-        if (!activeFormID || busy) return;
+        if (!formId || busy) return;
 
         const next = !isPublished;
 
@@ -42,12 +35,12 @@ function PublishButton() {
                 return;
             }
 
-            if (questions.size === 0) {
+            if (questionsMap.size === 0) {
                 toast.error('Add at least one question before publishing');
                 return;
             }
 
-            if (sections.size === 0) {
+            if (sectionsMap.size === 0) {
                 toast.error('Add at least one section before publishing');
                 return;
             }
@@ -56,8 +49,7 @@ function PublishButton() {
         setBusy(true);
 
         try {
-            // Push outstanding edits first so the published copy matches.
-            const flushed = await flushFormNow(activeFormID);
+            const flushed = await flushFormNow(formId);
 
             if (!flushed.sent && flushed.changes > 0) {
                 toast.warning(
@@ -66,9 +58,9 @@ function PublishButton() {
                 return;
             }
 
-            const { path } = next
-                ? endpoints.forms.publishForm(activeFormID)
-                : endpoints.forms.unpublishForm(activeFormID);
+            const path = next
+                ? endpoints.forms.publishForm(formId)
+                : endpoints.forms.unpublishForm(formId);
 
             const res = await http.post<PublishResponse>(path, {});
 
@@ -76,11 +68,10 @@ function PublishButton() {
                 throw new Error(res.data.message || 'Failed to update');
             }
 
-            // Trust the server's own value over the requested one.
             const confirmed = res.data.data?.form?.isPublished ?? next;
 
-            handleFormChange('isPublished', confirmed);
-            await formRepository.setPublished(activeFormID, confirmed);
+            updateFormState((prev) => ({ ...prev, isPublished: confirmed }));
+            await formRepository.setPublished(formId, confirmed);
 
             toast.success(confirmed ? 'Form published' : 'Form unpublished');
         } catch (error) {
@@ -93,16 +84,16 @@ function PublishButton() {
             setBusy(false);
         }
     }, [
-        activeFormID,
+        formId,
         busy,
-        form?.name,
         isPublished,
-        questions.size,
-        sections.size,
-        handleFormChange,
+        form?.name,
+        questionsMap.size,
+        sectionsMap.size,
+        updateFormState,
     ]);
 
-    if (!activeFormID) return null;
+    if (!formId) return null;
 
     return (
         <button

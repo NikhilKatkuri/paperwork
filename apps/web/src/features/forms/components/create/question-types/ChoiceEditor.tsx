@@ -1,86 +1,94 @@
 'use client';
 
+import { useForm } from '@/features/forms/providers/form';
+import {
+    ChoiceQuestion,
+    QuestionOption,
+    QuestionOptionConfig,
+    QuestionTypeEnum,
+} from '@paperwork/types';
 import { useEffect, useState } from 'react';
-import { useFormCreate } from '../../../providers/FormCreate';
-import { OptionType, QUESTION_TYPE } from '../../common/types';
-import { Option } from '@/features/forms/types/question.type';
 
-const ICON_MAP: Record<OptionType, string> = {
-    RADIO: 'radio_button_unchecked',
-    CHOICE: 'check_box_outline_blank',
-    DROP_DOWN: '',
+const ICON_MAP: Record<ChoiceQuestion['type'], string> = {
+    [QuestionTypeEnum.RADIO]: 'radio_button_unchecked',
+    [QuestionTypeEnum.CHOICE]: 'check_box_outline_blank',
+    [QuestionTypeEnum.DROP_DOWN]: '',
 };
 
-interface OptionBuilderProps {
-    type: OptionType;
-    onOptionsChange: (options: Option[]) => void;
-    id: number;
+interface ChoiceEditorProps {
+    type: ChoiceQuestion['type'];
+    onChange: (options: QuestionOptionConfig) => void;
+    id: string;
 }
 
-function OptionBuilder({
+function ChoiceEditor({
     id,
     type,
-    onOptionsChange,
-}: Readonly<OptionBuilderProps>) {
-    const { questions } = useFormCreate();
+    onChange,
+}: Readonly<ChoiceEditorProps>) {
+    const { getQuestionById } = useForm();
 
-    // 1. Derive or initialize state correctly
-    const [options, setOptions] = useState<Option[]>(() => {
-        const question = questions.get(id);
+    const [options, setOptions] = useState<QuestionOption[]>(() => {
+        
+        const question = getQuestionById(id) as ChoiceQuestion | undefined;
         return question?.options && question.options.length > 0
             ? question.options
             : [{ index: 1, label: 'Option 1' }];
     });
 
-    // 2. Keep local options in sync if question ID changes
     useEffect(() => {
         function syncOptions() {
-            const question = questions.get(id);
+            const question = getQuestionById(id) as ChoiceQuestion | undefined;
             if (question?.options) {
                 setOptions(question.options);
             }
         }
         syncOptions();
-    }, [id, questions]);
+    }, [id, getQuestionById]);
 
-    const handleUpdateOption = (targetIndex: number, value: string) => {
-        // Split by commas and remove empty values
-        const parts = value
-            .split(',')
+    const handleUpdateOption = (targetIndex: number, value: string) => { 
+        const newOptions = options.map((opt, i) =>
+            i === targetIndex ? { ...opt, label: value } : opt
+        );
+
+        setOptions(newOptions);
+        onChange({ options: newOptions });
+    };
+
+    const handlePasteOption = (
+        targetIndex: number,
+        e: React.ClipboardEvent<HTMLInputElement>
+    ) => {
+        const pasteData = e.clipboardData.getData('text');
+
+        const parts = pasteData
+            .split(/[\n,]+/)
             .map((item) => item.trim())
             .filter(Boolean);
 
-        // Normal typing (no comma)
-        if (parts.length <= 1) {
-            const newOptions = options.map((opt, i) =>
-                i === targetIndex ? { ...opt, label: value } : opt
-            );
+        if (parts.length > 1) {
+            e.preventDefault();
+
+            const newOptions = [
+                ...options.slice(0, targetIndex),
+                ...parts.map((label, i) => ({
+                    index: targetIndex + i + 1,
+                    label,
+                })),
+                ...options.slice(targetIndex + 1),
+            ].map((opt, i) => ({
+                ...opt,
+                index: i + 1,
+            }));
 
             setOptions(newOptions);
-            onOptionsChange(newOptions);
-            return;
+            onChange({ options: newOptions });
         }
-
-        // Comma-separated input → create multiple options
-        const newOptions = [
-            ...options.slice(0, targetIndex),
-            ...parts.map((label, i) => ({
-                index: targetIndex + i + 1,
-                label,
-            })),
-            ...options.slice(targetIndex + 1),
-        ].map((opt, i) => ({
-            ...opt,
-            index: i + 1,
-        }));
-
-        setOptions(newOptions);
-        onOptionsChange(newOptions);
     };
 
     const handleAddOption = () => {
         const nextIndex = options.length + 1;
-        const newOptions: Option[] = [
+        const newOptions: QuestionOption[] = [
             ...options,
             {
                 index: nextIndex,
@@ -88,30 +96,28 @@ function OptionBuilder({
             },
         ];
         setOptions(newOptions);
-        onOptionsChange(newOptions);
+        onChange({ options: newOptions });
     };
 
-    // 3. Delete by array index instead of label matching
     const handleDeleteOption = (targetIndex: number) => {
-        if (options.length <= 1) return; // Guard clause
+        if (options.length <= 1) return;
 
         const newOptions = options
             .filter((_, i) => i !== targetIndex)
-            .map((opt, i) => ({ ...opt, index: i + 1 })); // Re-index remaining options
+            .map((opt, i) => ({ ...opt, index: i + 1 }));
 
         setOptions(newOptions);
-        onOptionsChange(newOptions);
+        onChange({ options: newOptions });
     };
 
     return (
         <div className="grid w-full max-w-lg grid-cols-1 gap-2">
             {options.map((option, index) => (
                 <div
-                    // 4. Stable key using index prevents cursor focus loss on re-render
                     key={`option-${id}-${index}`}
                     className="group flex h-10 items-center gap-2 pl-2"
                 >
-                    {type === QUESTION_TYPE.DROP_DOWN ? (
+                    {type === QuestionTypeEnum.DROP_DOWN ? (
                         <p className="w-5 text-right">{index + 1}.</p>
                     ) : (
                         <span className="material-symbols-outlined text-theme-form-on-container/90">
@@ -124,6 +130,7 @@ function OptionBuilder({
                         onChange={(e) =>
                             handleUpdateOption(index, e.target.value)
                         }
+                        onPaste={(e) => handlePasteOption(index, e)}
                         className="bg-theme-form-container text-theme-form-on-container/90 focus:border-theme-form-container-border w-full rounded-md px-2 py-1 text-sm focus:outline-none"
                     />
 
@@ -145,7 +152,7 @@ function OptionBuilder({
                 onClick={handleAddOption}
                 className="flex h-10 w-fit items-center gap-2 rounded px-2 transition-colors hover:bg-gray-100"
             >
-                {type === QUESTION_TYPE.DROP_DOWN ? (
+                {type === QuestionTypeEnum.DROP_DOWN ? (
                     <p className="w-5 text-right">{options.length + 1}.</p>
                 ) : (
                     <span className="material-symbols-outlined text-theme-form-on-container/90">
@@ -161,4 +168,4 @@ function OptionBuilder({
     );
 }
 
-export default OptionBuilder;
+export default ChoiceEditor;

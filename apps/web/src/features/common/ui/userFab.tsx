@@ -2,18 +2,15 @@
 
 import useCreateForm from '@/features/forms/api/createForm';
 import formRepository from '@/features/forms/repositories/formRepository';
-import {
-    DEFAULT_FORM_CORE,
-    createDefaultQuestion,
-    createDefaultSection,
-} from '@/features/forms/utils/default';
-import { FormDB } from '@/lib/db';
-import { redirect } from 'next/navigation';
+import { createDefaultForm } from '@/features/forms/utils/default';
+import { useAuth } from '@/providers';
+import { FormDto } from '@paperwork/types';
 import { useRef } from 'react';
 
 function UserFab() {
     const { loading, createForm } = useCreateForm();
     const stateRef = useRef(false);
+    const { decodedToken } = useAuth();
 
     const handleClick = async () => {
         if (stateRef.current || loading) return;
@@ -22,20 +19,22 @@ function UserFab() {
 
         try {
             stateRef.current = true;
+            const defaultForm = createDefaultForm();
 
-            const res = await createForm(DEFAULT_FORM_CORE);
-            console.log(res);
-            if (!res?.ok) throw new Error('Failed to create form');
+            const res = await createForm(defaultForm);
 
-            const form = (res.data as { data?: { form?: FormDB } })?.data?.form;
-            if (!form?._id) throw new Error('Invalid form payload returned');
+            if (!res.ok || !res.data || !res.data.id) {
+                console.error('Failed to create form on server:', res);
+                return;
+            }
+
+            const formDto: FormDto = res.data;
+            createdFormId = formDto.id;
 
             await formRepository.save({
-                ...form,
-                sections: [createDefaultSection()],
-                questions: [createDefaultQuestion()],
+                ...formDto,
+                userId: formDto.userId ?? decodedToken?.userId ?? '',
             });
-            createdFormId = form._id;
         } catch (error) {
             console.error('Form creation failed:', error);
             stateRef.current = false;
@@ -43,7 +42,7 @@ function UserFab() {
         }
 
         if (createdFormId) {
-            redirect(`/forms/c/${createdFormId}`);
+            window.location.href = `/forms/c/${createdFormId}`;
         }
     };
 

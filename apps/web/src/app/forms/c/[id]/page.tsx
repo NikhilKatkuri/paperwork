@@ -1,12 +1,12 @@
 'use client';
 import FormCreatePageCreateLayout from '@/features/forms/components/layouts/FormCreatePageCreateLayout';
-import { FormCreateProvider } from '@/features/forms/providers/FormCreate';
+import { FormProvider } from '@/features/forms/providers/form';
 
 function Page() {
     return (
-        <FormCreateProvider>
+        <FormProvider>
             <FormCreatePageCreateLayout />
-        </FormCreateProvider>
+        </FormProvider>
     );
 }
 

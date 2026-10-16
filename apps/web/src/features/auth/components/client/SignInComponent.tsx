@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/providers';
-import { validateEmail, validatePassword } from '@/utils/validations';
+import { validateEmail, validateSignInPassword } from '@/utils/validations';
 import { redirect, useSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -32,7 +32,7 @@ const SignInClientComponent = () => {
             newErrors.email = emailError;
         }
 
-        const passwordError = validatePassword(password);
+        const passwordError = validateSignInPassword(password);
         if (passwordError) {
             newErrors.password = passwordError;
         }

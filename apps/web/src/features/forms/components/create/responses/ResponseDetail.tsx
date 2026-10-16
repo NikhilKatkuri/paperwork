@@ -3,8 +3,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import AnswerValue from './AnswerValue';
-import type { FormResponse } from '../../../types/response.type';
-import type QuestionCore from '../../../types/question.type';
+import { FormResponseDto, QuestionDoc } from '@paperwork/types';
 
 function formatDate(value: string | number): string {
     const date = new Date(value);
@@ -23,8 +22,8 @@ export default function ResponseDetail({
     questions,
     onClose,
 }: Readonly<{
-    response: FormResponse | null;
-    questions: QuestionCore[];
+    response: FormResponseDto | null;
+    questions: QuestionDoc[];
     onClose: () => void;
 }>) {
     useEffect(() => {
@@ -51,7 +50,7 @@ export default function ResponseDetail({
     // Questions in their authored order, so the detail reads top-down.
     const ordered = [...questions].sort((a, b) => a.index - b.index);
     const section = ordered.find((question) =>
-        response.answers.some((answer) => answer.questionId === question._id)
+        response.answers.some((answer) => answer.questionId === question.id)
     );
 
     return createPortal(
@@ -89,13 +88,13 @@ export default function ResponseDetail({
                 <dl className="flex flex-1 scrollbar-none flex-col gap-4 overflow-y-auto px-5 py-4">
                     {ordered.map((question) => {
                         const answer = response.answers.find(
-                            (a) => a.questionId === question._id
+                            (a) => a.questionId === question.id
                         );
 
                         return (
                             <div
-                                key={question._id}
-                                className="border-theme-form-container-border/40 hover:border-theme-form-container-border/40 hover:bg-theme-form-on-surface/[0.03] rounded-lg border border-transparent px-3 py-2 transition-colors last:border-b-0"
+                                key={question.id}
+                                className="border-theme-form-container-border/40 hover:border-theme-form-container-border/40 hover:bg-theme-form-on-surface/3 rounded-lg border px-3 py-2 transition-colors last:border-b-0"
                             >
                                 <dt className="text-theme-form-on-surface/70 mb-1 text-xs font-medium">
                                     {question.question
@@ -112,7 +111,7 @@ export default function ResponseDetail({
                                 </dt>
                                 <dd className="text-theme-form-on-surface text-sm">
                                     <AnswerValue
-                                        values={answer?.values ?? []}
+                                        values={answer?.value ?? []}
                                         question={question}
                                     />
                                 </dd>

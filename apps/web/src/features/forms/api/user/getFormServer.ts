@@ -1,15 +1,15 @@
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
-import { FormDB } from '@/lib/db';
-import SectionCore from '../../types/section.type';
-import QuestionCore from '../../types/question.type';
 import { FormDocument } from '../../types/form.type';
+import { QuestionDoc, SectionDoc } from '@paperwork/types';
+import { FormDB } from '@/types';
+import { toISOString } from '../../types/db.types';
 
 interface GetFormDataType {
     data: {
         form: FormDocument;
-        questions: QuestionCore[];
-        sections: SectionCore[];
+        questions: QuestionDoc[];
+        sections: SectionDoc[];
     };
     message: string;
     sucess: boolean;
@@ -17,18 +17,19 @@ interface GetFormDataType {
 
 async function getFormServerById(id: string): Promise<FormDB | undefined> {
     try {
-        const { path } = endpoints.forms.getFormById(id);
+        const path = endpoints.forms.getFormById(id);
 
         const res = await http.get<GetFormDataType>(path);
         if (res.status === 200) {
-            console.log('Server response:', res.data);
+            const form = res.data.data.form;
             return {
-                ...res.data.data.form,
+                ...form,
+                id: form._id,
                 questions: res.data.data.questions,
                 sections: res.data.data.sections,
                 isDirty: false,
-                syncedAt: Date.now(),
-            };
+                lastSyncedAt: toISOString(Date.now()),
+            } as unknown as FormDB;
         }
         return undefined;
     } catch (err) {

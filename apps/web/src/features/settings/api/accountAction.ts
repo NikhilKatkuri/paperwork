@@ -55,7 +55,7 @@ export default function useAccountAction() {
             setSaving(true);
 
             try {
-                const { path } = endpoints.auth.accountAction;
+                const path = endpoints.auth.accountAction;
                 const res = await http.post<AccountActionResponse>(path, {
                     action,
                     password,

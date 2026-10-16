@@ -1,40 +1,17 @@
 'use client';
-import { useState } from 'react';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
-import FormCore, { FormSettings } from '../types/form.type';
-
-interface createFormData extends Partial<FormSettings> {
-    name: string;
-    isPrivate: boolean;
-    isPublished: boolean;
-}
+import { useApiAction } from '@/hooks/useApiAction';
+import { CreateFormDoc, FormDto } from '@paperwork/types';
 
 function useCreateForm() {
-    const [loading, setLoading] = useState(false);
+    const { loading, execute: createForm } = useApiAction(
+        async (formData: CreateFormDoc) =>
+            http.post<FormDto>(endpoints.forms.createForm, {
+                data: formData,
+            })
+    );
 
-    const createForm = async (formData: createFormData) => {
-        setLoading(true);
-        try {
-            const { path } = endpoints.forms.createForm;
-            const res = await http.post<FormCore>(path, { data: formData });
-            if (res.status === 201) {
-                return {
-                    ok: true,
-                    data: res.data as FormCore,
-                };
-            }
-            return { ok: false, error: 'Unexpected response from server.' };
-        } catch (error) {
-            let msg = 'An unexpected error occurred. Please try again.';
-            if (error instanceof Error) {
-                msg = error.message;
-            }
-            return { ok: false, error: msg };
-        } finally {
-            setLoading(false);
-        }
-    };
     return {
         loading,
         createForm,

@@ -33,7 +33,7 @@ export function clearCachedProfile(): void {
 }
 
 const fromServer = async (): Promise<ProfileResult> => {
-    const { path } = endpoints.auth.me;
+    const path = endpoints.auth.me;
 
     try {
         const res = await http.get<{ profile: Profile }>(path);

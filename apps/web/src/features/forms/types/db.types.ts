@@ -23,6 +23,29 @@ export function toTimestamp(value: unknown, fallback = 0): number {
     return fallback;
 }
 
+export function toISOString(
+    value: unknown,
+    fallback: string = new Date().toISOString()
+): string {
+    if (!value) return fallback;
+
+    if (value instanceof Date) {
+        return !Number.isNaN(value.getTime()) ? value.toISOString() : fallback;
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        const date = new Date(value);
+        return !Number.isNaN(date.getTime()) ? date.toISOString() : fallback;
+    }
+
+    if (typeof value === 'string') {
+        const date = new Date(value);
+        return !Number.isNaN(date.getTime()) ? date.toISOString() : fallback;
+    }
+
+    return fallback;
+}
+
 /** Coerce a document version into a finite number, defaulting to 0. */
 export function toVersion(value: unknown): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : 0;

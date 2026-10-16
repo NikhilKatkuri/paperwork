@@ -1,19 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { FormDB } from '@/lib/db';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
-
-function toDateString(date?: number): string {
-    return date
-        ? new Date(date).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-          })
-        : '-';
-}
+import { FormDB } from '@/types';
+import { toISOString } from '@/features/forms/types/db.types';
 
 interface MenuButtonProps {
     ref: React.RefObject<HTMLDivElement | null>;
@@ -97,8 +88,8 @@ export default function FormsView({
     const menuRef = useRef<HTMLDivElement>(null);
 
     const title = form?.name || 'Untitled Form';
-    const dateText = toDateString(form?.updatedAt);
-    const formUrl = `/forms/c/${form?._id}`;
+    const dateText = toISOString(form?.createdAt);
+    const formUrl = `/forms/c/${form?.id}`;
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {

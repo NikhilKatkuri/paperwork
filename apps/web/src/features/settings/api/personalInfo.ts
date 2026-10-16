@@ -73,7 +73,7 @@ export function useUserPersonalInfo() {
         setSaving(true);
 
         try {
-            const { path } = endpoints.auth.sensitiveInfo;
+            const path = endpoints.auth.sensitiveInfo;
 
             const res = await http.put<HandlerResponse>(path, data);
 
@@ -128,7 +128,7 @@ export function useRetrievePersonalInfo() {
             }
 
             // Fetch from API
-            const { path } = endpoints.auth.sensitiveInfo;
+            const path = endpoints.auth.sensitiveInfo;
 
             const res = await http.get<HandlerResponse>(path);
 
