@@ -5,61 +5,116 @@ import SectionModel from '@/modules/forms/schemas/schemas.sections';
 import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
 import UserModel from '@/modules/auth/schemas/user.schema';
 import {
+    CreateFormDoc,
     Form,
+    FormDoc,
     FormDto,
-    FormEntity,
-    FormEntityDto,
     PaginationOptions,
-    QuestionDto,
-    SectionDto,
+    SectionDoc,
 } from '@paperwork/types';
 import { emailQueue } from '@/queues';
 import fieldsValidator from '../validators/validator.feilds';
 import { formIndexCache } from '@/redis/formIndex';
-import { FormDocument } from '@/types';
 
 class FormsService {
     /**
      * @description Create a new form for a user.
-     * @param data: @Form
+     * @param props: @Form
      * @returns @Form
      */
 
-    async create(data: Form): Promise<FormEntityDto> {
-        const { settings, userId, ...rest } = data;
-        const safeSettings = settings ?? {};
+    async create(props: CreateFormDoc, userId: string): Promise<FormDto> {
+        // Never trust client-supplied ownership/counters.
+        const { settings, section: s, questions, ...rest } = props as any;
+        const { responseCount: _rc, isPublished: _pub, userId: _uid, ...data } =
+            rest ?? {};
 
-        const form: FormDocument = await FormsModel.create({
-            ...rest,
-            userId,
-            settings: safeSettings,
-        });
+        const session = await mongoose.startSession();
+        let form: any;
+        let section: any;
+        let createdQuestions: any[] = [];
+        try {
+            await session.withTransaction(async () => {
+                const created = await FormsModel.create(
+                    [
+                        {
+                            ...fieldsValidator.getSafeFormData(data),
+                            userId,
+                            settings: settings ?? {},
+                            isPublished: false,
+                            responseCount: 0,
+                        },
+                    ],
+                    { session }
+                );
+                form = created[0];
+                if (!form) throw AppError.FormCreationFailed('Failed to create form');
 
-        if (!form) {
-            throw AppError.FormCreationFailed('Failed to create form');
-        }
+                const sectionDocs = await SectionModel.create(
+                    [{ ...fieldsValidator.getSafeSectionData(s ?? {}), formId: form._id }],
+                    { session }
+                );
+                section = sectionDocs[0];
+                if (!section) throw AppError.SectionCreationFailed('Failed to create default section');
 
-        // The cached id/name index no longer matches this user's forms.
-        await formIndexCache.invalidate(userId);
-
-        // Fetch user email for notification
-        const user = await UserModel.findById(userId).select('email');
-        if (user?.email) {
-            await emailQueue.add(
-                'sendFormCreatedEmail',
-                {
-                    formId: form.toObject()._id,
-                    formName: form.name,
-                    email: user.email,
-                },
-                {
-                    attempts: 10,
-                    backoff: { type: 'exponential', delay: 60 * 1000 },
+                if (questions?.length) {
+                    createdQuestions = await QuestionsModel.create(
+                        questions.map((q: any) => ({
+                            ...fieldsValidator.getSafeQuestionData(q),
+                            formId: form._id,
+                            sectionId: section._id,
+                        })),
+                        { session }
+                    );
                 }
-            );
-        }
+            });
 
-        return form.toObject() satisfies FormEntityDto;
+            const formObj = form.toJSON() as unknown as FormDoc;
+            const sectionObj = section.toJSON() as unknown as SectionDoc;
+
+            await formIndexCache.invalidate(userId).catch(() => undefined);
+
+            const formIdForMail = (formObj as any).id ?? String(form._id);
+            const user = await UserModel.findById(userId).select('email');
+
+            if (user?.email) {
+                emailQueue
+                    .add(
+                        'sendFormCreatedEmail',
+                        {
+                            formId: formIdForMail,
+                            formName: (formObj as any).name,
+                            email: user.email,
+                        },
+                        {
+                            attempts: 10,
+                            backoff: {
+                                type: 'exponential',
+                                delay: 60 * 1000,
+                            },
+                        }
+                    )
+                    .catch(() => undefined);
+            }
+
+        const { formId: _sectionFormId, ...sectionData } = sectionObj;
+
+        return {
+            ...formObj,
+            sections: [sectionData],
+            questions: createdQuestions.map((question) => {
+                const { formId: _questionFormId, ...questionData } =
+                    question.toJSON();
+
+                return questionData;
+            }),
+        } as unknown as FormDto;
+        } catch (error) {
+            if (error instanceof AppError) throw error;
+            throw AppError.FormCreationFailed('Failed to create form');
+        } finally {
+            await session.endSession();
+        }
     }
 
     /**
@@ -81,14 +136,14 @@ class FormsService {
         }
 
         return {
-            ...(form.toObject() as unknown as FormDto),
-            sections: sections.map(
-                (s) => s.toObject() as unknown as SectionDto
+            ...form.toJSON(),
+            sections: sections.map(({ formId: _formId, ...section }) =>
+                section.toJSON ? section.toJSON() : section
             ),
-            questions: questions.map(
-                (q) => q.toObject() as unknown as QuestionDto
+            questions: questions.map(({ formId: _formId, ...question }) =>
+                question.toJSON ? question.toJSON() : question
             ),
-        };
+        } as unknown as FormDto;
     }
 
     /**
@@ -116,8 +171,8 @@ class FormsService {
                 .sort({ updatedAt: -1 })
                 .lean();
 
-            return forms.map((form) => ({
-                _id: String(form.toObject()._id),
+            return forms.map((form: any) => ({
+                _id: String(form._id),
                 name: form.name ?? '',
             }));
         });
@@ -192,7 +247,6 @@ class FormsService {
             throw AppError.BadRequest('No update data provided');
 
         form.set(fieldsValidator.getSafeFormData(updateData));
-        form.__v = form.__v + 1;
 
         await form.save();
 
@@ -200,7 +254,7 @@ class FormsService {
             await formIndexCache.invalidate(userId);
         }
 
-        return form.toObject();
+        return form.toJSON();
     }
 
     /**
@@ -213,23 +267,39 @@ class FormsService {
      * @throws AppError.Internal if the update fails for any reason.
      */
     async bulkPut(updateData: FormDto, userId: string, formId: string) {
-        const { sections = [], questions = [], ...rest } = updateData;
+        const { sections = [], questions = [], ...data } = updateData as any;
 
-        const safeFormData = fieldsValidator.getSafeFormData(rest);
+        const safeFormData = fieldsValidator.getSafeFormData(data);
 
-        const safeSections = sections.map((section) => ({
-            _id: section.id,
-            formId,
-            ...fieldsValidator.getSafeSectionData(section),
-        }));
+        const toObjectId = (v: any) => {
+            const raw = v?._id ?? v?.id;
+            if (!raw) return new mongoose.Types.ObjectId();
+            try {
+                return new mongoose.Types.ObjectId(String(raw));
+            } catch {
+                return new mongoose.Types.ObjectId();
+            }
+        };
 
-        const safeQuestions = questions.map((question) => ({
-            _id: question.id,
-            ...fieldsValidator.getSafeQuestionData(question),
-            formId,
-            sectionId: question.sectionId,
-            ...fieldsValidator.getSafeQuestionData(question),
-        }));
+        const safeSections = (sections as any[]).map((section) => {
+            const _id = toObjectId(section);
+            return {
+                _id,
+                formId,
+                ...fieldsValidator.getSafeSectionData(section),
+            };
+        });
+
+        const safeQuestions = (questions as any[]).map((question) => {
+            const _id = toObjectId(question);
+            const safe = fieldsValidator.getSafeQuestionData(question);
+            return {
+                _id,
+                ...safe,
+                formId,
+                sectionId: (question as any).sectionId,
+            };
+        });
 
         const session = await mongoose.startSession();
 
@@ -320,7 +390,7 @@ class FormsService {
         updateData: Partial<Form>,
         userId: string,
         formId: string
-    ): Promise<FormEntity> {
+    ): Promise<Form> {
         const form = await FormsModel.findOne({ _id: formId, userId });
 
         if (!form) throw AppError.FormNotFound('Form not found');
@@ -338,14 +408,13 @@ class FormsService {
         }
 
         form.set(filteredUpdate);
-        form.__v = form.__v + 1;
         await form.save();
 
         if (updateData.name !== undefined) {
             await formIndexCache.invalidate(userId);
         }
 
-        return form.toObject();
+        return form.toJSON();
     }
 
     /**
@@ -366,7 +435,7 @@ class FormsService {
         }
 
         if (form[field] === bool) {
-            throw AppError.FormPublishFailed(
+            throw AppError.Conflict(
                 `Form is already ${bool ? 'published' : 'unpublished'}`
             );
         }
@@ -379,7 +448,7 @@ class FormsService {
             throw AppError.FormPublishFailed('Failed to publish form');
         }
 
-        return form.toObject();
+        return form.toJSON();
     }
 
     async publish(userId: string, formId: string) {
@@ -404,14 +473,17 @@ class FormsService {
                 throw AppError.FormNotFound('Form not found');
             }
 
-            const { _id, ...cleanForm } = form.toObject();
+            const { _id, ...cleanForm } = form.toJSON() as any;
+            const { responseCount: _dupRc, id: _dupId, v: _dupV, ...baseForm } =
+                cleanForm;
 
             const [duplicatedForm] = await FormsModel.create(
                 [
                     {
-                        ...cleanForm,
+                        ...baseForm,
                         name: `${cleanForm.name} (Copy)`,
                         isPublished: false,
+                        responseCount: 0,
                         userId,
                     },
                 ],
@@ -425,15 +497,15 @@ class FormsService {
             const newFormId = duplicatedForm._id.toHexString();
 
             const [sections, questions] = await Promise.all([
-                SectionModel.find({ formId }).lean(),
-                QuestionsModel.find({ formId }).lean(),
+                SectionModel.find({ formId }).session(session).lean(),
+                QuestionsModel.find({ formId }).session(session).lean(),
             ]);
 
             const sectionIdMap = new Map<string, string>();
 
             if (sections.length) {
                 const newSections = await SectionModel.insertMany(
-                    sections.map(({ _id, ...section }) => ({
+                    sections.map(({ _id, createdAt, updatedAt, __v, ...section }: any) => ({
                         ...section,
                         formId: newFormId,
                     })),
@@ -451,25 +523,34 @@ class FormsService {
             }
 
             if (questions.length) {
-                await QuestionsModel.insertMany(
-                    questions.map(({ _id, ...question }) => ({
-                        ...question,
-                        formId: newFormId,
-                        sectionId: sectionIdMap.get(
-                            question.sectionId.toString()
-                        ),
-                    })),
-                    { session }
+                const mapped = questions.map(
+                    ({ _id, createdAt, updatedAt, __v, ...question }: any) => {
+                        const mappedSectionId = sectionIdMap.get(
+                            question.sectionId?.toString()
+                        );
+                        if (!mappedSectionId) {
+                            throw AppError.Internal(
+                                'Failed to duplicate form: section mapping missing'
+                            );
+                        }
+                        return {
+                            ...question,
+                            formId: newFormId,
+                            sectionId: mappedSectionId,
+                        };
+                    }
                 );
+                await QuestionsModel.insertMany(mapped, { session });
             }
 
             await session.commitTransaction();
 
             await formIndexCache.invalidate(userId);
-            return duplicatedForm.toObject();
+            return duplicatedForm.toJSON();
         } catch (error) {
             await session.abortTransaction();
-            throw error;
+            if (error instanceof AppError) throw error;
+            throw AppError.Internal('Failed to duplicate form');
         } finally {
             await session.endSession();
         }
@@ -479,12 +560,9 @@ class FormsService {
      * @description Retrieves all forms for a user with pagination and optional filtering by last updated date.
      * @param userId The ID of the user whose forms are to be retrieved.
      * @param options Pagination options including `limit`, `page`, and optional `lastUpdated` date for filtering.
-     * @returns A promise that resolves to an array of FormEntityDto objects.
+     * @returns A promise that resolves to an array of FormDto objects.
      */
-    async getAll(
-        userId: string,
-        options: PaginationOptions
-    ): Promise<FormEntity[]> {
+    async getAll(userId: string, options: PaginationOptions): Promise<Form[]> {
         const { limit, page, lastUpdated } = options;
         const skip = (page - 1) * limit;
 
@@ -498,7 +576,7 @@ class FormsService {
             .skip(skip)
             .limit(limit);
 
-        return forms.map((form) => form.toObject());
+        return forms.map((form) => form.toJSON());
     }
 }
 

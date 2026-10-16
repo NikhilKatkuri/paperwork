@@ -10,12 +10,10 @@ class FieldsValidator {
     readonly formFields = [
         'name',
         'isPrivate',
-        'isPublished',
         'allowedDomains',
         'settings',
-        'responseCount',
         'theme',
-    ] as const satisfies readonly (keyof Required<Form>)[];
+    ] as const;
 
     readonly formSettingsFields = [
         'maxResponses',
@@ -47,7 +45,7 @@ class FieldsValidator {
         'action',
     ] as const satisfies readonly (keyof SectionRule)[];
 
-    readonly sectionActionKeys = ['type', 'sectionId'] as const;
+    readonly sectionActionKeys = ['type', 'targetSectionId'] as const;
 
     readonly questionKeys = [
         'index',
@@ -55,12 +53,17 @@ class FieldsValidator {
         'question',
         'helpText',
         'optionsConfig',
+        'options',
         'dependsOn',
         'ratingConfig',
+        'scaleConfig',
+        'matrixConfig',
         'validationRule',
         'placeholder',
         'isRequired',
-    ] as const satisfies readonly (keyof Required<Question>)[];
+        'slug',
+        'correctAnswer',
+    ] as const;
 
     readonly questionRatingConfigKeys = [
         'icon',
@@ -94,9 +97,12 @@ class FieldsValidator {
 
     readonly fieldValidationRuleKeys = [
         'ruleType',
-    ] as const satisfies readonly (keyof Required<
-        NonNullable<Question['validationRule']>
-    >)[];
+        'value',
+        'min',
+        'max',
+        'pattern',
+        'customErrorMessage',
+    ] as const;
 
     private pickFields<T extends object, K extends readonly (keyof T)[]>(
         data: Partial<T>,
@@ -133,18 +139,13 @@ class FieldsValidator {
         const safeData = this.pickFields(data, this.sectionFields);
 
         if (safeData.defaultAction) {
-            let _d = {
-                type: safeData.defaultAction.type,
-                sectionId: undefined as string | undefined,
-            };
-            if (
-                safeData.defaultAction.type === 'GO_TO_SECTION' &&
-                safeData.defaultAction.targetSectionId
-            ) {
-                _d.sectionId = safeData.defaultAction.targetSectionId;
+            const src = safeData.defaultAction as any;
+            const cleaned: any = { type: src.type };
+            if (src.type === 'GO_TO_SECTION' && src.targetSectionId) {
+                cleaned.targetSectionId = src.targetSectionId;
             }
 
-            safeData.defaultAction = _d as Section['defaultAction'];
+            safeData.defaultAction = cleaned as Section['defaultAction'];
         }
 
         if (safeData.rules) {
@@ -157,15 +158,21 @@ class FieldsValidator {
         return safeData;
     }
 
-    getSafeQuestionData(data: Partial<Question>) {
-        const safeData = this.pickFields(data, this.questionKeys);
+    getSafeQuestionData(data: any) {
+        // Normalize legacy `options` -> `optionsConfig.options` so Zod-valid
+        // CHOICE payloads are not stripped to undefined.
+        const normalized: any = { ...(data ?? {}) };
+        if (Array.isArray((normalized as any).options) && !(normalized as any).optionsConfig) {
+            normalized.optionsConfig = { options: (normalized as any).options };
+        }
+        const safeData: any = this.pickFields(normalized, this.questionKeys as any);
 
         if (safeData.optionsConfig) {
             safeData.optionsConfig = {
                 expectedAnswer: safeData.optionsConfig.expectedAnswer,
-                options: safeData.optionsConfig.options.map(
-                    (option) =>
-                        this.pickFields(option, this.optionKeys) as NonNullable<
+                options: (safeData.optionsConfig.options ?? []).map(
+                    (option: any) =>
+                        this.pickFields(option, this.optionKeys as any) as NonNullable<
                             Question['optionsConfig']
                         >['options'][number]
                 ),
@@ -188,10 +195,8 @@ class FieldsValidator {
 
         if (safeData.validationRule) {
             safeData.validationRule = this.pickFields(
-                safeData.validationRule as Partial<
-                    NonNullable<Question['validationRule']>
-                >,
-                this.fieldValidationRuleKeys
+                safeData.validationRule as any,
+                this.fieldValidationRuleKeys as any
             ) as Question['validationRule'];
         }
 

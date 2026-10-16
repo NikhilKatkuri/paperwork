@@ -9,11 +9,18 @@ import transform from '@/schemas/tranformer';
 
 export const userSchema = new Schema<MongooseDocument<User>>(
     {
-        email: { type: String, required: true, unique: true },
-        passwordHash: { type: String, required: true },
+        email: {
+            type: String,
+            required: true,
+            unique: true,
+            lowercase: true,
+            trim: true,
+            index: true,
+        },
+        passwordHash: { type: String, required: true, select: false },
         isVerified: { type: Boolean, default: false },
-        resetToken: { type: String, index: true, default: null },
-        resetExpires: { type: Date, index: true, default: null },
+        resetToken: { type: String, index: true, default: null, select: false },
+        resetExpires: { type: Date, index: true, default: null, select: false },
         accountDeletedStatus: {
             type: String,
             enum: Object.values(userAccountDeletedStatus),

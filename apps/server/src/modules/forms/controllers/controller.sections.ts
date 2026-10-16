@@ -149,7 +149,7 @@ class SectionController {
 
     async reorder(req: Request, res: Response, next: NextFunction) {
         try {
-            const { data, ...rest } = this.getContextData(req, true);
+            const { data, ...rest } = this.getContextData(req, false);
             if (!data) {
                 throw AppError.SectionReorderFailed('No data provided');
             }

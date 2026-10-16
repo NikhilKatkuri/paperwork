@@ -1,12 +1,26 @@
 import { z } from 'zod';
 
-import { formDataSchema, zodObjectId } from './validator.common';
+import {
+    formDataSchema,
+    sectionDataSchema,
+    zodObjectId,
+    questionDataSchema,
+} from './validator.common';
 
 export { formSettingsSchema, zodObjectId } from './validator.common';
 export { bulkPutFormSchema } from './validator.bulk';
 
 export const formSchema = z.object({
     body: z.object({ data: formDataSchema }),
+});
+
+export const createRequestFormSchema = z.object({
+    body: z.object({
+        data: formDataSchema.extend({
+            section: sectionDataSchema,
+            questions: z.array(questionDataSchema).min(1),
+        }),
+    }),
 });
 
 export const putRequestFormSchema = z.object({

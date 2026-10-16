@@ -42,7 +42,7 @@ function buildResponseMatch(
     if (search) {
         const pattern = new RegExp(escapeRegex(search), 'i');
 
-        match.$or = [{ email: pattern }, { 'answers.values': pattern }];
+        match.$or = [{ email: pattern }, { 'answers.value': pattern }];
     }
 
     return match;
@@ -76,8 +76,28 @@ class FillService {
         await this.assertUserSubmissionLimit(form, userId);
     }
 
+    private async assertOwner(formId: string, ownerId: string) {
+        const form = await FormsModel.findOne({
+            _id: formId,
+            userId: ownerId,
+        })
+            .select('_id')
+            .lean();
+        if (!form) throw AppError.FormNotFound('Form not found');
+        return form;
+    }
+
     private assertFormAvailability(form: FormDocument): void {
-        if (!form || form.isPrivate) {
+        if (!form) {
+            throw AppError.FormNotFound('Form not found');
+        }
+        // Domain-restricted forms are stored private but must remain
+        // fillable for allowed domains. Truly private forms (no domains)
+        // stay hidden.
+        const hasDomains =
+            Array.isArray((form as any).allowedDomains) &&
+            (form as any).allowedDomains.length > 0;
+        if (form.isPrivate && !hasDomains) {
             throw AppError.FormNotFound('Form not found');
         }
         if (!form.isPublished) {
@@ -137,12 +157,7 @@ class FillService {
             .select('-__v')
             .lean()) as FormDocument;
 
-        try {
-            await this.verifier(form, userId, email);
-        } catch (error) {
-            console.error('Verification failed:', error);
-            throw error;
-        }
+        await this.verifier(form, userId, email);
 
         const [sections, allQuestions] = await Promise.all([
             SectionModel.find({ formId })
@@ -181,6 +196,12 @@ class FillService {
 
     async post(data: FormResponse) {
         const { formId, userId, email, answers, metadata } = data;
+        // Basic shape validation: valid question IDs, no duplicates,
+        // non-empty values. Full per-rule validation happens per question
+        // type where config is available; at minimum reject junk.
+        if (!Array.isArray(answers) || answers.length === 0) {
+            throw AppError.BadRequest('Answers are required');
+        }
         const session = await mongoose.startSession();
         session.startTransaction();
 
@@ -219,11 +240,25 @@ class FillService {
             const validIdStrings = new Set(
                 validQuestionIds.map((id) => id.toString())
             );
-            const isDataValid = answers.every((ans) =>
-                validIdStrings.has(ans.questionId.toString())
-            );
-
-            if (!isDataValid) throw AppError.BadRequest('Invalid questions');
+            const seen = new Set<string>();
+            for (const ans of answers) {
+                const qid = ans?.questionId?.toString();
+                if (!qid || !validIdStrings.has(qid)) {
+                    throw AppError.BadRequest('Invalid questions');
+                }
+                if (seen.has(qid)) {
+                    throw AppError.BadRequest('Duplicate answers for question');
+                }
+                seen.add(qid);
+                const vals = (ans as any).value;
+                if (
+                    !Array.isArray(vals) ||
+                    vals.length === 0 ||
+                    vals.some((v: unknown) => typeof v !== 'string' || v.trim() === '')
+                ) {
+                    throw AppError.BadRequest('Answer values must be non-empty strings');
+                }
+            }
 
             const response = await FormResponseModel.create(
                 [
@@ -252,10 +287,14 @@ class FillService {
         formId: string,
         page: number = 1,
         limit: number = 20,
-        options: ResponseQuery = {}
+        options: ResponseQuery = {},
+        ownerId?: string
     ) {
-        const form = await FormsModel.findById(formId).lean();
-        if (!form) throw AppError.FormNotFound('Form not found');
+        if (ownerId) await this.assertOwner(formId, ownerId);
+        else {
+            const form = await FormsModel.findById(formId).lean();
+            if (!form) throw AppError.FormNotFound('Form not found');
+        }
 
         // Bounded again here so a caller bypassing validation cannot ask for
         // the whole collection in one page.
@@ -300,9 +339,12 @@ class FillService {
      * Per-question totals across every response, not just one page, so the
      * summary does not change as the user pages through the list.
      */
-    async responsesSummary(formId: string, options: ResponseQuery = {}) {
-        const form = await FormsModel.findById(formId).lean();
-        if (!form) throw AppError.FormNotFound('Form not found');
+    async responsesSummary(formId: string, options: ResponseQuery = {}, ownerId?: string) {
+        if (ownerId) await this.assertOwner(formId, ownerId);
+        else {
+            const form = await FormsModel.findById(formId).lean();
+            if (!form) throw AppError.FormNotFound('Form not found');
+        }
 
         const match = buildResponseMatch(formId.toString(), options);
 
@@ -311,12 +353,12 @@ class FillService {
             FormResponseModel.aggregate([
                 { $match: match },
                 { $unwind: '$answers' },
-                { $unwind: '$answers.values' },
+                { $unwind: '$answers.value' },
                 {
                     $group: {
                         _id: {
                             questionId: '$answers.questionId',
-                            value: '$answers.values',
+                            value: '$answers.value',
                         },
                         count: { $sum: 1 },
                     },
@@ -353,11 +395,14 @@ class FillService {
         return { totalResponses, questions };
     }
 
-    async getResponse(formId: string, responseId: string) {
-        const form = await FormsModel.findById(formId).lean();
-        if (!form) throw AppError.FormNotFound('Form not found');
+    async getResponse(formId: string, responseId: string, ownerId?: string) {
+        if (ownerId) await this.assertOwner(formId, ownerId);
+        else {
+            const form = await FormsModel.findById(formId).lean();
+            if (!form) throw AppError.FormNotFound('Form not found');
+        }
 
-        const response = await FormResponseModel.find({
+        const response = await FormResponseModel.findOne({
             _id: responseId,
             formId,
         })
@@ -368,11 +413,13 @@ class FillService {
         return response;
     }
 
-    async exportResponses(formId: string, exportType: string) {
+    async exportResponses(formId: string, exportType: string, ownerId?: string) {
         try {
-            const form = await FormsModel.findById(formId).lean();
-
-            if (!form) throw AppError.FormNotFound('Form not found');
+            if (ownerId) await this.assertOwner(formId, ownerId);
+            else {
+                const form = await FormsModel.findById(formId).lean();
+                if (!form) throw AppError.FormNotFound('Form not found');
+            }
 
             const questions = (await QuestionsModel.find({
                 formId,
@@ -385,6 +432,7 @@ class FillService {
 
             const responses = await FormResponseModel.find({ formId })
                 .sort({ createdAt: -1 })
+                .limit(10000)
                 .select('-__v -updatedAt')
                 .lean();
 

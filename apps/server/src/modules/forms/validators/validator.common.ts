@@ -22,20 +22,39 @@ export const formSettingsSchema = z
         saveAndContinueLater: z.boolean().default(false),
         progressBar: z.boolean().default(false),
         customConfirmationMessage: z.string().max(1000).nullable().optional(),
-        redirectUrl: z.string().nullable().optional(),
+        redirectUrl: z
+            .string()
+            .max(2048)
+            .refine((v) => !v || /^https?:\/\//.test(v), {
+                message: 'redirectUrl must start with http:// or https://',
+            })
+            .nullable()
+            .optional(),
     })
-    .strict();
+    .strict()
+    .refine(
+        (s) => !s.startDate || !s.closeDate || s.startDate < s.closeDate,
+        { message: 'startDate must be before closeDate', path: ['startDate'] }
+    );
 
 export const formDataSchema = z
     .object({
-        name: z.string().min(1).max(255),
-        description: z.string().max(5000).optional(),
-        accessCode: z.string().max(100).optional(),
+        name: z.string().trim().min(1).max(255),
         isPrivate: z.boolean().default(false),
-        isPublished: z.boolean().default(false),
-        allowedDomains: z.array(z.string()).optional(),
+        allowedDomains: z
+            .array(
+                z
+                    .string()
+                    .trim()
+                    .min(1)
+                    .max(253)
+                    .refine((d) => /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(d), {
+                        message: 'Invalid domain',
+                    })
+            )
+            .max(20)
+            .optional(),
         settings: formSettingsSchema.optional(),
-        responseCount: z.number().int().nonnegative().optional(),
         theme: z.enum(FORM_THEMES).optional(),
     })
     .strict();
@@ -82,6 +101,12 @@ export const optionSchema = z.object({
     label: z.string().max(100),
 });
 
+// Added optionsConfig schema to mirror your client-side updates
+export const optionsConfigSchema = z.object({
+    options: z.array(optionSchema).min(1),
+    expectedAnswer: z.union([z.number(), z.array(z.number())]).optional(),
+});
+
 export const matrixRowSchema = z.object({
     id: z.string(),
     label: z.string(),
@@ -113,14 +138,55 @@ export const ratingConfigSchema = z.object({
     highLabel: z.string().max(50).optional(),
 });
 
-export const validationRuleSchema = z.object({
-    ruleType: z.enum(fieldValidationRuleEnum),
-    value: z.union([z.string(), z.number()]).optional(),
-    min: z.number().optional(),
-    max: z.number().optional(),
-    pattern: z.string().optional(),
-    customErrorMessage: z.string().max(200).optional(),
+// Added scaleConfigSchema to match LinearScaleQuestion
+export const scaleConfigSchema = z.object({
+    lowerBound: z.number(),
+    upperBound: z.number(),
+    lowerLabel: z.string().max(50).optional(),
+    upperLabel: z.string().max(50).optional(),
 });
+
+export const validationRuleSchema = z
+    .object({
+        ruleType: z.enum(fieldValidationRuleEnum),
+        value: z.union([z.string(), z.number()]).optional(),
+        min: z.number().optional(),
+        max: z.number().optional(),
+        pattern: z.string().max(200).optional(),
+        customErrorMessage: z.string().max(200).optional(),
+    })
+    .superRefine((rule, ctx) => {
+        if (
+            (rule.ruleType === 'NUMBER_BETWEEN' ||
+                rule.ruleType === 'CHECKBOX_MIN_SELECT' ||
+                rule.ruleType === 'CHECKBOX_MAX_SELECT') &&
+            (rule.min === undefined && rule.max === undefined && rule.value === undefined)
+        ) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `${rule.ruleType} requires min, max or value`,
+            });
+        }
+        if (
+            rule.ruleType === 'REGEX_MATCH' &&
+            !rule.pattern
+        ) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'REGEX_MATCH requires pattern',
+            });
+        }
+        if (
+            (rule.ruleType === 'MIN_CHAR_COUNT' ||
+                rule.ruleType === 'MAX_CHAR_COUNT') &&
+            rule.value === undefined
+        ) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `${rule.ruleType} requires value`,
+            });
+        }
+    });
 
 export const QuestionBaseSchema = z.object({
     slug: z.string().min(1),
@@ -131,6 +197,10 @@ export const QuestionBaseSchema = z.object({
     validationRule: validationRuleSchema.optional(),
     placeholder: z.string().max(100).optional(),
     isRequired: z.boolean().default(false),
+    optionsConfig: optionsConfigSchema.optional(),
+    ratingConfig: ratingConfigSchema.optional(),
+    scaleConfig: scaleConfigSchema.optional(),
+    matrixConfig: matrixConfigSchema.optional(),
     correctAnswer: z
         .union([
             z.string(),
@@ -144,30 +214,52 @@ export const QuestionBaseSchema = z.object({
 export const questionDataSchema = z.discriminatedUnion('type', [
     QuestionBaseSchema.extend({
         type: z.enum(['TEXT', 'PARAGRAPH', 'DATE', 'TIME']),
-        options: z.undefined(),
-        ratingConfig: z.undefined(),
-        matrixConfig: z.undefined(),
+        options: z.undefined().optional(),
+        ratingConfig: z.undefined().optional(),
+        scaleConfig: z.undefined().optional(),
+        matrixConfig: z.undefined().optional(),
     }),
     QuestionBaseSchema.extend({
         type: z.enum(['CHOICE', 'RADIO', 'DROP_DOWN']),
-        options: z.array(optionSchema).min(1),
+        options: z.array(optionSchema).min(1).optional(),
         correctAnswer: z.union([z.number(), z.array(z.number())]).optional(),
-        ratingConfig: z.undefined(),
-        matrixConfig: z.undefined(),
+        ratingConfig: z.undefined().optional(),
+        scaleConfig: z.undefined().optional(),
+        matrixConfig: z.undefined().optional(),
+    }).superRefine((q, ctx) => {
+        const hasOptions =
+            (Array.isArray((q as any).options) && (q as any).options.length > 0) ||
+            ((q as any).optionsConfig?.options?.length > 0);
+        if (!hasOptions) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Choice questions require at least one option',
+            });
+        }
     }),
     QuestionBaseSchema.extend({
-        type: z.enum(['LINEAR_SCALE', 'RATING']),
-        options: z.undefined(),
+        type: z.literal('LINEAR_SCALE'),
+        options: z.undefined().optional(),
+        ratingConfig: z.undefined().optional(),
+        scaleConfig: scaleConfigSchema,
+        matrixConfig: z.undefined().optional(),
+    }),
+    QuestionBaseSchema.extend({
+        type: z.literal('RATING'),
+        options: z.undefined().optional(),
         ratingConfig: ratingConfigSchema,
-        matrixConfig: z.undefined(),
+        scaleConfig: z.undefined().optional(),
+        matrixConfig: z.undefined().optional(),
     }),
     QuestionBaseSchema.extend({
         type: z.literal('MATRIX'),
-        options: z.undefined(),
-        ratingConfig: z.undefined(),
+        options: z.undefined().optional(),
+        ratingConfig: z.undefined().optional(),
+        scaleConfig: z.undefined().optional(),
         matrixConfig: matrixConfigSchema,
     }),
 ]);
+
 const indexedQuestionBaseSchema = QuestionBaseSchema.extend({
     _id: zodObjectId,
     index: z.number().int().nonnegative(),
@@ -178,6 +270,7 @@ export const questionTypesWithIndexSchema = z.discriminatedUnion('type', [
         type: z.enum(['TEXT', 'PARAGRAPH', 'DATE', 'TIME']),
         options: z.undefined(),
         ratingConfig: z.undefined(),
+        scaleConfig: z.undefined(),
         matrixConfig: z.undefined(),
     }),
     indexedQuestionBaseSchema.extend({
@@ -185,18 +278,28 @@ export const questionTypesWithIndexSchema = z.discriminatedUnion('type', [
         options: z.array(optionSchema).min(1),
         correctAnswer: z.union([z.number(), z.array(z.number())]).optional(),
         ratingConfig: z.undefined(),
+        scaleConfig: z.undefined(),
         matrixConfig: z.undefined(),
     }),
     indexedQuestionBaseSchema.extend({
-        type: z.enum(['LINEAR_SCALE', 'RATING']),
+        type: z.literal('LINEAR_SCALE'),
+        options: z.undefined(),
+        ratingConfig: z.undefined(),
+        scaleConfig: scaleConfigSchema,
+        matrixConfig: z.undefined(),
+    }),
+    indexedQuestionBaseSchema.extend({
+        type: z.literal('RATING'),
         options: z.undefined(),
         ratingConfig: ratingConfigSchema,
+        scaleConfig: z.undefined(),
         matrixConfig: z.undefined(),
     }),
     indexedQuestionBaseSchema.extend({
         type: z.literal('MATRIX'),
         options: z.undefined(),
         ratingConfig: z.undefined(),
+        scaleConfig: z.undefined(),
         matrixConfig: matrixConfigSchema,
     }),
 ]);

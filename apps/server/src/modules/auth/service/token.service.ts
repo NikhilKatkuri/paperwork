@@ -1,7 +1,7 @@
 import AutoBoundClass from '@/utils/AutoBoundClass';
 import config from '@/config';
 import jwt from 'jsonwebtoken';
-import { SystemError } from '@/utils/AppError';
+import { AppError, SystemError } from '@/utils/AppError';
 import { TokenMap, TokenType } from '@paperwork/types';
 
 class Token extends AutoBoundClass {
@@ -72,13 +72,15 @@ class Token extends AutoBoundClass {
     verifyToken<T>(token: string, type: TokenType = 'access'): T {
         const currentTokenConfig = this.getTokenConfig(type);
         try {
-            const decoded = jwt.verify(token, currentTokenConfig.token) as T;
+            const decoded = jwt.verify(token, currentTokenConfig.token, {
+                algorithms: ['HS256'],
+            }) as T;
             return decoded;
         } catch (error) {
             if (error instanceof jwt.TokenExpiredError) {
-                throw new SystemError('[jwt-token]', 'Token has expired');
+                throw AppError.Unauthorized('Token has expired');
             }
-            throw new SystemError('[jwt-token]', 'Invalid or expired token');
+            throw AppError.Unauthorized('Invalid or expired token');
         }
     }
 }

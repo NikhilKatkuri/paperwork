@@ -47,6 +47,12 @@ class WorkerManager {
                     job.data.email,
                     job.data.fullName
                 ),
+            sendOTPEmail: (job) =>
+                this.mailservice.sendOTPEmail(
+                    job.data.email,
+                    String(job.data.otp).padStart(6, '0'),
+                    `Your 2FA verification code - expires at ${new Date(job.data.expiresAt).toLocaleString()}`
+                ),
             sendLoginAlertEmail: (job) =>
                 this.mailservice.sendLoginAlertEmail(
                     job.data.email,
@@ -81,7 +87,7 @@ class WorkerManager {
             submissionConfirmed: (job) =>
                 this.mailservice.sendFormSubmissionConfirmedEmail(
                     job.data.email,
-                    job.data.formId,
+                    job.data.formName ?? job.data.formId,
                     job.data.submissionId
                 ),
         };

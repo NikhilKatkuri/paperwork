@@ -19,12 +19,15 @@ export const signUpSchema = z.object({
             .string()
             .trim()
             .email('Invalid email format')
+            .max(254, 'Email too long')
             .transform((value) => value.toLowerCase()),
         password: z
             .string()
-            .min(6, 'Password must be at least 6 characters long'),
+            .min(8, 'Password must be at least 8 characters long')
+            .max(128, 'Password cannot exceed 128 characters'),
         fullName: z
             .string()
+            .trim()
             .min(2, 'Full name must be at least 2 characters long')
             .max(100, 'Full name cannot exceed 100 characters'),
     }),
@@ -53,15 +56,42 @@ export const accountActionsSchema = z.object({
                 message: 'Invalid API',
             }
         ),
-        password: z.string().min(1, 'Invalid API'),
+        password: z
+            .string()
+            .min(1, 'Invalid API')
+            .max(128, 'Password too long'),
+    }),
+});
+
+export const changePasswordSchema = z.object({
+    body: z.object({
+        currentPassword: z.string().min(1, 'Current password is required').max(128),
+        newPassword: z
+            .string()
+            .min(8, 'New password must be at least 8 characters long')
+            .max(128, 'Password cannot exceed 128 characters'),
+    }),
+});
+
+export const resetPasswordBodySchema = z.object({
+    body: z.object({
+        newPassword: z
+            .string()
+            .min(8, 'New password must be at least 8 characters long')
+            .max(128, 'Password cannot exceed 128 characters'),
     }),
 });
 
 export const SecuritySettingsSchema = z.object({
     body: z.object({
-        dob: z.string().refine((date) => !isNaN(Date.parse(date)), {
-            message: 'Invalid date format',
-        }),
+        dob: z
+            .string()
+            .refine((date) => !isNaN(Date.parse(date)), {
+                message: 'Invalid date format',
+            })
+            .refine((date) => new Date(date) <= new Date(), {
+                message: 'Date of birth cannot be in the future',
+            }),
         gender: z.enum(Object.values(GENDERS), {
             message: 'Invalid gender value',
         }),
@@ -82,9 +112,18 @@ export const profileUpdateSchema = z.object({
     body: z.object({
         fullName: z
             .string()
+            .trim()
             .min(2, 'Full name must be at least 2 characters long')
-            .max(100, 'Full name cannot exceed 100 characters'),
-        bio: z.string().max(500, 'Bio cannot exceed 500 characters'),
-        avatarUrl: z.string().url('Invalid URL format'),
+            .max(100, 'Full name cannot exceed 100 characters')
+            .optional(),
+        bio: z.string().trim().max(500, 'Bio cannot exceed 500 characters').optional(),
+        avatarUrl: z
+            .string()
+            .url('Invalid URL format')
+            .max(2048, 'URL too long')
+            .refine((u) => u.startsWith('https://') || u.startsWith('randomuser:'), {
+                message: 'Avatar URL must be https or generated avatar',
+            })
+            .optional(),
     }),
 });

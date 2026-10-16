@@ -6,6 +6,20 @@ import { worker } from './workers';
 import { fatal, logger } from '@/utils/logger';
 
 const boot = async (): Promise<void> => {
+    await connectDB().catch((error: unknown) => {
+        fatal('database_connection_failed', error);
+        process.exit(1);
+    });
+
+    worker.initEmailWorker();
+
+    try {
+        new SubmissionWorker();
+    } catch (error) {
+        fatal('submission_worker_failed', error);
+        process.exit(1);
+    }
+
     let server: ReturnType<typeof app.listen>;
 
     if (config.env === 'production') {
@@ -28,20 +42,6 @@ const boot = async (): Promise<void> => {
                 requestBodyLogging: config.logger.requestBody,
             });
         });
-    }
-
-    await connectDB().catch((error: unknown) => {
-        fatal('database_connection_failed', error);
-        process.exit(1);
-    });
-
-    worker.initEmailWorker();
-
-    try {
-        new SubmissionWorker();
-    } catch (error) {
-        fatal('submission_worker_failed', error);
-        process.exit(1);
     }
 
     const shutdown = (signal: string): void => {

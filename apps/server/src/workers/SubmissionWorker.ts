@@ -49,25 +49,38 @@ class SubmissionWorker {
         status: 'processing' | 'done' | 'failed',
         extra: Record<string, string> = {}
     ): Promise<void> {
-        const current = await cacheRedis.get(submissionKey(submissionId));
-        if (!current) return;
-
-        const parsed = JSON.parse(current);
-        await cacheRedis.set(
-            submissionKey(submissionId),
-            JSON.stringify({
-                ...parsed,
-                status,
-                ...extra,
-                updatedAt: Date.now(),
-            }),
-            'EX',
-            status === 'done'
-                ? 86400 // 24hr
-                : status === 'failed'
-                  ? 259200 // 72hr
-                  : 3600 // 1hr for processing
-        );
+        let parsed: any = null;
+        try {
+            const current = await cacheRedis.get(submissionKey(submissionId));
+            if (!current) return;
+            try {
+                parsed = JSON.parse(current);
+            } catch {
+                // Poisoned status value: overwrite with a clean record.
+                parsed = { submissionId };
+            }
+        } catch {
+            return;
+        }
+        try {
+            await cacheRedis.set(
+                submissionKey(submissionId),
+                JSON.stringify({
+                    ...parsed,
+                    status,
+                    ...extra,
+                    updatedAt: Date.now(),
+                }),
+                'EX',
+                status === 'done'
+                    ? 86400 // 24hr
+                    : status === 'failed'
+                      ? 259200 // 72hr
+                      : 3600 // 1hr for processing
+            );
+        } catch {
+            return;
+        }
     }
 
     private async process(job: Job<SubmissionJob>): Promise<void> {
@@ -81,6 +94,18 @@ class SubmissionWorker {
             idempotencyKey,
             isCompleted,
         } = job.data;
+
+        // Idempotency: a retry after a successful write must not double-save.
+        // The status record carries responseId once done.
+        try {
+            const existing = await cacheRedis.get(submissionKey(submissionId));
+            if (existing) {
+                try {
+                    const parsed = JSON.parse(existing);
+                    if (parsed?.status === 'done' && parsed?.responseId) return;
+                } catch { /* treat as not-done */ }
+            }
+        } catch { /* cache unavailable: proceed */ }
 
         // Mark processing
         await this.updateStatus(submissionId, 'processing');
@@ -103,12 +128,20 @@ class SubmissionWorker {
             });
 
             // Trigger email
-            await emailQueue.add('submissionConfirmed', {
-                submissionId,
-                responseId: response._id.toString(),
-                email,
-                formId,
-            });
+            await emailQueue.add(
+                'submissionConfirmed',
+                {
+                    submissionId,
+                    responseId: response._id.toString(),
+                    email,
+                    formId,
+                    formName: formId,
+                },
+                {
+                    attempts: 3,
+                    backoff: { type: 'exponential', delay: 5000 },
+                }
+            );
         } catch (error) {
             logError(workerLogger, 'submission_job.failed', error, {
                 event: 'QUEUE_JOB_FAILED',

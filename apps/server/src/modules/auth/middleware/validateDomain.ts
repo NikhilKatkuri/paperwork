@@ -37,7 +37,7 @@ function validateDomain(req: Request, res: Response, next: NextFunction): void {
         return;
     }
 
-    const domain = email.split('@')[1]?.toLowerCase();
+    const domain = email.split('@')[1]?.toLowerCase().trim();
 
     if (!domain) {
         logSecurityEvent(SECURITY_EVENTS.MALFORMED_PAYLOAD, req, {
@@ -52,7 +52,12 @@ function validateDomain(req: Request, res: Response, next: NextFunction): void {
         return;
     }
 
-    if (disposableDomains.has(domain)) {
+    // Block subdomains of blocklisted domains (mail.disposable.com).
+    const isDisposable =
+        disposableDomains.has(domain) ||
+        [...disposableDomains].some((d) => domain.endsWith(`.${d}`));
+
+    if (isDisposable) {
         logMaskedSecurityEvent(SECURITY_EVENTS.DISPOSABLE_EMAIL_BLOCKED, req, {
             domain,
             email: maskEmail(email),

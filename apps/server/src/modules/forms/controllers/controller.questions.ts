@@ -130,8 +130,17 @@ class QuestionsController {
         try {
             const { data: orderData, ...rest } = this.getContent(req);
 
-            const questionIds = orderData.map(
-                (item: { questionId: string; index: number }) => item.questionId
+            // Preserve client order: sort by `index` when present so a
+            // [{questionId,index}] payload is honoured, not discarded.
+            const sorted = [...(orderData ?? [])].sort((a: any, b: any) => {
+                if (typeof a?.index === 'number' && typeof b?.index === 'number') {
+                    return a.index - b.index;
+                }
+                return 0;
+            });
+            const questionIds = sorted.map(
+                (item: { questionId: string; index: number } | string) =>
+                    typeof item === 'string' ? item : item.questionId
             );
 
             const result = await this.service.reorder(rest, questionIds);

@@ -19,8 +19,6 @@ class CloudinaryService {
     private cachedSignature: UploadSignature | null = null;
     private cachedSignatureExpiry = 0;
 
-    private signaturePromise: UploadSignature | null = null;
-
     private readonly folder = config.cloudinary.named_folder;
 
     constructor() {
@@ -90,19 +88,15 @@ class CloudinaryService {
         }
 
         if (this.cachedSignature && this.cachedSignatureExpiry === expiresAt) {
-            return this.cachedSignature;
+            // Refresh the cached object if the window rolled over but the
+            // expiry coincidentally matches (clock skew): regenerate when
+            // less than the safety buffer remains.
+            if (expiresAt - Date.now() > 0) {
+                return this.cachedSignature;
+            }
         }
 
-        if (this.signaturePromise) {
-            return this.signaturePromise;
-        }
-
-        this.signaturePromise = this.generateSignature(
-            bucketTimestamp,
-            expiresAt
-        );
-
-        return this.signaturePromise;
+        return this.generateSignature(bucketTimestamp, expiresAt);
     }
 }
 

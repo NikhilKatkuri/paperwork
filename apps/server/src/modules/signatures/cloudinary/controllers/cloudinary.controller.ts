@@ -1,7 +1,6 @@
 import CloudinaryService from '../service/cloudinary.service';
 import { Response, Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { AppError } from '@/utils/AppError';
 
 class CloudinaryController {
     private readonly service = CloudinaryService;
@@ -10,7 +9,7 @@ class CloudinaryController {
         this.getSignature = this.getSignature.bind(this);
     }
 
-    getSignature(_req: Request, res: Response) {
+    getSignature(_req: Request, res: Response, next: (err: unknown) => void) {
         try {
             const signature = this.service.getSignature();
 
@@ -19,10 +18,7 @@ class CloudinaryController {
                 data: signature,
             });
         } catch (error) {
-            if (error instanceof AppError) {
-                throw error;
-            }
-            throw AppError.Internal('Internal server error');
+            next(error);
         }
     }
 }

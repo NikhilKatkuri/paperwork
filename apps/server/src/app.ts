@@ -9,7 +9,6 @@ import cookieParser from 'cookie-parser';
 import router from './router';
 import globalErrorHandler from './middleware/errorHandler';
 import { limiter } from './middleware/limiter';
-import config from '@/config/index';
 
 import requestId from '@/middleware/requestId';
 import { requestCompleted, requestReceived } from '@/middleware/httpLogger';
@@ -17,11 +16,9 @@ import securityAudit from '@/middleware/securityAudit';
 
 const app: express.Application = express();
 
-// `true` trusts the entire X-Forwarded-For chain, so `req.ip` reflects the
-// real client rather than the load balancer. This is only safe because TLS
-// terminates at a proxy that overwrites the header; a client able to reach
-// Node directly could otherwise spoof its own address in every log line.
-app.set('trust proxy', config.env === 'production');
+// Trust a single hop (the load balancer) rather than the whole chain, so a
+// client cannot spoof `req.ip` via X-Forwarded-For when Node is reachable.
+app.set('trust proxy', 1);
 
 // Correlation id first, ahead of everything that can reject a request.
 // Helmet, CORS and the rate limiters must not be able to emit an

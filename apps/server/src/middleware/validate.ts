@@ -10,7 +10,11 @@ const validate =
                 query: req.query,
                 params: req.params,
             });
-            req.body = parsed.body;
+            if (parsed.body !== undefined) req.body = parsed.body;
+            if ((parsed as any).query !== undefined)
+                req.query = (parsed as any).query;
+            if ((parsed as any).params !== undefined)
+                req.params = (parsed as any).params as any;
 
             next();
         } catch (error) {

@@ -42,23 +42,45 @@ class FillController {
             throw AppError.BadRequest('Form ID is required');
         }
 
-        const answers = req.body?.data ?? undefined;
-        const userAgent = req.headers['user-agent'] ?? 'Unknown';
-        const ipAddress = (req.ip ||
-            req.socket.remoteAddress ||
-            'Unknown') as string;
-        const { page, limit } = req.query as { page?: string; limit?: string };
+        // Accept both the validated flat body and the legacy {data} wrapper.
+        const body = (req.body ?? {}) as any;
+        const rawAnswers = Array.isArray(body.answers)
+            ? body.answers
+            : Array.isArray(body.data)
+              ? body.data
+              : undefined;
+        const answers = rawAnswers?.map((a: any) => ({
+            questionId: String(a.questionId ?? a.id ?? ''),
+            questionSlug: a.questionSlug ?? a.slug,
+            value: Array.isArray(a.value)
+                ? a.value.map(String)
+                : a.value !== undefined
+                  ? [String(a.value)]
+                  : [],
+        }));
+        const userAgent = body.metadata?.userAgent
+            ?? req.headers['user-agent'] ?? 'Unknown';
+        const ipAddress = body.metadata?.ipAddress
+            ?? (req.ip || req.socket.remoteAddress || 'Unknown') as string;
+        const pageRaw = (req.query as any)?.page;
+        const limitRaw = (req.query as any)?.limit;
+        const page = Number.parseInt(String(pageRaw ?? '1'), 10);
+        const limit = Number.parseInt(String(limitRaw ?? '20'), 10);
         return {
             userId,
             email,
             formId,
             answers,
+            idempotencyKey: body.idempotencyKey,
+            isCompleted: body.isCompleted,
+            currentSectionId: body.currentSectionId,
+            responseEmail: body.email,
             metadata: {
-                userAgent,
-                ipAddress,
+                userAgent: String(userAgent).slice(0, 500),
+                ipAddress: String(ipAddress).slice(0, 100),
             },
-            page,
-            limit,
+            page: Number.isFinite(page) ? page : 1,
+            limit: Number.isFinite(limit) ? limit : 20,
             responseId,
             exportType,
         };
@@ -66,9 +88,37 @@ class FillController {
 
     async fill(req: Request, res: Response, next: NextFunction) {
         try {
-            const { userId, formId } = this.getContent(req);
+            const { userId, email, formId } = this.getContent(req);
 
-            let formData = await trendEngine.getForm(formId);
+            let formData: string | null = null;
+            try {
+                formData = await trendEngine.getForm(formId);
+            } catch {
+                formData = null;
+            }
+
+            // A cache hit is only a fast path: re-verify availability so
+            // unpublished/private/closed forms are never served stale.
+            if (formData) {
+                try {
+                    const parsed = JSON.parse(formData) as any;
+                    const formDoc = parsed?.form ?? parsed;
+                    await this.service.verifier(formDoc, userId, email);
+                } catch (verifyError) {
+                    // Stale or now-inaccessible: drop cache and fall through
+                    // to the DB path which throws the correct status.
+                    try {
+                        trendEngine.invalidate?.(formId);
+                    } catch { /* ignore */ }
+                    formData = null;
+                    if (
+                        verifyError instanceof AppError ||
+                        (verifyError as any)?.statusCode
+                    ) {
+                        throw verifyError;
+                    }
+                }
+            }
 
             if (!formData) {
                 let dbPromise = this.inFlightReads.get(formId);
@@ -150,7 +200,7 @@ class FillController {
 
     async responses(req: Request, res: Response, next: NextFunction) {
         try {
-            const { formId } = this.getContent(req);
+            const { formId, userId } = this.getContent(req);
             const query = (req.query ?? {}) as {
                 page?: number;
                 limit?: number;
@@ -167,7 +217,8 @@ class FillController {
                     search: query.q,
                     questionId: query.questionId,
                     sort: query.sort,
-                }
+                },
+                userId
             );
 
             if (!responses) {
@@ -194,7 +245,7 @@ class FillController {
 
     async responsesSummary(req: Request, res: Response, next: NextFunction) {
         try {
-            const { formId } = this.getContent(req);
+            const { formId, userId } = this.getContent(req);
             const query = (req.query ?? {}) as {
                 q?: string;
                 questionId?: string;
@@ -203,7 +254,7 @@ class FillController {
             const summary = await this.service.responsesSummary(formId, {
                 search: query.q,
                 questionId: query.questionId,
-            });
+            }, userId);
 
             res.status(StatusCodes.OK).json({
                 success: true,
@@ -217,8 +268,8 @@ class FillController {
 
     async getResponse(req: Request, res: Response, next: NextFunction) {
         try {
-            const { formId, responseId } = this.getContent(req);
-            const response = await this.service.getResponse(formId, responseId);
+            const { formId, responseId, userId } = this.getContent(req);
+            const response = await this.service.getResponse(formId, responseId, userId);
             res.status(StatusCodes.OK).json({
                 success: true,
                 message: 'Response retrieved successfully',
@@ -230,14 +281,15 @@ class FillController {
     }
 
     async exportResponses(req: Request, res: Response, next: NextFunction) {
-        const { formId, exportType } = this.getContent(req);
+        const { formId, exportType, userId } = this.getContent(req);
         try {
-            const text = await this.service.exportResponses(formId, exportType);
-            res.status(StatusCodes.OK).json({
-                success: true,
-                message: 'Responses exported successfully',
-                data: text,
-            });
+            const text = await this.service.exportResponses(formId, exportType, userId);
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader(
+                'Content-Disposition',
+                `attachment; filename="responses-${formId}.csv"`
+            );
+            res.status(StatusCodes.OK).send(text);
         } catch (error) {
             next(error);
         }
@@ -249,13 +301,23 @@ class FillController {
             if (!submissionId) {
                 throw AppError.BadRequest('Submission ID is required');
             }
-            const raw = await cacheRedis.get(submissionKey(submissionId));
+            let raw: string | null = null;
+            try {
+                raw = await cacheRedis.get(submissionKey(submissionId));
+            } catch {
+                throw AppError.Internal('Submission status unavailable');
+            }
 
             if (!raw) {
                 throw AppError.NotFound('Submission not found or expired');
             }
 
-            const status = JSON.parse(raw);
+            let status: unknown;
+            try {
+                status = JSON.parse(raw);
+            } catch {
+                throw AppError.Internal('Submission status corrupted');
+            }
 
             res.status(StatusCodes.OK).json({
                 success: true,

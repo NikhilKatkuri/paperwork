@@ -30,12 +30,15 @@ class SectionService {
 
     async create(userId: string, formId: string, data: Section) {
         await this.authorizeForm(formId, userId);
-        const sectionCount = await SectionModel.countDocuments({ formId });
+        const maxDoc = await SectionModel.findOne({ formId })
+            .sort({ index: -1 })
+            .select('index')
+            .lean();
 
         const createdSection = await SectionModel.create({
             formId,
             ...data,
-            index: sectionCount,
+            index: (maxDoc?.index ?? -1) + 1,
         });
 
         return createdSection.toJSON();
@@ -80,8 +83,8 @@ class SectionService {
         const { sectionId, formId, userId } = ids;
         await this.authorizeForm(formId, userId);
 
-        const updatedSection = await SectionModel.findByIdAndUpdate(
-            sectionId,
+        const updatedSection = await SectionModel.findOneAndUpdate(
+            { _id: sectionId, formId },
             data,
             { returnDocument: 'after', runValidators: true }
         );
@@ -122,6 +125,23 @@ class SectionService {
 
         try {
             await this.authorizeForm(formId, userId, session);
+
+            // Validate completeness: every existing section exactly once.
+            const existing = await SectionModel.find({ formId })
+                .select('_id')
+                .session(session)
+                .lean();
+            const existingIds = new Set(existing.map((s: any) => String(s._id)));
+            const incomingIds = data.map((d) => String(d.sectionId));
+            if (
+                incomingIds.length !== existingIds.size ||
+                new Set(incomingIds).size !== incomingIds.length ||
+                !incomingIds.every((id) => existingIds.has(id))
+            ) {
+                throw AppError.BadRequest(
+                    'Reorder must include every section exactly once'
+                );
+            }
 
             const operations = [
                 ...data.map(({ sectionId, index }) => ({

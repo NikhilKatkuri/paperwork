@@ -46,15 +46,16 @@ class QuestionService {
 
         await this.authorizeAccess({ formId, sectionId, userId });
 
-        const questionCount = await QuestionsModel.countDocuments({
-            sectionId,
-        });
+        const maxDoc = await QuestionsModel.findOne({ sectionId })
+            .sort({ index: -1 })
+            .select('index')
+            .lean();
 
         const createdQuestion = await QuestionsModel.create({
             formId,
             sectionId,
             ...questionData,
-            index: questionCount,
+            index: (maxDoc?.index ?? -1) + 1,
         });
 
         return createdQuestion.toJSON();
@@ -139,16 +140,32 @@ class QuestionService {
         try {
             await this.authorizeAccess({ formId, sectionId, userId }, session);
 
+            const existing = await QuestionsModel.find({ formId, sectionId })
+                .select('_id')
+                .session(session)
+                .lean();
+            const existingIds = new Set(existing.map((q: any) => String(q._id)));
+            const incoming = order.map(String);
+            if (
+                incoming.length !== existingIds.size ||
+                new Set(incoming).size !== incoming.length ||
+                !incoming.every((id) => existingIds.has(id))
+            ) {
+                throw AppError.BadRequest(
+                    'Reorder must include every question exactly once'
+                );
+            }
+
             const operations = [
                 ...order.map((questionId, i) => ({
                     updateOne: {
-                        filter: { _id: questionId, sectionId },
+                        filter: { _id: questionId, formId, sectionId },
                         update: { $set: { index: -(i + 1) } },
                     },
                 })),
                 ...order.map((questionId, index) => ({
                     updateOne: {
-                        filter: { _id: questionId, sectionId },
+                        filter: { _id: questionId, formId, sectionId },
                         update: { $set: { index } },
                     },
                 })),
@@ -157,7 +174,7 @@ class QuestionService {
             await QuestionsModel.bulkWrite(operations, { session });
             await session.commitTransaction();
 
-            return await QuestionsModel.find({ sectionId })
+            return await QuestionsModel.find({ formId, sectionId })
                 .sort({ index: 1 })
                 .then((questions) => questions?.map((q) => q?.toJSON()));
         } catch (error) {
@@ -177,14 +194,16 @@ class QuestionService {
         const { formId, sectionId, userId, data: questionsData } = params;
         await this.authorizeAccess({ formId, sectionId, userId });
 
-        const questionCount = await QuestionsModel.countDocuments({
-            sectionId,
-        });
+        const maxDoc = await QuestionsModel.findOne({ sectionId })
+            .sort({ index: -1 })
+            .select('index')
+            .lean();
+        const base = (maxDoc?.index ?? -1) + 1;
         const questionsToCreate = questionsData.map((questionData, index) => ({
             formId,
             sectionId,
             ...questionData,
-            index: questionCount + index,
+            index: base + index,
         }));
         const createdQuestions =
             await QuestionsModel.insertMany(questionsToCreate);

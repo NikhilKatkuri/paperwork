@@ -13,7 +13,7 @@ import {
 } from '@/middleware/limiter';
 import {
     bulkPutFormSchema,
-    formSchema,
+    createRequestFormSchema,
     getFormSchema,
     patchRequestFormSchema,
     putRequestFormSchema,
@@ -29,7 +29,7 @@ formsRouter.post(
     '/',
     createFormsLimiter,
     protect,
-    validate(formSchema),
+    validate(createRequestFormSchema),
     controller.create
 );
 

@@ -3,6 +3,20 @@ import { SystemError } from '@/utils/AppError';
 import dotenv from 'dotenv';
 dotenv.config();
 
+const SECRET_KEY_SUFFIXES = [
+    'SECRET',
+    'PASSWORD',
+    'PASS',
+    'TOKEN',
+    'KEY',
+    'PRIVATE',
+];
+
+function isSecretKey(key: string): boolean {
+    const upper = key.toUpperCase();
+    return SECRET_KEY_SUFFIXES.some((s) => upper.endsWith(s));
+}
+
 export function getEnvVar<T extends string | number | boolean>(
     key: string,
     defaultValue?: T
@@ -28,11 +42,14 @@ export function getEnvVar<T extends string | number | boolean>(
         return false as unknown as T;
     }
 
-    const isPureNumber = /^-?\d+(\.\d+)?$/.test(trimmed);
-    if (isPureNumber) {
-        const parsedNum = Number(trimmed);
-        if (!Number.isNaN(parsedNum)) {
-            return parsedNum as unknown as T;
+    // Never coerce secrets to numbers: JWT_SECRET=123456 must stay a string.
+    if (!isSecretKey(key)) {
+        const isPureNumber = /^-?\d+(\.\d+)?$/.test(trimmed);
+        if (isPureNumber) {
+            const parsedNum = Number(trimmed);
+            if (!Number.isNaN(parsedNum)) {
+                return parsedNum as unknown as T;
+            }
         }
     }
 
@@ -52,12 +69,13 @@ function getEnvArray(key: string, defaultValue?: string[]): string[] {
     }
     return value
         .split(',')
-        .map((s) => s.trim())
+        .map((s) => s.trim().replace(/\/+$/, ''))
         .filter(Boolean);
 }
 
-const isDev = getEnvVar<string>('NODE_ENV', 'development') === 'development';
-const isProd = !isDev;
+const nodeEnv = getEnvVar<string>('NODE_ENV', 'development');
+const isDev = nodeEnv === 'development';
+const isProd = nodeEnv === 'production';
 
 const LOG_LEVELS: Set<LoggerLevel> = new Set([
     'error',
@@ -165,7 +183,16 @@ const config: AppConfig = {
         ),
     },
     argonOptions: {
-        type: getEnvVar<number>('ARGON_TYPE', 2),
+        type: (() => {
+            const t = getEnvVar<number>('ARGON_TYPE', 2);
+            if (![0, 1, 2].includes(Number(t))) {
+                throw new SystemError(
+                    '[ARGON_TYPE]',
+                    'ARGON_TYPE must be 0 (d), 1 (i) or 2 (id)'
+                );
+            }
+            return Number(t);
+        })(),
         memoryCost: getEnvVar<number>('ARGON_MEMORY_COST', 65536),
         timeCost: getEnvVar<number>('ARGON_TIME_COST', 3),
         parallelism: getEnvVar<number>('ARGON_PARALLELISM', 4),

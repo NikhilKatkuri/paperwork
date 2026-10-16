@@ -11,12 +11,16 @@ class UserRepository<
         super();
     }
 
-    findUserById = async (userId: string, select: string = ' ') => {
-        return await UserModel.findById(userId).select(select);
+    findUserById = async (userId: string, select?: string) => {
+        const query = UserModel.findById(userId);
+        if (select && select.trim()) query.select(select);
+        return await query;
     };
 
-    findUserByEmail = async (email: string) => {
-        return await UserModel.findOne({ email });
+    findUserByEmail = async (email: string, includeHash = false) => {
+        const query = UserModel.findOne({ email: email.toLowerCase().trim() });
+        if (includeHash) query.select('+passwordHash');
+        return await query;
     };
 
     clearDeletionFlag = async (userId: string) => {
@@ -46,6 +50,7 @@ class UserRepository<
             returnDocument: 'after',
             lean: true,
             select: selectedFields,
+            runValidators: true,
         })) as unknown as T | null;
     };
 
@@ -60,8 +65,8 @@ class UserRepository<
             userId,
             {
                 $unset: {
-                    resetPasswordToken: undefined,
-                    resetPasswordExpires: undefined,
+                    resetToken: '',
+                    resetExpires: '',
                 },
             },
             {

@@ -134,11 +134,8 @@ export const scrubPath = (path: string): string => {
 };
 
 /**
- * Scrubs a full request target, preserving the query string.
- *
- * Query values are redacted by `sanitize` when they land in the `query`
- * field; here only the path needs attention, so the query is passed through
- * untouched and left to that redaction.
+ * Scrubs a full request target. Query values may carry credentials
+ * (?token=, ?otp=), so they are redacted here instead of passed through.
  */
 export const scrubUrl = (url: string): string => {
     if (!url) return url;
@@ -146,7 +143,20 @@ export const scrubUrl = (url: string): string => {
     const queryAt = url.indexOf('?');
     if (queryAt === -1) return scrubPath(url);
 
-    return `${scrubPath(url.slice(0, queryAt))}${url.slice(queryAt)}`;
+    const base = scrubPath(url.slice(0, queryAt));
+    const query = url.slice(queryAt + 1);
+    const scrubbedQuery = query
+        .split('&')
+        .map((pair) => {
+            const [k, ...rest] = pair.split('=');
+            if (!rest.length) return k;
+            if (/token|otp|secret|password|key/i.test(k ?? '')) {
+                return `${k}=[REDACTED]`;
+            }
+            return `${k}=[QUERY]`;
+        })
+        .join('&');
+    return `${base}?${scrubbedQuery}`;
 };
 
 export interface RequestMeta {

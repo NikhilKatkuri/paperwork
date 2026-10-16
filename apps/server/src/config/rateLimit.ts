@@ -26,7 +26,15 @@ type LimiterPreset = {
 
 const devMultiplier = 1000;
 
-const scale = (value: number) => (isProd ? value : value * devMultiplier);
+// In non-production the multiplier must be opt-in: an unset NODE_ENV on a
+// real deploy previously disabled all protection (5 -> 5000).
+const allowDevScale =
+    process.env.RATE_LIMIT_DEV_SCALE === '1' ||
+    config.env === 'development' ||
+    config.env === 'test';
+
+const scale = (value: number) =>
+    isProd || !allowDevScale ? value : value * devMultiplier;
 
 export const rateLimitConfig: Record<string, LimiterPreset> = {
     default: {

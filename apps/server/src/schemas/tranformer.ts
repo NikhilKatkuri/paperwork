@@ -1,4 +1,15 @@
+const SENSITIVE_KEYS = new Set([
+    'passwordHash',
+    'resetToken',
+    'resetExpires',
+    'resetPasswordToken',
+    'resetPasswordExpires',
+]);
+
 const transform = (_doc: unknown, ret: Record<string, any>) => {
+    for (const key of SENSITIVE_KEYS) {
+        if (key in ret) delete ret[key];
+    }
     const id = ret._id?.toString();
 
     const createdAt = ret.createdAt?.toISOString();

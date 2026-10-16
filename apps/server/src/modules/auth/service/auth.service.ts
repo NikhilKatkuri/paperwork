@@ -7,7 +7,6 @@ import UserRepoBoot from '../repository/user.repository';
 import OTPBoot from './otp.service';
 import ProfileRepoBoot from '../repository/profile.repository';
 import statusCodes from 'http-status-codes';
-import MailService from '@/utils/mail';
 import HashBoot from './hash.service';
 
 import { Request, Response } from 'express';
@@ -40,14 +39,15 @@ class AuthService extends AutoBoundController {
         const hashedPassword = await HashBoot.hashed(password);
         const session = await mongoose.startSession();
 
+        let newUser: any;
         try {
-            const newUser = await session.withTransaction(async () => {
-                const newUser = await UserModel.create(
+            newUser = await session.withTransaction(async () => {
+                const created = await UserModel.create(
                     [{ email, passwordHash: hashedPassword }],
                     { session }
                 );
 
-                const userId = newUser[0]!
+                const userId = created[0]!
                     ._id satisfies mongoose.Types.ObjectId;
 
                 const color = HSLtoString(generateHSL(fullName));
@@ -57,16 +57,25 @@ class AuthService extends AutoBoundController {
                     session,
                 });
 
-                await emailQueue.add(
-                    'sendWelcomeEmail',
-                    { email, fullName },
-                    {
-                        attempts: 10,
-                        backoff: { type: 'exponential', delay: 60 * 1000 },
-                    }
-                );
-                return newUser[0]!;
+                return created[0]!;
             });
+        } finally {
+            await session.endSession();
+        }
+
+        // Side-effect outside the transaction: a rollback must not send mail,
+        // and a mail-queue failure must not roll back a committed user.
+        // Fire-and-forget with a logged catch so signup never 500s on Redis.
+        emailQueue
+            .add(
+                'sendWelcomeEmail',
+                { email, fullName },
+                {
+                    attempts: 10,
+                    backoff: { type: 'exponential', delay: 60 * 1000 },
+                }
+            )
+            .catch(() => undefined);
 
             const tokens = {
                 accessToken: TokenBoot.generateToken({
@@ -83,9 +92,6 @@ class AuthService extends AutoBoundController {
             };
 
             return tokens;
-        } finally {
-            await session.endSession();
-        }
     };
 
     signIn = async ({
@@ -101,12 +107,23 @@ class AuthService extends AutoBoundController {
     }) => {
         const { email, password } = payload;
         const user: MongooseDocument<User> | null =
-            await UserRepoBoot.findUserByEmail(email);
+            await UserRepoBoot.findUserByEmail(email, true);
 
+        if (!user) {
+            throw AppError.Unauthorized('Invalid email or password');
+        }
+        // Block deactivated / soft-deleted accounts. Pending-deletion alone
+        // does not block — it is cleared below on successful password check
+        // only if the grace period has not expired.
         if (
-            !user ||
-            (user.accountWillbeDeletedAt &&
-                new Date() > new Date(user.accountWillbeDeletedAt))
+            (user as any).accountDeactivationStatus === 'DEACTIVATED' ||
+            (user as any).accountDeletedStatus === 'DELETED'
+        ) {
+            throw AppError.Forbidden('Account is deactivated or deleted');
+        }
+        if (
+            user.accountWillbeDeletedAt &&
+            new Date() > new Date(user.accountWillbeDeletedAt)
         ) {
             throw AppError.Unauthorized('Invalid email or password');
         }
@@ -132,29 +149,42 @@ class AuthService extends AutoBoundController {
     private async otpFor2FA(userId: string, email: string, res: Response) {
         const { otp, expiresAt } = OTPBoot.generateOTP({ userId, email });
 
-        await new MailService().sendOTPEmail(
-            email,
-            otp,
-            `Your 2FA verification code - expires at ${new Date(expiresAt).toLocaleString()}`
-        );
+        // Do not block sign-in on mail outage; queue with retries instead.
+        emailQueue
+            .add(
+                'sendOTPEmail',
+                { email, otp, expiresAt },
+                {
+                    attempts: 5,
+                    backoff: { type: 'exponential', delay: 5 * 1000 },
+                }
+            )
+            .catch(() => undefined);
 
         const tempAccessToken = TokenBoot.generateToken(
             { userId, email },
             'temp'
         );
 
+        // Cookie lifetime matches OTP lifetime so a stale cookie cannot
+        // outlive the code (previously 15m vs 5m OTP).
+        const ttlMs = Math.max(
+            60 * 1000,
+            expiresAt - Date.now()
+        );
+
         this.cookieSetter(
             res,
             'Expiry2faAt',
             expiresAt.toString(),
-            15 * 60 * 1000
+            ttlMs
         );
 
         this.cookieSetter(
             res,
             'tempAccessToken',
             tempAccessToken,
-            15 * 60 * 1000
+            ttlMs
         );
 
         res.status(statusCodes.OK).json({
@@ -177,19 +207,22 @@ class AuthService extends AutoBoundController {
         geo: string;
         res: Response;
     }) {
-        await emailQueue.add(
-            'sendLoginAlertEmail',
-            {
-                email,
-                device,
-                location: geo,
-                time: new Date().toISOString(),
-            },
-            {
-                attempts: 10,
-                backoff: { type: 'exponential', delay: 20 * 1000 },
-            }
-        );
+        // Fire-and-forget: login must not fail when Redis/mail is down.
+        emailQueue
+            .add(
+                'sendLoginAlertEmail',
+                {
+                    email,
+                    device,
+                    location: geo,
+                    time: new Date().toISOString(),
+                },
+                {
+                    attempts: 10,
+                    backoff: { type: 'exponential', delay: 20 * 1000 },
+                }
+            )
+            .catch(() => undefined);
 
         const accessToken = TokenBoot.generateToken({ userId, email });
         const refreshToken = TokenBoot.generateToken(
@@ -251,10 +284,26 @@ class AuthService extends AutoBoundController {
             );
         }
 
+        // Never trust the client-supplied expiry blindly: clamp it to the
+        // server OTP window so an attacker cannot extend brute-force time
+        // by forging a far-future cookie.
+        const parsedExpiry = Number.parseInt(String(twoFAExpireAt), 10);
+        if (!Number.isFinite(parsedExpiry)) {
+            throw AppError.BadRequest(
+                '2FA session has expired or is invalid. Please sign in again.'
+            );
+        }
+        const maxAllowed = Date.now() + config.otp.EXPIRATION + 60_000;
+        if (parsedExpiry > maxAllowed) {
+            throw AppError.BadRequest(
+                '2FA session has expired or is invalid. Please sign in again.'
+            );
+        }
+
         const isValid = OTPBoot.verifyOTP(
             { userId: decodedTempToken.userId, email: decodedTempToken.email },
             otp,
-            Number.parseInt(twoFAExpireAt)
+            parsedExpiry
         );
 
         if (!isValid) {
@@ -282,9 +331,15 @@ class AuthService extends AutoBoundController {
         userId: string;
         email: string;
     }) => {
-        const user = await UserModel.findById(userId);
+        const user = await UserModel.findById(userId).lean();
         if (!user) {
             throw AppError.Unauthorized('User no longer exists');
+        }
+        if (
+            (user as any).accountDeactivationStatus === 'DEACTIVATED' ||
+            (user as any).accountDeletedStatus === 'DELETED'
+        ) {
+            throw AppError.Forbidden('Account is deactivated or deleted');
         }
 
         return {
@@ -321,9 +376,16 @@ class AuthService extends AutoBoundController {
         updateData: { fullName?: string; avatarUrl?: string; bio?: string }
     ) => {
         try {
+            // Strip undefined so partial PATCH cannot null/unset fields.
+            const clean = Object.fromEntries(
+                Object.entries(updateData).filter(([, v]) => v !== undefined)
+            );
+            if (Object.keys(clean).length === 0) {
+                throw AppError.BadRequest('No update data provided');
+            }
             const profile = await ProfileRepoBoot.updateProfile(
                 userId,
-                updateData,
+                clean,
                 {
                     sensitiveData: 0,
                 }
@@ -382,7 +444,19 @@ class AuthService extends AutoBoundController {
         otp: string,
         expiresAt: number
     ) => {
-        const isValid = OTPBoot.verifyOTP({ email, userId }, otp, expiresAt);
+        const parsed = Number(expiresAt);
+        if (!Number.isFinite(parsed)) {
+            throw AppError.BadRequest(
+                'Invalid or expired OTP. Please request a new one.'
+            );
+        }
+        // Clamp client-supplied expiry to the server window.
+        if (parsed > Date.now() + config.otp.EXPIRATION + 60_000) {
+            throw AppError.BadRequest(
+                'Invalid or expired OTP. Please request a new one.'
+            );
+        }
+        const isValid = OTPBoot.verifyOTP({ email, userId }, otp, parsed);
         if (!isValid) {
             throw AppError.BadRequest(
                 'Invalid or expired OTP. Please request a new one.'
@@ -451,7 +525,7 @@ class AuthService extends AutoBoundController {
 
     forgotPasswordService = async (email: string) => {
         try {
-            const user = await UserRepoBoot.findUserByEmail(email);
+            const user = await UserRepoBoot.findUserByEmail(email, true);
             if (user) {
                 const token = crypto.randomBytes(32).toString('hex');
                 const hashedToken = crypto
@@ -463,6 +537,9 @@ class AuthService extends AutoBoundController {
                 user.resetExpires = new Date(Date.now() + 15 * 60 * 1000);
                 await user.save();
 
+                // The JWT carries the SAME raw token so reset can verify
+                // signature first, then compare hashes. Previously the JWT
+                // was hashed directly (never matching) and never verified.
                 const jwtToken = TokenBoot.generateToken(
                     { token, email: user.email },
                     'resetPassword'
@@ -489,9 +566,25 @@ class AuthService extends AutoBoundController {
 
     resetPasswordService = async (token: string, newPassword: string) => {
         try {
+            // Token param is the JWT issued by forgot-password. Verify its
+            // signature first to reject forged links, then use the embedded
+            // raw token for the DB hash comparison.
+            let rawToken: string;
+            try {
+                const decoded = TokenBoot.verifyToken<{ token: string }>(
+                    token,
+                    'resetPassword'
+                );
+                rawToken = decoded.token;
+                if (!rawToken || typeof rawToken !== 'string') {
+                    return 'If the token is valid, your password has been reset successfully.';
+                }
+            } catch {
+                return 'If the token is valid, your password has been reset successfully.';
+            }
             const hashedToken = crypto
                 .createHash('sha256')
-                .update(token)
+                .update(rawToken)
                 .digest('hex');
             const user = await UserModel.findOne({
                 resetToken: hashedToken,
@@ -500,7 +593,8 @@ class AuthService extends AutoBoundController {
 
             if (user) {
                 user.passwordHash = await HashBoot.hashed(newPassword);
-                await UserRepoBoot.clearResets(user.id.toString());
+                user.resetToken = null as unknown as string;
+                user.resetExpires = null as unknown as Date;
                 await user.save();
 
                 await emailQueue.add(

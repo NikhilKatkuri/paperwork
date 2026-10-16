@@ -14,6 +14,7 @@ import {
 import { Resend } from 'resend';
 import { SystemError } from '../AppError';
 import { logError, mailLogger } from '@/utils/logger';
+import { maskEmail } from '@/utils/sanitize';
 
 interface MailPayload {
     to: string;
@@ -72,7 +73,7 @@ class MailService {
             try {
                 const response = await (this.transporter as Resend).emails.send(
                     {
-                        from: 'Paperwork <onboarding@resend.dev>',
+                        from: props.from,
                         to: props.to,
                         subject: props.subject,
                         text: props.text,
@@ -101,7 +102,7 @@ class MailService {
                 mailLogger.info('mail.sent', {
                     event: 'MAIL_SENT',
                     provider: 'resend',
-                    recipient: props.to,
+                    recipient: maskEmail(props.to),
                     subject: props.subject,
                     messageId: response.data?.id,
                     sentTotal: this.number,
@@ -111,7 +112,7 @@ class MailService {
                 logError(mailLogger, 'mail.send_failed', error, {
                     event: 'MAIL_SEND_FAILED',
                     provider: 'resend',
-                    recipient: props.to,
+                    recipient: maskEmail(props.to),
                     subject: props.subject,
                 });
                 throw error;
@@ -131,7 +132,7 @@ class MailService {
                 mailLogger.info('mail.sent', {
                     event: 'MAIL_SENT',
                     provider: 'nodemailer',
-                    recipient: props.to,
+                    recipient: maskEmail(props.to),
                     subject: props.subject,
                     messageId: info.messageId,
                     sentTotal: this.number,
@@ -141,7 +142,7 @@ class MailService {
                 logError(mailLogger, 'mail.send_failed', error, {
                     event: 'MAIL_SEND_FAILED',
                     provider: 'nodemailer',
-                    recipient: props.to,
+                    recipient: maskEmail(props.to),
                     subject: props.subject,
                 });
                 throw error;
@@ -152,7 +153,7 @@ class MailService {
     private async send({ to, subject, text, html }: MailPayload) {
         const sender =
             config.env === 'production'
-                ? 'Paperwork <onboarding@resend.dev>'
+                ? `Paperwork <${config.mail.hostUser}>`
                 : `"Paperwork" <${config.mail.hostUser}>`;
 
         return this.mailMode(this.mode, {

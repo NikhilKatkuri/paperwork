@@ -4,6 +4,7 @@ import {
     createSectionSchema,
     getSectionSchema,
     orderSectionSchema,
+    updateSectionSchema,
 } from '@/modules/forms/validators/validator.sections';
 import protect from '@/middleware/protect';
 import SectionController from '@/modules/forms/controllers/controller.sections';
@@ -31,7 +32,7 @@ sectionRouter.put(
 sectionRouter.put(
     '/:sectionId',
     protect,
-    validate(createSectionSchema),
+    validate(updateSectionSchema),
     controller.update
 );
 

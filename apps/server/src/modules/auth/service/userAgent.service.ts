@@ -52,29 +52,40 @@ class UserAgentService extends AutoBoundClass {
     private getUserAgentInfo(req: Request) {
         const raw = req.get('user-agent') || req.headers['user-agent'] || null;
 
-        if (!raw) {
+        if (!raw || typeof raw !== 'string') {
             return { raw: null, device: null, browser: null, os: null };
         }
 
-        const ua = UAParser(raw);
+        let ua: any;
+        try {
+            const parser = new (UAParser as any)(raw);
+            ua = parser.getResult ? parser.getResult() : (UAParser as any)(raw);
+        } catch {
+            return {
+                raw: raw.slice(0, 500),
+                device: null,
+                browser: null,
+                os: null,
+            };
+        }
 
         const browserVersion = ua.browser?.version || undefined;
         const osVersion = ua.os?.version || undefined;
 
         return {
-            raw,
+            raw: raw.slice(0, 500),
             device: {
-                family: ua.device.type || undefined,
-                brand: ua.device.vendor || undefined,
-                model: ua.device.model || undefined,
-                type: ua.device.type || undefined,
+                family: ua.device?.type || undefined,
+                brand: ua.device?.vendor || undefined,
+                model: ua.device?.model || undefined,
+                type: ua.device?.type || undefined,
             },
             browser: {
-                family: ua.browser.name || undefined,
+                family: ua.browser?.name || undefined,
                 version: browserVersion,
             },
             os: {
-                family: ua.os.name || undefined,
+                family: ua.os?.name || undefined,
                 version: osVersion,
             },
         };

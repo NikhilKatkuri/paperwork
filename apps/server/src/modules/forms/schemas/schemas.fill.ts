@@ -67,8 +67,8 @@ const FormResponseSchema = new Schema<FormResponseDocument>(
     }
 );
 
-FormResponseSchema.index({ formId: 1, userId: 1 }, { unique: true });
-FormResponseSchema.index({ 'answers.questionId': 1, 'answers.values': 1 });
+FormResponseSchema.index({ formId: 1, userId: 1 });
+FormResponseSchema.index({ 'answers.questionId': 1, 'answers.value': 1 });
 FormResponseSchema.index({ formId: 1, createdAt: -1 });
 
 const FormResponseModel = mongoose.model<FormResponseDocument>(

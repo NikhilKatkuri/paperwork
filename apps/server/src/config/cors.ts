@@ -1,21 +1,24 @@
 import cors from 'cors';
 import config from '@/config';
 
-const allowedOrigins = config.origins.urls;
+function normalizeOrigin(o: string): string {
+    return o.trim().replace(/\/+$/, '').toLowerCase();
+}
 
 const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
+        if (!origin) return callback(null, false);
 
-        if (allowedOrigins.includes(origin)) {
+        const allowed = config.origins.urls.map(normalizeOrigin);
+        if (allowed.includes(normalizeOrigin(origin))) {
             return callback(null, true);
         }
 
-        callback(new Error(`CORS policy: origin ${origin} is not allowed`));
+        callback(null, false);
     },
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
-    exposedHeaders: ['X-Total-Count', 'X-Request-Id'],
+    exposedHeaders: ['X-Total-Count', 'X-Request-ID'],
     credentials: true,
     maxAge: 86400,
     preflightContinue: false,

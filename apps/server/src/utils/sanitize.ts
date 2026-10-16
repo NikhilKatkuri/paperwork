@@ -166,7 +166,7 @@ function sanitizePrimitive(input: unknown): unknown {
             return input.toString();
 
         case 'function':
-            return `[Function ${(input as Function).name || 'anonymous'}]`;
+            return `[Function ${((input as { name?: unknown }).name as string) || 'anonymous'}]`;
 
         case 'symbol':
             return input.toString();
@@ -284,15 +284,14 @@ function sanitizeObject(
 
     return output;
 }
-const DEFAULT_SANITIZE_CONTEXT: SanitizeContext = {
-    depth: 0,
-    seen: new WeakSet<object>(),
-};
-
 export const sanitize = (
     input: unknown,
-    context: SanitizeContext = DEFAULT_SANITIZE_CONTEXT
+    context?: SanitizeContext
 ): unknown => {
+    const ctx: SanitizeContext = context ?? {
+        depth: 0,
+        seen: new WeakSet<object>(),
+    };
     if (input === null || input === undefined) {
         return input;
     }
@@ -305,14 +304,14 @@ export const sanitize = (
     }
 
     // 2. Built-in object handling
-    const builtInResult = sanitizeBuiltInInstance(input, context);
+    const builtInResult = sanitizeBuiltInInstance(input, ctx);
 
     if (builtInResult !== null) {
         return builtInResult;
     }
 
     // 3. Depth check
-    const { depth, seen } = context;
+    const { depth, seen } = ctx;
 
     if (depth >= MAX_DEPTH) {
         return '[MaxDepth]';
@@ -358,17 +357,17 @@ export const sanitize = (
  * expected 401 does not need fifteen frames, and the volume drowns out real
  * faults.
  */
-const DEFAULT_ERROR_SANITIZE_CONTEXT: SanitizeContext = {
-    depth: 0,
-    seen: new WeakSet<object>(),
-};
 export const sanitizeError = (
     error: unknown,
-    context: SanitizeContext = DEFAULT_ERROR_SANITIZE_CONTEXT,
+    context?: SanitizeContext,
     options: { includeStack?: boolean } = {}
 ): unknown => {
+    const ctx: SanitizeContext = context ?? {
+        depth: 0,
+        seen: new WeakSet<object>(),
+    };
     if (!(error instanceof Error)) {
-        return sanitize(error, context);
+        return sanitize(error, ctx);
     }
 
     const output: Record<string, unknown> = {
@@ -399,14 +398,14 @@ export const sanitizeError = (
         const value = (error as unknown as Record<string, unknown>)[key];
         if (value !== undefined) {
             output[key] = sanitize(value, {
-                depth: context.depth + 1,
-                seen: context.seen,
+                depth: ctx.depth + 1,
+                seen: ctx.seen,
             });
         }
     }
 
     if (error.cause !== undefined) {
-        output.cause = sanitizeError(error.cause, context);
+        output.cause = sanitizeError(error.cause, ctx);
     }
 
     return output;

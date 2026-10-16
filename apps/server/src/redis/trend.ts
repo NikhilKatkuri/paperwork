@@ -1,5 +1,4 @@
-import { cacheRedis } from '@/redis';
-import { Redis } from 'ioredis';
+import type { Redis } from 'ioredis';
 
 interface CacheEntry {
     data: string;
@@ -60,8 +59,14 @@ class Trend {
     private HOT_FORM_EXPIRATION_S = 10 * 60; // s   — for Redis
     private TREND_FORM_EXPIRATION_S = 60 * 60; // s   — for Redis
 
-    constructor() {
-        this.redis = cacheRedis;
+    constructor(redis?: Redis) {
+        if (redis) this.redis = redis;
+        else {
+            // Fallback for direct construction in tests; production passes
+            // the shared client explicitly to avoid the import cycle.
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            this.redis = require('@/redis').cacheRedis;
+        }
 
         const methods = Object.getOwnPropertyNames(Trend.prototype).filter(
             (prop) =>
@@ -119,34 +124,61 @@ class Trend {
             this.hotCache.delete(hotKey);
         }
 
-        // L2 — Redis hot:
-        const hotRedisCached = await this.redis.get(hotKey);
-        if (hotRedisCached) {
-            this.hotCache.set(hotKey, {
-                data: hotRedisCached,
-                expireAt: now + this.HOT_FORM_EXPIRATION_MS,
-            });
-            return hotRedisCached;
+        // L1 eviction: cap entries to avoid unbounded growth.
+        if (this.hotCache.size > 500) {
+            const oldest = this.hotCache.keys().next().value;
+            if (oldest) this.hotCache.delete(oldest);
+        }
+        // Decay stats so Z-scores stay meaningful over long uptimes.
+        if (this.globalStats.count > 100_000) {
+            this.globalStats.count = Math.floor(this.globalStats.count / 2);
+            this.globalStats.M2 = this.globalStats.M2 / 2;
         }
 
-        // L3 — Redis trend:
-        const trendCached = await this.redis.get(this.getTrendKey(formId));
-        if (trendCached) {
-            // repopulate L1 + L2
-            this.hotCache.set(hotKey, {
-                data: trendCached,
-                expireAt: now + this.HOT_FORM_EXPIRATION_MS,
-            });
-            await this.redis.set(
-                hotKey,
-                trendCached,
-                'EX',
-                this.HOT_FORM_EXPIRATION_S
-            );
-            return trendCached;
+        try {
+            // L2 — Redis hot:
+            const hotRedisCached = await this.redis.get(hotKey);
+            if (hotRedisCached) {
+                this.hotCache.set(hotKey, {
+                    data: hotRedisCached,
+                    expireAt: now + this.HOT_FORM_EXPIRATION_MS,
+                });
+                return hotRedisCached;
+            }
+
+            // L3 — Redis trend:
+            const trendCached = await this.redis.get(this.getTrendKey(formId));
+            if (trendCached) {
+                // repopulate L1 + L2
+                this.hotCache.set(hotKey, {
+                    data: trendCached,
+                    expireAt: now + this.HOT_FORM_EXPIRATION_MS,
+                });
+                await this.redis.set(
+                    hotKey,
+                    trendCached,
+                    'EX',
+                    this.HOT_FORM_EXPIRATION_S
+                );
+                return trendCached;
+            }
+        } catch {
+            // Redis is optional: a cache outage must not fail the request.
+            return hotCached && hotCached.expireAt > now
+                ? hotCached.data
+                : null;
         }
 
         return null;
+    }
+
+    public invalidate(formId: string): void {
+        this.hotCache.delete(this.getHotKey(formId));
+        if (this.redis) {
+            this.redis.del(this.getHotKey(formId)).catch(() => undefined);
+            this.redis.del(this.getTrendKey(formId)).catch(() => undefined);
+        }
+        this.formStats.delete(formId);
     }
 
     public async handleDbFallback(

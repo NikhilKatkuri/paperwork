@@ -1,3 +1,16 @@
+function escapeHtml(value: unknown): string {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function escapeAttr(value: unknown): string {
+    return escapeHtml(value).replace(/`/g, '&#96;');
+}
+
 export const formCreation = (formName: string, formId: string) => `
 <div style="
     background:#f5f7fb;
@@ -69,7 +82,7 @@ export const formCreation = (formName: string, formId: string) => `
                 font-size:16px;
                 line-height:1.7;
             ">
-                <strong>${formName}</strong> has been successfully created and is ready to start collecting responses.
+                <strong>${escapeHtml(formName)}</strong> has been successfully created and is ready to start collecting responses.
             </p>
 
             <div style="
@@ -91,7 +104,7 @@ export const formCreation = (formName: string, formId: string) => `
             <!-- CTA -->
             <div style="text-align:center;">
                 <a 
-                    href="https://your-app-url.com/forms/${formId}"
+                    href="${escapeAttr(process.env.WEB_URL ?? '')}/forms/${escapeAttr(formId)}"
                     style="
                         display:inline-block;
                         background:#111827;
@@ -153,9 +166,9 @@ export const loginAlertTemplate = (
       </p>
 
       <div style="background:#f9fafb;border:1px solid #eee;border-radius:14px;padding:20px;margin:24px 0;">
-        <p style="margin:0 0 10px;color:#111827;"><strong>${device}</p>
-        <p style="margin:0 0 10px;color:#111827;"><strong>${location}</p>
-        <p style="margin:0;color:#111827;"><strong>Time:</strong> ${time}</p>
+        <p style="margin:0 0 10px;color:#111827;"><strong>Device:</strong> ${escapeHtml(device)}</p>
+        <p style="margin:0 0 10px;color:#111827;"><strong>Location:</strong> ${escapeHtml(location)}</p>
+        <p style="margin:0;color:#111827;"><strong>Time:</strong> ${escapeHtml(time)}</p>
       </div>
 
       <p style="color:#6b7280;font-size:14px;line-height:1.7;">
@@ -193,7 +206,7 @@ export const welcomeTemplate = (name: string) => `
       </h2>
 
       <p style="color:#4b5563;font-size:16px;line-height:1.7;">
-        Hey ${name},
+        Hey ${escapeHtml(name)},
       </p>
 
       <p style="color:#4b5563;font-size:16px;line-height:1.7;">
@@ -249,11 +262,11 @@ export const otpTemplate = (otp: string) => `
         letter-spacing:8px;
         font-weight:700;
       ">
-        ${otp}
+        ${escapeHtml(otp)}
       </div>
 
       <p style="color:#9ca3af;font-size:14px;">
-        This code expires in 10 minutes.
+        This code expires in 5 minutes.
       </p>
     </div>
 
@@ -288,7 +301,7 @@ export const forgotPasswordTemplate = (resetLink: string) => `
       </p>
 
       <div style="text-align:center;margin-top:32px;">
-        <a href="${resetLink}"
+        <a href="${escapeAttr(resetLink)}"
           style="display:inline-block;background:#111827;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:600;">
           Reset Password
         </a>
@@ -361,7 +374,7 @@ export const passwordChangeAlertTemplate = (time: string) => `
       </p>
 
       <div style="background:#f9fafb;border:1px solid #eee;border-radius:14px;padding:20px;margin:24px 0;">
-        <p style="margin:0;color:#111827;"><strong>Time of change:</strong> ${time}</p>
+        <p style="margin:0;color:#111827;"><strong>Time of change:</strong> ${escapeHtml(time)}</p>
       </div>
 
       <p style="color:#6b7280;font-size:14px;line-height:1.7;">
@@ -450,7 +463,7 @@ export const formSubmissionConfirmed = (
                 font-size:16px;
                 line-height:1.7;
             ">
-                Your response for <strong>${formName}</strong> has been successfully recorded. A copy of your submission has been safely logged under our system workflows.
+                Your response for <strong>${escapeHtml(formName)}</strong> has been successfully recorded. A copy of your submission has been safely logged under our system workflows.
             </p>
 
             <div style="
@@ -476,13 +489,13 @@ export const formSubmissionConfirmed = (
                     font-family:monospace;
                     font-size:14px;
                 ">
-                    ${submissionId}
+                    ${escapeHtml(submissionId)}
                 </p>
             </div>
 
             <div style="text-align:center;">
                 <a 
-                    href="https://your-app-url.com/submissions/${submissionId}"
+                    href="${escapeAttr(process.env.WEB_URL ?? '')}/submissions/${escapeAttr(submissionId)}"
                     style="
                         display:inline-block;
                         background:#111827;

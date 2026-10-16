@@ -165,11 +165,12 @@ questionsSchema.pre('validate', function (this: QuestionDocument) {
         );
     }
 
-    if (
-        (this.type === 'RATING' || this.type === 'LINEAR_SCALE') &&
-        !this.ratingConfig
-    ) {
-        throw new Error(`${this.type} questions require ratingConfig`);
+    if (this.type === 'RATING' && !this.ratingConfig) {
+        throw new Error('RATING questions require ratingConfig');
+    }
+
+    if (this.type === 'LINEAR_SCALE' && !(this as any).scaleConfig && !this.ratingConfig) {
+        throw new Error('LINEAR_SCALE questions require scaleConfig');
     }
 
     if (this.type === 'MATRIX' && !this.matrixConfig) {

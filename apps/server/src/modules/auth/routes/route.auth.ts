@@ -11,7 +11,9 @@ import {
 import validate from '@/middleware/validate';
 import {
     accountActionsSchema,
+    changePasswordSchema,
     profileUpdateSchema,
+    resetPasswordBodySchema,
     SecuritySettingsSchema,
     signInSchema,
     signUpSchema,
@@ -59,7 +61,7 @@ authRouter.get(
 
 authRouter.post(
     '/me',
-    authLimiter,
+    profileGetterLimiter,
     protect,
     validate(profileUpdateSchema),
     controller.updateProfileController
@@ -73,14 +75,14 @@ authRouter.post(
 
 authRouter.post(
     '/send-verification',
-    authLimiter,
+    lowLimiter,
     protect,
     controller.sendVerificationController
 );
 
 authRouter.post(
     '/verify-email',
-    authLimiter,
+    lowLimiter,
     protect,
     controller.verifyEmailController
 );
@@ -89,6 +91,7 @@ authRouter.post(
     '/change-password',
     authLimiter,
     protect,
+    validate(changePasswordSchema),
     controller.changePasswordController
 );
 
@@ -102,6 +105,7 @@ authRouter.post(
 authRouter.post(
     '/reset-password/:token',
     forgotPasswordLimiter,
+    validate(resetPasswordBodySchema),
     controller.resetPasswordController
 );
 

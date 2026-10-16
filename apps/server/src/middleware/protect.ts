@@ -43,7 +43,10 @@ const classifyTokenError = (
 const protect = (req: Request, _res: Response, next: NextFunction): void => {
     const authorizationHeader = req.headers.authorization;
 
-    if (!authorizationHeader?.startsWith('Bearer ')) {
+    if (
+        !authorizationHeader ||
+        !authorizationHeader.toLowerCase().startsWith('bearer ')
+    ) {
         logSecurityEvent(SECURITY_EVENTS.UNAUTHENTICATED, req, {
             reason: authorizationHeader ? 'malformed_header' : 'missing_header',
         });
@@ -62,10 +65,9 @@ const protect = (req: Request, _res: Response, next: NextFunction): void => {
     }
 
     try {
-        const decodedToken = jwt.verify(
-            token,
-            config.jwt.secret
-        ) as JwtPayload & { userId?: string; email?: string };
+        const decodedToken = jwt.verify(token, config.jwt.secret, {
+            algorithms: ['HS256'],
+        }) as JwtPayload & { userId?: string; email?: string };
 
         if (!decodedToken?.userId) {
             logSecurityEvent(SECURITY_EVENTS.TOKEN_INVALID, req, {

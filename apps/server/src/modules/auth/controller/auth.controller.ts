@@ -25,10 +25,25 @@ class AuthController extends AutoBoundController {
         try {
             const meta = userAgentService.getMeta(req);
             const { email, password } = req.body;
+            const deviceLabel = [
+                meta.device?.brand,
+                meta.device?.model,
+                meta.browser?.family,
+                meta.os?.family,
+            ]
+                .filter(Boolean)
+                .join(' ') || 'Unknown device';
+            const geoLabel = [
+                (meta.location as any)?.city,
+                (meta.location as any)?.region,
+                (meta.location as any)?.country,
+            ]
+                .filter(Boolean)
+                .join(', ') || (meta.ip ?? 'Unknown location');
             await AuthServiceBoot.signIn({
                 payload: { email, password },
-                geo: Object.values(meta).join(', '),
-                device: Object.values(meta).join(','),
+                geo: geoLabel.slice(0, 300),
+                device: deviceLabel.slice(0, 300),
                 res,
             });
         } catch (error) {
@@ -43,10 +58,19 @@ class AuthController extends AutoBoundController {
                 throw AppError.BadRequest('OTP is required');
             }
             const meta = userAgentService.getMeta(req);
+            const deviceLabel = [
+                meta.device?.brand,
+                meta.device?.model,
+                meta.browser?.family,
+            ]
+                .filter(Boolean)
+                .join(' ') || 'Unknown device';
+            const geoLabel =
+                (meta.ip ?? 'Unknown location').slice(0, 300);
             await AuthServiceBoot.verify2FA({
                 otp: otp.toString(),
-                geo: Object.values(meta).join(', '),
-                device: Object.values(meta).join(','),
+                geo: geoLabel,
+                device: deviceLabel.slice(0, 300),
                 res,
                 req,
             });

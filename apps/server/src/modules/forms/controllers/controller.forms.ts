@@ -29,14 +29,14 @@ class FormsController {
 
     /**
      *
-     * @param req expects @Form
+     * @param req expects @CreateForm
      * @param res return a form of type @FormDto
      */
     async create(req: Request, res: Response, next: NextFunction) {
         try {
             const { bodyData, userId } = this.getRequestData(req);
 
-            const newForm = await this.service.create({ ...bodyData, userId });
+            const newForm = await this.service.create({ ...bodyData }, userId);
 
             res.status(StatusCodes.CREATED).json({
                 success: true,
