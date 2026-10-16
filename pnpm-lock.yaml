@@ -247,6 +247,9 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.4)
+      '@paperwork/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       axios:
         specifier: ^1.17.0
         version: 1.20.0

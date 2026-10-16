@@ -1,3 +1,8 @@
 node_modules/
 dist/
 .turbo/
+.env
+.env.*
+!.env.example
+apps/*/.env
+apps/*/.env.*

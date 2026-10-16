@@ -10,6 +10,13 @@ export interface RatingConfig {
     highLabel?: string;
 }
 
+export interface ScaleConfig {
+    lowerBound: number;
+    upperBound: number;
+    lowerLabel?: string;
+    upperLabel?: string;
+}
+
 export interface QuestionDependency {
     questionId: string;
     value: string;
@@ -57,10 +64,11 @@ export type ValidationRule =
       }
     | { ruleType: 'REGEX_MATCH'; pattern: string; customErrorMessage?: string };
 
-interface QuestionOptionConfig {
+export interface QuestionOptionConfig {
     options: QuestionOption[];
     expectedAnswer?: number | number[];
 }
+
 export interface Question {
     index: number;
     question: string;
@@ -73,6 +81,7 @@ export interface Question {
     isRequired?: boolean;
     optionsConfig?: QuestionOptionConfig;
     ratingConfig?: RatingConfig;
+    scaleConfig?: ScaleConfig;
     matrixConfig?: MatrixConfig;
     correctAnswer?: string | number | number[] | Record<string, string>;
 }
@@ -85,6 +94,7 @@ export interface TextQuestion extends Question {
         | QuestionTypeEnum.TIME;
     options?: never;
     ratingConfig?: never;
+    scaleConfig?: never;
     matrixConfig?: never;
 }
 
@@ -96,13 +106,23 @@ export interface ChoiceQuestion extends Question {
     options: QuestionOption[];
     correctAnswer?: number | number[];
     ratingConfig?: never;
+    scaleConfig?: never;
     matrixConfig?: never;
 }
 
-export interface ScaleQuestion extends Question {
-    type: QuestionTypeEnum.LINEAR_SCALE | QuestionTypeEnum.RATING;
+export interface LinearScaleQuestion extends Question {
+    type: QuestionTypeEnum.LINEAR_SCALE;
+    options?: never;
+    ratingConfig?: never;
+    scaleConfig: ScaleConfig;
+    matrixConfig?: never;
+}
+
+export interface RatingQuestion extends Question {
+    type: QuestionTypeEnum.RATING;
     options?: never;
     ratingConfig: RatingConfig;
+    scaleConfig?: never;
     matrixConfig?: never;
 }
 
@@ -110,8 +130,13 @@ export interface MatrixQuestion extends Question {
     type: QuestionTypeEnum.MATRIX;
     options?: never;
     ratingConfig?: never;
+    scaleConfig?: never;
     matrixConfig: MatrixConfig;
 }
 
 export type QuestionFormats =
-    TextQuestion | ChoiceQuestion | ScaleQuestion | MatrixQuestion;
+    | TextQuestion
+    | ChoiceQuestion
+    | LinearScaleQuestion
+    | RatingQuestion
+    | MatrixQuestion;

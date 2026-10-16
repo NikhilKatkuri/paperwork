@@ -12,4 +12,4 @@ interface TokenMapValues {
 
 type TokenMap = Record<TokenType, TokenMapValues>;
 
-export { TokenPayload, TokenType, TokenMapValues, TokenMap };
+export type { TokenPayload, TokenType, TokenMapValues, TokenMap };

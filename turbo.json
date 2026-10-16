@@ -3,12 +3,18 @@
     "tasks": {
         "build": {
             "dependsOn": ["^build"],
-            "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+            "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+            "env": ["NEXT_PUBLIC_*", "NODE_ENV"]
         },
         "check-types": {
-            "dependsOn": ["^build"]
+            "dependsOn": ["^build"],
+            "outputs": [],
+            "cache": false
         },
-        "lint": {},
+        "lint": {
+            "outputs": [],
+            "cache": false
+        },
         "dev": {
             "cache": false,
             "persistent": true

@@ -22,4 +22,10 @@ interface Section {
     defaultAction?: SectionAction;
 }
 
-export { Section, SectionRule, SectionAction, ActionType, ConditionOperator };
+export type {
+    Section,
+    SectionRule,
+    SectionAction,
+    ActionType,
+    ConditionOperator,
+};

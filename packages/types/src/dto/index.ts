@@ -1,45 +1,66 @@
 import { Form } from '../types.form';
 import { Question } from '../types.questions';
+import { FormResponse } from '../types.response';
 import { Section } from '../types.sections';
 
-/**
- * Entities
- */
-
-export interface SectionEntity extends Section {
-    formId: string;
-}
-
-export interface FormEntity extends Form {
-    userId: string;
-}
-
-export interface QuestionEntity extends Question {
-    formId: string;
-    sectionId: string;
-}
-
-/**
- * DTO
- */
-
-interface MongoDocumentMetadata {
-    // reference to the document in the database
+export interface MongoDocumentMetadata {
     id: string;
-    // version key for the document in the database
-    v?: number;
+    v: number;
 
     updatedAt: string;
     createdAt: string;
     deletedAt?: string;
 }
 
-export interface QuestionDto extends QuestionEntity, MongoDocumentMetadata {}
-export interface SectionDto extends SectionEntity, MongoDocumentMetadata {}
+/**
+ * refereneces
+ */
 
-export interface FormEntityDto extends FormEntity, MongoDocumentMetadata {}
-
-export interface FormDto extends FormEntity, MongoDocumentMetadata {
-    sections: SectionDto[];
-    questions: QuestionDto[];
+interface FormReference {
+    formId: string;
 }
+
+interface SectionReference extends FormReference {
+    sectionId: string;
+}
+
+/**
+ *  objects
+ */
+
+interface FormDoc extends Form, MongoDocumentMetadata {}
+interface SectionDoc extends Section, MongoDocumentMetadata, FormReference {}
+interface QuestionDoc
+    extends Question, MongoDocumentMetadata, SectionReference {}
+
+interface FormResponseDto extends FormResponse, MongoDocumentMetadata {}
+
+interface CreateFormDoc extends Omit<Form, 'userId'> {
+    section: Section;
+    questions: Question[];
+}
+/**
+ * DTO's
+ */
+
+interface CreateFormDto extends FormReference, FormDoc {
+    section: Section;
+    questions: Question[];
+}
+
+interface FormDto extends FormDoc {
+    sections: SectionDoc[];
+    questions: QuestionDoc[];
+}
+
+export type {
+    FormReference,
+    SectionReference,
+    FormDoc,
+    SectionDoc,
+    QuestionDoc,
+    CreateFormDto,
+    FormDto,
+    FormResponseDto,
+    CreateFormDoc,
+};
