@@ -2,8 +2,10 @@ import { z } from 'zod';
 
 import {
     formDataSchema,
+    matrixConfigSchema,
     optionSchema,
     questionTypesWithIndexSchema,
+    scaleConfigSchema,
     sectionDataSchema,
     zodObjectId,
 } from './validator.common';
@@ -41,17 +43,26 @@ const draftRatingConfigSchema = z.object({
  * choice question or a missing rating config are all valid intermediate states
  * while the editor is open, and rejecting them would block syncing every other
  * change the user made in the session.
+ *
+ * Config blocks (`options`, `optionsConfig`, `ratingConfig`, `scaleConfig`,
+ * `matrixConfig`) are all optional here for the same reason: the editor
+ * attaches them when the question is configured, and the fill/render paths
+ * already fall back to sane defaults when they are absent.
  */
 const bulkQuestionSchema = z.discriminatedUnion(
     'type',
     questionTypesWithIndexSchema.options.map((schema) =>
-        schema.extend({
+        z.object({
+            ...schema.shape,
             sectionId: zodObjectId,
             question: z.string().max(1000),
+            options: z.array(optionSchema).optional(),
             optionsConfig: z
                 .object({ options: z.array(optionSchema) })
                 .optional(),
             ratingConfig: draftRatingConfigSchema.optional(),
+            scaleConfig: scaleConfigSchema.optional(),
+            matrixConfig: matrixConfigSchema.optional(),
         })
     ) as never
 );

@@ -1,4 +1,5 @@
 import { QuestionTypeEnum } from './constants/enums';
+import type { SectionAction } from './types.sections';
 
 export type RatingIconType = 'STAR' | 'HEART' | 'THUMB_UP';
 export type RatingScale = 3 | 4 | 5 | 6 | 7 | 8 | 9;
@@ -25,6 +26,12 @@ export interface QuestionDependency {
 export interface QuestionOption {
     index: number;
     label: string;
+    /**
+     * Per-option conditional navigation ("go to section based on answer").
+     * Absent = follow the section's rules/defaultAction. Additive: old
+     * options without an action keep working unchanged.
+     */
+    action?: SectionAction;
 }
 
 export interface MatrixRow {

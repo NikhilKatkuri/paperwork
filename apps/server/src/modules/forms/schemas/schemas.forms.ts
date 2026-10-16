@@ -53,16 +53,19 @@ const formsSchema = new Schema<FormDocument>(
     }
 );
 
-formsSchema.pre('save', function (next) {
+formsSchema.pre('save', function () {
     // Domain-restricted forms are private-by-definition: auto-mark private
     // instead of throwing, so the feature is reachable. Explicit public +
     // domains is still rejected with a proper 400.
+    //
+    // NOTE: synchronous hook — no `next` parameter. Declaring one makes
+    // Mongoose invoke this without a callback (`next is not a function`),
+    // which broke every form create/save.
     if (this.allowedDomains?.length && !this.isPrivate) {
         // If domains were set on a public form via API, keep them and flip
         // private on — the fill guard accepts (isPrivate + domains).
         this.isPrivate = true as any;
     }
-    (next as () => void)();
 });
 
 formsSchema.index({ userId: 1, createdAt: -1 });

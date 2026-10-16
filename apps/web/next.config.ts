@@ -3,6 +3,7 @@ import type { NextConfig } from 'next';
 const cloudinaryCloud = process.env.CLOUDINARY_CLOUD_NAME;
 
 const nextConfig: NextConfig = {
+    allowedDevOrigins: ['192.168.31.8'],
     images: {
         remotePatterns: [
             ...(cloudinaryCloud

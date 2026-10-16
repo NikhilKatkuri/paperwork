@@ -59,9 +59,11 @@ export async function getCloudinarySignature(): Promise<SignatureResult> {
     // Fetch fresh signature
     try {
         const path = endpoints.signature.cloudinary;
-        const res = await http.get<{ data: CloudinarySignature }>(path);
+        // The server wraps the signature as `{ success, data }`; the
+        // client unwraps it, so `data` here is the signature itself.
+        const res = await http.get<CloudinarySignature>(path);
 
-        const data = res.data?.data;
+        const data = res.data;
 
         if (!isValidSignature(data)) {
             return {

@@ -152,6 +152,34 @@ class HttpClient {
     public delete<T>(path: string, config?: RequestConfig) {
         return this.request<T>('DELETE', path, undefined, config);
     }
+
+    /** Raw binary download (CSV export). Auth header is attached. */
+    public async getBlob(path: string, config?: RequestConfig): Promise<Blob> {
+        if (!BASE_URL) {
+            throw new ApiError(
+                'API is not configured. Please set NEXT_PUBLIC_API_BASE_URL.',
+                undefined
+            );
+        }
+        try {
+            const response = await this.client.get(path, {
+                ...config,
+                responseType: 'blob',
+            });
+            return response.data as Blob;
+        } catch (error) {
+            if (isCancel(error)) {
+                throw new Error(`Request to ${path} was aborted`);
+            }
+            if (axios.isAxiosError(error)) {
+                throw new ApiError(
+                    getErrorMessage(error.response?.status, undefined),
+                    error.response?.status
+                );
+            }
+            throw error;
+        }
+    }
 }
 
 export const http = new HttpClient();

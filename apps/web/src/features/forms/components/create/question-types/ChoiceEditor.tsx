@@ -26,15 +26,28 @@ function ChoiceEditor({
     type,
     onChange,
 }: Readonly<ChoiceEditorProps>) {
-    const { getQuestionById } = useForm();
+    const { getQuestionById, sectionsMap, sectionOrder } = useForm();
 
     const [options, setOptions] = useState<QuestionOption[]>(() => {
-        
         const question = getQuestionById(id) as ChoiceQuestion | undefined;
-        return question?.options && question.options.length > 0
-            ? question.options
+        const stored =
+            question?.optionsConfig?.options?.length
+                ? question.optionsConfig.options
+                : question?.options?.length
+                  ? question.options
+                  : null;
+        return stored && stored.length > 0
+            ? stored
             : [{ index: 1, label: 'Option 1' }];
     });
+
+    // Navigation targets: every section except the option's own (a section
+    // cannot jump to itself). Ordered as authored.
+    const currentSectionId = getQuestionById(id)?.sectionId;
+    const targets = sectionOrder
+        .map((sid) => sectionsMap.get(sid))
+        .filter((s) => s && s.id !== currentSectionId)
+        .map((s) => ({ id: s!.id, title: s!.title || 'Untitled section' }));
 
     useEffect(() => {
         function syncOptions() {
@@ -110,6 +123,38 @@ function ChoiceEditor({
         onChange({ options: newOptions });
     };
 
+    /** "Go to section based on answer" for one option. */
+    const optionTarget = (option: QuestionOption): string => {
+        const action = option.action;
+        if (!action || action.type === 'NEXT_SECTION') return '';
+        if (action.type === 'SUBMIT_FORM') return 'SUBMIT_FORM';
+        return action.targetSectionId ?? '';
+    };
+
+    const handleOptionTarget = (targetIndex: number, target: string) => {
+        const newOptions = options.map((opt, i) => {
+            if (i !== targetIndex) return opt;
+            if (!target) {
+                const rest: QuestionOption = { ...opt };
+                delete rest.action;
+                return rest;
+            }
+            return {
+                ...opt,
+                action:
+                    target === 'SUBMIT_FORM'
+                        ? { type: 'SUBMIT_FORM' as const }
+                        : {
+                              type: 'GO_TO_SECTION' as const,
+                              targetSectionId: target,
+                          },
+            };
+        });
+
+        setOptions(newOptions);
+        onChange({ options: newOptions });
+    };
+
     return (
         <div className="grid w-full max-w-lg grid-cols-1 gap-2">
             {options.map((option, index) => (
@@ -131,8 +176,27 @@ function ChoiceEditor({
                             handleUpdateOption(index, e.target.value)
                         }
                         onPaste={(e) => handlePasteOption(index, e)}
-                        className="bg-theme-form-container text-theme-form-on-container/90 focus:border-theme-form-container-border w-full rounded-md px-2 py-1 text-sm focus:outline-none"
+                        aria-label={`Option ${index + 1}`}
+                        className="bg-theme-form-container text-theme-form-on-container/90 focus:border-theme-form-container-border w-full min-w-0 flex-1 rounded-md px-2 py-1 text-sm focus:outline-none"
                     />
+
+                    <select
+                        value={optionTarget(option)}
+                        onChange={(e) =>
+                            handleOptionTarget(index, e.target.value)
+                        }
+                        aria-label={`After "${option.label || `Option ${index + 1}`}", go to`}
+                        title="Go to section based on this answer"
+                        className="border-theme-form-container-border text-theme-form-on-container/70 max-w-32 shrink-0 rounded-md border bg-transparent px-1 py-1 text-xs outline-none"
+                    >
+                        <option value="">→ Next</option>
+                        <option value="SUBMIT_FORM">→ Submit</option>
+                        {targets.map((t) => (
+                            <option key={t.id} value={t.id}>
+                                → {t.title}
+                            </option>
+                        ))}
+                    </select>
 
                     {options.length > 1 && (
                         <button

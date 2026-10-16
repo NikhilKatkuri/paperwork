@@ -25,6 +25,7 @@ function MetaInputFeilds({
     return (
         <div
             id={`section-${sectionId}`}
+            data-section-id={sectionId}
             className="floating-toolbar-selector group w-full"
         >
             <div

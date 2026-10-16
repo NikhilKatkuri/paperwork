@@ -84,9 +84,8 @@ class FieldsValidator {
     readonly optionKeys = [
         'label',
         'index',
-    ] as const satisfies readonly (keyof Required<
-        NonNullable<Question['optionsConfig']>['options'][number]
-    >)[];
+        'action',
+    ] as const;
 
     readonly questionDependsOnKeys = [
         'questionId',
@@ -149,10 +148,22 @@ class FieldsValidator {
         }
 
         if (safeData.rules) {
-            safeData.rules = safeData.rules.map(
-                (dependsOn) =>
-                    this.pickFields(dependsOn, this.SectionRule) as SectionRule
-            );
+            safeData.rules = safeData.rules.map((dependsOn) => {
+                const picked = this.pickFields(
+                    dependsOn,
+                    this.SectionRule
+                ) as SectionRule;
+                const action = (picked as any).action;
+                if (action) {
+                    (picked as any).action = {
+                        type: action.type,
+                        ...(action.targetSectionId
+                            ? { targetSectionId: action.targetSectionId }
+                            : {}),
+                    };
+                }
+                return picked;
+            });
         }
 
         return safeData;
@@ -171,10 +182,29 @@ class FieldsValidator {
             safeData.optionsConfig = {
                 expectedAnswer: safeData.optionsConfig.expectedAnswer,
                 options: (safeData.optionsConfig.options ?? []).map(
-                    (option: any) =>
-                        this.pickFields(option, this.optionKeys as any) as NonNullable<
+                    (option: any) => {
+                        const picked = this.pickFields(
+                            option,
+                            this.optionKeys as any
+                        ) as any;
+                        // Strip anything but the action contract — a forged
+                        // option must not smuggle extra keys into the doc.
+                        if (picked.action) {
+                            const action = picked.action as any;
+                            picked.action = {
+                                type: action.type,
+                                ...(action.targetSectionId
+                                    ? {
+                                          targetSectionId:
+                                              action.targetSectionId,
+                                      }
+                                    : {}),
+                            };
+                        }
+                        return picked as NonNullable<
                             Question['optionsConfig']
-                        >['options'][number]
+                        >['options'][number];
+                    }
                 ),
             };
         }

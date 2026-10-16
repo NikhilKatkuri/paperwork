@@ -31,7 +31,11 @@ export const formSettingsSchema = z
             .nullable()
             .optional(),
     })
-    .strict()
+    // NOTE: intentionally not `.strict()`. Unknown keys are stripped, not
+    // rejected: a hard 400 on unrecognized keys turns every client/server
+    // version skew into a total outage ("Unrecognized keys" on sync/create).
+    // Forgery protection lives in `fieldsValidator` (allow-list) plus the
+    // service layer, which forces server-owned fields explicitly.
     .refine(
         (s) => !s.startDate || !s.closeDate || s.startDate < s.closeDate,
         { message: 'startDate must be before closeDate', path: ['startDate'] }
@@ -56,8 +60,7 @@ export const formDataSchema = z
             .optional(),
         settings: formSettingsSchema.optional(),
         theme: z.enum(FORM_THEMES).optional(),
-    })
-    .strict();
+    });
 
 export const sectionActionSchema = z.discriminatedUnion('type', [
     z.object({ type: z.literal('NEXT_SECTION') }),
@@ -99,6 +102,7 @@ export const dependsOnSchema = z.object({
 export const optionSchema = z.object({
     index: z.number().int().nonnegative(),
     label: z.string().max(100),
+    action: sectionActionSchema.optional(),
 });
 
 // Added optionsConfig schema to mirror your client-side updates
@@ -268,38 +272,48 @@ const indexedQuestionBaseSchema = QuestionBaseSchema.extend({
 export const questionTypesWithIndexSchema = z.discriminatedUnion('type', [
     indexedQuestionBaseSchema.extend({
         type: z.enum(['TEXT', 'PARAGRAPH', 'DATE', 'TIME']),
-        options: z.undefined(),
-        ratingConfig: z.undefined(),
-        scaleConfig: z.undefined(),
-        matrixConfig: z.undefined(),
+        options: z.undefined().optional(),
+        ratingConfig: z.undefined().optional(),
+        scaleConfig: z.undefined().optional(),
+        matrixConfig: z.undefined().optional(),
     }),
     indexedQuestionBaseSchema.extend({
         type: z.enum(['CHOICE', 'RADIO', 'DROP_DOWN']),
-        options: z.array(optionSchema).min(1),
+        options: z.array(optionSchema).min(1).optional(),
         correctAnswer: z.union([z.number(), z.array(z.number())]).optional(),
-        ratingConfig: z.undefined(),
-        scaleConfig: z.undefined(),
-        matrixConfig: z.undefined(),
+        ratingConfig: z.undefined().optional(),
+        scaleConfig: z.undefined().optional(),
+        matrixConfig: z.undefined().optional(),
+    }).superRefine((q, ctx) => {
+        const hasOptions =
+            (Array.isArray((q as any).options) && (q as any).options.length > 0) ||
+            ((q as any).optionsConfig?.options?.length > 0);
+        if (!hasOptions) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Choice questions require at least one option',
+            });
+        }
     }),
     indexedQuestionBaseSchema.extend({
         type: z.literal('LINEAR_SCALE'),
-        options: z.undefined(),
-        ratingConfig: z.undefined(),
+        options: z.undefined().optional(),
+        ratingConfig: z.undefined().optional(),
         scaleConfig: scaleConfigSchema,
-        matrixConfig: z.undefined(),
+        matrixConfig: z.undefined().optional(),
     }),
     indexedQuestionBaseSchema.extend({
         type: z.literal('RATING'),
-        options: z.undefined(),
+        options: z.undefined().optional(),
         ratingConfig: ratingConfigSchema,
-        scaleConfig: z.undefined(),
-        matrixConfig: z.undefined(),
+        scaleConfig: z.undefined().optional(),
+        matrixConfig: z.undefined().optional(),
     }),
     indexedQuestionBaseSchema.extend({
         type: z.literal('MATRIX'),
-        options: z.undefined(),
-        ratingConfig: z.undefined(),
-        scaleConfig: z.undefined(),
+        options: z.undefined().optional(),
+        ratingConfig: z.undefined().optional(),
+        scaleConfig: z.undefined().optional(),
         matrixConfig: matrixConfigSchema,
     }),
 ]);

@@ -3,19 +3,29 @@
 import { useEffect, useState } from 'react';
 import { ApiError, http } from '@/api/http';
 import { endpoints } from '@/api/endpoints';
-import { FormResponse } from '@paperwork/types';
+import type { FormResponseDto } from '@paperwork/types';
 
-interface ResponsesResponse {
-    success: boolean;
-    message: string;
-    data: FormResponse[] | null;
-    // pagination?: ResponsePagination;
+export interface ResponsePagination {
+    currentPage: number;
+    totalPages: number;
+    total: number;
+    limit: number;
 }
 
-interface SummaryResponse {
-    success: boolean;
-    message: string;
-    // data: ResponseSummary;
+export interface SummaryValue {
+    value: string;
+    count: number;
+}
+
+export interface SummaryEntry {
+    questionId: string;
+    answered: number;
+    values: SummaryValue[];
+}
+
+export interface ResponseSummary {
+    totalResponses: number;
+    questions: SummaryEntry[];
 }
 
 export interface ResponseFilters {
@@ -29,8 +39,8 @@ type Status = 'loading' | 'ready' | 'error';
 interface ListState {
     key: string;
     status: Status;
-    responses: FormResponse[];
-    // pagination: ResponsePagination | null;
+    responses: FormResponseDto[];
+    pagination: ResponsePagination | null;
     error: string | null;
 }
 
@@ -38,8 +48,15 @@ const IDLE: ListState = {
     key: '',
     status: 'loading',
     responses: [],
-    // pagination: null,
+    pagination: null,
     error: null,
+};
+
+const EMPTY_PAGINATION: ResponsePagination = {
+    currentPage: 1,
+    totalPages: 0,
+    total: 0,
+    limit: 20,
 };
 
 /**
@@ -66,7 +83,7 @@ export function useFormResponses(
 
         const controller = new AbortController();
 
-        http.get<ResponsesResponse>(
+        http.get<FormResponseDto[]>(
             endpoints.forms.formResponses(formId, {
                 page,
                 limit,
@@ -79,17 +96,15 @@ export function useFormResponses(
             .then((res) => {
                 if (controller.signal.aborted) return;
 
-                if (!res.data.success) {
-                    throw new Error(res.data.message || 'Failed to load');
-                }
+                const raw = res.raw as
+                    | { pagination?: ResponsePagination }
+                    | undefined;
 
                 setState({
                     key,
                     status: 'ready',
-                    responses: Array.isArray(res.data.data)
-                        ? res.data.data
-                        : [],
-                    // pagination: res.data.pagination ?? null,
+                    responses: Array.isArray(res.data) ? res.data : [],
+                    pagination: raw?.pagination ?? EMPTY_PAGINATION,
                     error: null,
                 });
             })
@@ -100,7 +115,7 @@ export function useFormResponses(
                     key,
                     status: 'error',
                     responses: [],
-                    // pagination: null,
+                    pagination: null,
                     error:
                         e instanceof ApiError || e instanceof Error
                             ? e.message
@@ -115,9 +130,10 @@ export function useFormResponses(
 
     return {
         responses: current.responses,
-        // pagination: current.pagination,
+        pagination: current.pagination,
         loading: current.status === 'loading',
         error: current.error,
+        retryKey: key,
     };
 }
 
@@ -131,16 +147,16 @@ export function useResponseSummary(
     const [state, setState] = useState<{
         key: string;
         loading: boolean;
-        // summary: ResponseSummary | null;
+        summary: ResponseSummary | null;
         error: string | null;
-    }>({ key: '', loading: true, error: null });
+    }>({ key: '', loading: true, summary: null, error: null });
 
     useEffect(() => {
         if (!formId) return;
 
         const controller = new AbortController();
 
-        http.get<SummaryResponse>(
+        http.get<ResponseSummary>(
             endpoints.forms.formResponsesSummary(formId, {
                 q,
                 questionId,
@@ -150,16 +166,10 @@ export function useResponseSummary(
             .then((res) => {
                 if (controller.signal.aborted) return;
 
-                if (!res.data.success) {
-                    throw new Error(
-                        res.data.message || 'Failed to load summary'
-                    );
-                }
-
                 setState({
                     key,
                     loading: false,
-                    // summary: res.data.data,
+                    summary: res.data ?? null,
                     error: null,
                 });
             })
@@ -169,7 +179,7 @@ export function useResponseSummary(
                 setState({
                     key,
                     loading: false,
-                    // summary: null,
+                    summary: null,
                     error:
                         e instanceof Error
                             ? e.message
@@ -183,10 +193,124 @@ export function useResponseSummary(
     const current = state.key === key ? state : null;
 
     return {
-        // summary: current?.summary ?? null,
+        summary: current?.summary ?? null,
         loading: current ? current.loading : true,
         error: current?.error ?? null,
     };
+}
+
+/** Fetch every matching response across pages (Individual tab). */
+const INDIVIDUAL_PAGE_LIMIT = 100;
+const INDIVIDUAL_MAX_PAGES = 20;
+
+export function useAllResponses(
+    formId: string | undefined,
+    filters: ResponseFilters
+) {
+    const { q, questionId, sort } = filters;
+    const key = `${formId ?? ''}:${q ?? ''}:${questionId ?? ''}:${sort ?? 'newest'}`;
+    const [state, setState] = useState<{
+        key: string;
+        loading: boolean;
+        responses: FormResponseDto[];
+        total: number;
+        truncated: boolean;
+        error: string | null;
+    }>({ key: '', loading: true, responses: [], total: 0, truncated: false, error: null });
+
+    useEffect(() => {
+        if (!formId) return;
+
+        const controller = new AbortController();
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const all: FormResponseDto[] = [];
+                let total = 0;
+                let truncated = false;
+
+                for (let page = 1; page <= INDIVIDUAL_MAX_PAGES; page++) {
+                    if (cancelled) return;
+                    const res = await http.get<FormResponseDto[]>(
+                        endpoints.forms.formResponses(formId, {
+                            page,
+                            limit: INDIVIDUAL_PAGE_LIMIT,
+                            q,
+                            questionId,
+                            sort,
+                        }),
+                        { signal: controller.signal }
+                    );
+                    if (cancelled) return;
+                    const raw = res.raw as
+                        | { pagination?: ResponsePagination }
+                        | undefined;
+                    total = raw?.pagination?.total ?? all.length + (Array.isArray(res.data) ? res.data.length : 0);
+                    if (Array.isArray(res.data)) all.push(...res.data);
+                    const totalPages = raw?.pagination?.totalPages ?? page;
+                    if (page >= totalPages) break;
+                    if (page === INDIVIDUAL_MAX_PAGES) truncated = true;
+                }
+
+                if (cancelled) return;
+                setState({ key, loading: false, responses: all, total, truncated, error: null });
+            } catch (e: unknown) {
+                if (cancelled || controller.signal.aborted) return;
+                setState({
+                    key,
+                    loading: false,
+                    responses: [],
+                    total: 0,
+                    truncated: false,
+                    error:
+                        e instanceof ApiError || e instanceof Error
+                            ? e.message
+                            : 'Failed to load responses',
+                });
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+            controller.abort();
+        };
+    }, [formId, key, q, questionId, sort]);
+
+    const current = state.key === key ? state : null;
+
+    return {
+        responses: current?.responses ?? [],
+        total: current?.total ?? 0,
+        truncated: current?.truncated ?? false,
+        loading: current ? current.loading : true,
+        error: current?.error ?? null,
+    };
+}
+
+/** Download the filtered responses as a CSV file. */
+export async function downloadResponsesCsv(
+    formId: string,
+    filters: ResponseFilters
+): Promise<void> {
+    const blob = await http.getBlob(
+        endpoints.forms.exportResponsesCsv(formId, {
+            q: filters.q,
+            questionId: filters.questionId,
+        })
+    );
+
+    const url = URL.createObjectURL(blob);
+    try {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `responses-${formId}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    } finally {
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
 }
 
 export const RESPONSE_PAGE_SIZES = [10, 20, 50] as const;

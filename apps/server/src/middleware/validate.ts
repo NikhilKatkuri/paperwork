@@ -11,8 +11,17 @@ const validate =
                 params: req.params,
             });
             if (parsed.body !== undefined) req.body = parsed.body;
-            if ((parsed as any).query !== undefined)
-                req.query = (parsed as any).query;
+            if ((parsed as any).query !== undefined) {
+                // Express 5 defines `req.query` as a getter-only property —
+                // direct assignment throws "Cannot set property query ...
+                // which has only a getter". Redefine it on the instance.
+                Object.defineProperty(req, 'query', {
+                    value: (parsed as any).query,
+                    writable: true,
+                    enumerable: true,
+                    configurable: true,
+                });
+            }
             if ((parsed as any).params !== undefined)
                 req.params = (parsed as any).params as any;
 

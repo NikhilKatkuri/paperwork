@@ -6,42 +6,30 @@
 - Environments: .env
 
 [37m[1m [22m[39m Creating an optimized production build ...
-[32m[1m✓[22m[39m Compiled successfully in 5.4s
-[?25l[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m.[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m..[39m[2K[1G[37m[1m [22m[39m Running TypeScript  [36m...[39m[2K[1G[?25h[?25l[37m[1m [22m[39m Finished TypeScript in 7.1s  [36m.[39m[2K[1G[?25h[37m[1m [22m[39m Finished TypeScript in 7.1s    [32m[1m✓[22m[39m Finished TypeScript in 7.1s 
-[?25l[37m[1m [22m[39m Collecting page data using 7 workers  [36m.[39m[2K[1G[37m[1m [22m[39m Collecting page data using 7 workers  [36m..[39m[2K[1G[37m[1m [22m[39m Collecting page data using 7 workers  [36m...[39m[2K[1G[37m[1m [22m[39m Collecting page data using 7 workers  [36m.[39m[2K[1G[37m[1m [22m[39m Collecting page data using 7 workers  [36m..[39m[2K[1G[37m[1m [22m[39m Collecting page data using 7 workers  [36m...[39m[2K[1G[37m[1m [22m[39m Collecting page data using 7 workers  [36m.[39m[2K[1G[?25h[37m[1m [22m[39m Collecting page data using 7 workers in 1364ms    [32m[1m✓[22m[39m Collecting page data using 7 workers in 1364ms 
-[?25l[37m[1m [22m[39m Generating static pages using 7 workers (0/23)  [36m[    ][39m[2K[1G[37m[1m [22m[39m Generating static pages using 7 workers (0/23)  [36m[=   ][39m[2K[1G[37m[1m [22m[39m Generating static pages using 7 workers (0/23)  [36m[==  ][39m[2K[1G[37m[1m [22m[39m Generating static pages using 7 workers (16/23)  [36m[=== ][39m[2K[1G[?25h[32m[1m✓[22m[39m Generating static pages using 7 workers (23/23) in 712ms
-[?25l[37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G[?25h[37m[1m [22m[39m Finalizing page optimization in 23ms    [32m[1m✓[22m[39m Finalizing page optimization in 23ms 
 
-[4mRoute (app)[24m
-┌ ○ /
-├ ○ /_not-found
-├ ○ /apple-icon.png
-├ ○ /auth
-├ ○ /auth/change-password
-├ ○ /auth/forgot-password
-├ ○ /auth/reset-password
-├ ƒ /auth/reset-password/[token]
-├ ○ /auth/signin
-├ ○ /auth/signin/2fa
-├ ○ /auth/signup
-├ ○ /forms
-├ ○ /forms/c
-├ ƒ /forms/c/[id]
-├ ○ /forms/v
-├ ƒ /forms/v/[id]
-├ ○ /icon.png
-├ ○ /user
-├ ○ /user/profile
-├ ○ /user/settings
-├ ○ /user/settings/account-settings
-├ ○ /user/settings/edit-profile
-├ ○ /user/settings/password
-└ ○ /user/settings/security
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./apps/web/src/features/settings/components/client/PresonalInfoComponent.tsx:5:1
+[1m[31mModule not found[39m[22m: Can't resolve [32m'@paperwork/types'[39m
+  [90m3 |[0m [36mimport[0m { useAuth } [36mfrom[0m [32m'@/providers'[0m;
+  [90m4 |[0m [36mimport[0m [33mReact[0m, { useEffect, useState } [36mfrom[0m [32m'react'[0m;
+[31m[1m>[0m [90m5 |[0m [36mimport[0m { [33mCOUNTRIES[0m, [33mGENDERS[0m, [33mLANGUAGES[0m } [36mfrom[0m [32m'@paperwork/types'[0m;
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m6 |[0m [36mimport[0m { sensitiveData } [36mfrom[0m [32m'@/types'[0m;
+  [90m7 |[0m [36mimport[0m useUserPersonalInfo, {
+  [90m8 |[0m     useRetrievePersonalInfo,
 
 
-ƒ Proxy (Middleware)
 
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
+Import trace:
+  Server Component:
+    ./apps/web/src/features/settings/components/client/PresonalInfoComponent.tsx
+    ./apps/web/src/features/settings/pages/AccountMangement.tsx
+    ./apps/web/src/app/user/settings/account-settings/page.tsx
 
-[?25h
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./apps/web/src/features/settings/components/client/PresonalInfoComponent.tsx:5:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed with exit code 1.[39m

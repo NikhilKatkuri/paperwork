@@ -6,11 +6,6 @@ import { generateObjectId } from '../utils';
 import { FormDB } from '@/types';
 import { QuestionDoc, SectionAction, SectionDoc } from '@paperwork/types';
 
-interface SyncResponse {
-    success: boolean;
-    message: string;
-}
-
 export interface SyncOutcome {
     formId: string;
     /** Number of queued field changes collapsed into this request. */
@@ -127,8 +122,10 @@ function toBody(sections: SectionDoc[], questions: QuestionDoc[]) {
             sectionIdByIndex
         );
 
+        // The bulk schema keys rows by `_id` (accepting legacy `id` too);
+        // sending `id` would fail strict validation.
         wireSections.push({
-            id: s.id,
+            _id: s.id,
             index: s.index,
             title: s.title,
             ...(s.description ? { description: s.description } : {}),
@@ -149,21 +146,23 @@ function toBody(sections: SectionDoc[], questions: QuestionDoc[]) {
         seenQuestionIds.add(q.id);
 
         wireQuestions.push({
-            id: q.id,
+            _id: q.id,
             index: q.index,
             sectionId,
             type: q.type,
             question: q.question,
+            slug: q.slug || `q-${q.id.slice(-6)}`,
             isRequired: Boolean(q.isRequired),
             ...(q.helpText ? { helpText: q.helpText } : {}),
             ...(q.placeholder ? { placeholder: q.placeholder } : {}),
             ...(q.optionsConfig
                 ? {
-                      expectedAnswer: q.optionsConfig?.expectedAnswer,
                       optionsConfig: { options: q.optionsConfig?.options },
                   }
                 : {}),
             ...(q.ratingConfig ? { ratingConfig: q.ratingConfig } : {}),
+            ...(q.scaleConfig ? { scaleConfig: q.scaleConfig } : {}),
+            ...(q.matrixConfig ? { matrixConfig: q.matrixConfig } : {}),
             ...(q.validationRule ? { validationRule: q.validationRule } : {}),
             ...(q.dependsOn ? { dependsOn: q.dependsOn } : {}),
         });
@@ -189,17 +188,17 @@ function toPayload(form: FormDB): Record<string, unknown> | null {
     return {
         name,
         isPrivate,
-        isPublished: Boolean(form.isPublished),
         // A `pre('save')` hook rejects a non-empty `allowedDomains` unless the
         // form is private, which would fail the entire batch. Send an empty
         // list to clear domains left over from when it *was* private.
         allowedDomains: isPrivate ? (form.allowedDomains ?? []) : [],
         ...(form.settings ? { settings: form.settings } : {}),
-        ...(typeof form.responseCount === 'number'
-            ? { responseCount: form.responseCount }
-            : {}),
         // The form's own theme is part of the document, so it has to travel
         // with the rest of the form or it never reaches the server.
+        //
+        // `isPublished` and `responseCount` are deliberately omitted: the
+        // server allow-list rejects them (strict schema) since publishing and
+        // counting are server-owned transitions.
         ...(form.theme ? { theme: form.theme } : {}),
     };
 }
@@ -270,11 +269,10 @@ async function sendForm(
         ? endpoints.forms.bulkUpdateForm(formId)
         : endpoints.forms.updateForm(formId);
 
-    const res = await http.put<SyncResponse>(path, { data: body }, { signal });
+    const res = await http.put<unknown>(path, { data: body }, { signal });
 
-    if (!res.data.success) {
-        throw new Error(res.data.message || 'Failed to sync form');
-    }
+    // A resolved promise is a 2xx from the server; failures throw ApiError.
+    void res;
 
     // Retire the queue rows only once the server has confirmed the write.
     await syncQueueRepository.markSynced(pending.map((op) => op.id));
@@ -292,6 +290,23 @@ async function sendForm(
 }
 
 const inFlight = new Map<string, Promise<SyncOutcome>>();
+
+/**
+ * Last flush failure per form, so the UI can show *why* changes are not
+ * saved instead of failing silently into console.warn. Cleared on the next
+ * successful flush.
+ */
+const lastErrors = new Map<string, { message: string; at: number }>();
+
+export function getSyncError(formId: string): string | null {
+    return lastErrors.get(formId)?.message ?? null;
+}
+
+/** Record a local (pre-flush) failure so the UI can show it with a retry. */
+export function reportSyncError(formId: string, message: string): void {
+    lastErrors.set(formId, { message, at: Date.now() });
+    emit();
+}
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -324,7 +339,17 @@ export function flushForm(
     if (existing) return existing;
 
     const promise = sendForm(formId, signal)
+        .then((outcome) => {
+            lastErrors.delete(formId);
+            emit();
+            return outcome;
+        })
         .catch((e) => {
+            lastErrors.set(formId, {
+                message:
+                    e instanceof Error ? e.message : 'Sync failed. Try again.',
+                at: Date.now(),
+            });
             emit();
             throw e;
         })
@@ -353,16 +378,17 @@ export function scheduleFlush(
 
     if (existing) clearTimeout(existing);
 
-    timers.set(
-        formId,
-        setTimeout(() => {
-            timers.delete(formId);
-            emit();
-            void flushForm(formId).catch((e) => {
-                console.warn('[sync] flush failed for', formId, e);
-            });
-        }, delay)
-    );
+        timers.set(
+            formId,
+            setTimeout(() => {
+                timers.delete(formId);
+                emit();
+                void flushForm(formId).catch(() => {
+                    // Surfaced via getSyncError() + SyncStatus; logging here
+                    // would spam one line per debounced keystroke session.
+                });
+            }, delay)
+        );
 
     emit();
 }

@@ -24,6 +24,8 @@ import {
     validateSection,
 } from '../../lib/fill-validation';
 import { FillSection } from '../../types/fill.type';
+import type { SectionAction } from '@paperwork/types';
+import { QuestionTypeEnum } from '@paperwork/types';
 
 function Loading() {
     return (
@@ -70,6 +72,110 @@ function getStatus(state: string, isLast: boolean) {
     return isLast ? 'Submit' : 'Next';
 }
 
+type NavTarget = { kind: 'section'; index: number } | { kind: 'submit' };
+
+/** Evaluate one section rule against the current answers. */
+function matchRule(
+    operator: string,
+    values: string[] | undefined,
+    expected: unknown
+): boolean {
+    const vals = (values ?? []).map((v) => v.trim()).filter(Boolean);
+    // An unanswered question matches nothing — fall through to default.
+    if (!vals.length) return false;
+    const exp = String(expected ?? '');
+
+    switch (operator) {
+        case 'EQUALS':
+            return vals.some((v) => v === exp);
+        case 'NOT_EQUALS':
+            return vals.every((v) => v !== exp);
+        case 'CONTAINS':
+            return vals.some((v) =>
+                v.toLowerCase().includes(exp.toLowerCase())
+            );
+        case 'GREATER_THAN': {
+            const n = Number(vals[0]);
+            return !Number.isNaN(n) && n > Number(exp);
+        }
+        case 'LESS_THAN': {
+            const n = Number(vals[0]);
+            return !Number.isNaN(n) && n < Number(exp);
+        }
+        default:
+            return false;
+    }
+}
+
+/**
+ * Map an action to a navigation target. Returns null when the action is
+ * absent, NEXT_SECTION (caller default), dangling (unknown section id) or
+ * self-referential — all fall through to the next step.
+ */
+function applyAction(
+    action: SectionAction | undefined,
+    sections: FillSection[],
+    current: number
+): NavTarget | null {
+    if (!action || action.type === 'NEXT_SECTION') return null;
+    if (action.type === 'SUBMIT_FORM') return { kind: 'submit' };
+    if (action.type === 'GO_TO_SECTION' && action.targetSectionId) {
+        const target = sections.findIndex(
+            (s) => s._id === action.targetSectionId
+        );
+        if (target >= 0 && target !== current) {
+            return { kind: 'section', index: target };
+        }
+    }
+    return null;
+}
+
+/**
+ * Where "Next" goes from a section. Precedence:
+ * 1. per-option actions of single-choice (RADIO / DROP_DOWN) answers in
+ *    this section — "go to section based on answer";
+ * 2. the section's rules[] — first matching rule wins;
+ * 3. the section's defaultAction, else the next section in order.
+ */
+function resolveNavigation(
+    section: FillSection,
+    sections: FillSection[],
+    current: number,
+    answers: Record<string, string[]>
+): NavTarget {
+    for (const question of section.questions) {
+        if (
+            question.type !== QuestionTypeEnum.RADIO &&
+            question.type !== QuestionTypeEnum.DROP_DOWN
+        ) {
+            continue;
+        }
+        const selected = (answers[question._id] ?? [])[0]?.trim();
+        if (!selected) continue;
+        const option = question.optionsConfig?.options.find(
+            (o) => o.label === selected
+        );
+        const hit = applyAction(option?.action, sections, current);
+        if (hit) return hit;
+    }
+
+    for (const rule of section.rules ?? []) {
+        if (
+            matchRule(rule.operator, answers[rule.questionId], rule.expectedValue)
+        ) {
+            const hit = applyAction(rule.action, sections, current);
+            if (hit) return hit;
+        }
+    }
+
+    return (
+        applyAction(section.defaultAction, sections, current) ?? {
+            kind: 'section',
+            index: Math.min(current + 1, sections.length - 1),
+        }
+    );
+}
+
 export default function FormViewPageLayout() {
     const params = useParams<{ id?: string | string[] }>();
 
@@ -83,6 +189,8 @@ export default function FormViewPageLayout() {
     const [current, setCurrent] = useState(0);
     /** Sections visited before `current`, so Back follows the path actually taken. */
     const [history, setHistory] = useState<number[]>([]);
+    /** Every section ever shown — submit validates these, never skipped ones. */
+    const [visited, setVisited] = useState<number[]>([0]);
     const [answers, setAnswers] = useState<Record<string, string[]>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -171,19 +279,21 @@ export default function FormViewPageLayout() {
         if (!form) return;
 
         /**
-         * Validate every section, not just the visible one. Submit is reachable
-         * directly from the last section, so the per-section check that runs on
-         * "Next" never happens first - without this a required question on the
-         * final section could be submitted blank.
+         * Validate visited sections only — conditional navigation may skip
+         * sections (e.g. a complaint section), and required questions in a
+         * section the respondent never saw must not block submit.
          */
+        const visible = [...new Set([...visited, current])]
+            .map((i) => sections[i])
+            .filter(Boolean);
         const nextErrors: Record<string, string> = {};
         let firstInvalid = -1;
 
-        sections.forEach((section, index) => {
+        visible.forEach((section) => {
             const found = validateSection(section.questions, answers);
 
             if (Object.keys(found).length && firstInvalid === -1) {
-                firstInvalid = index;
+                firstInvalid = sections.indexOf(section);
             }
 
             Object.assign(nextErrors, found);
@@ -208,11 +318,14 @@ export default function FormViewPageLayout() {
         if (result.state === 'failed') {
             toast.error(result.message ?? 'Failed to submit your response');
         }
-    }, [answers, current, failValidation, form, sections, submit]);
+    }, [answers, current, failValidation, form, sections, submit, visited]);
 
     const goTo = useCallback(
         (target: number) => {
             setHistory((prev) => [...prev, current]);
+            setVisited((prev) =>
+                prev.includes(target) ? prev : [...prev, target]
+            );
             setCurrent(target);
             scrollToTop();
         },
@@ -233,26 +346,16 @@ export default function FormViewPageLayout() {
 
         setErrors({});
 
-        // A section may jump somewhere other than the next one.
-        const action = section.defaultAction;
+        // Conditional navigation: per-option actions, then section rules,
+        // then the default action — instead of always the next section.
+        const target = resolveNavigation(section, sections, current, answers);
 
-        if (action?.targetSectionId === 'SUBMIT_FORM') {
+        if (target.kind === 'submit') {
             void handleSubmit();
             return;
         }
 
-        if (action?.type === 'GO_TO_SECTION' && action.targetSectionId) {
-            const target = sections.findIndex(
-                (s) => s._id === action.targetSectionId
-            );
-
-            if (target >= 0 && target !== current) {
-                goTo(target);
-                return;
-            }
-        }
-
-        goTo(Math.min(current + 1, sections.length - 1));
+        goTo(target.index);
     }, [answers, current, failValidation, goTo, handleSubmit, sections]);
 
     const goBack = useCallback(() => {
@@ -319,6 +422,12 @@ export default function FormViewPageLayout() {
 
     const section = sections[current];
     const isLast = current >= sections.length - 1;
+    // With conditional jumps, a mid-form section can resolve to submit —
+    // preview the same resolver `goNext` uses so the button never lies.
+    const navPreview = section
+        ? resolveNavigation(section, sections, current, answers)
+        : null;
+    const willSubmit = isLast || navPreview?.kind === 'submit';
     const percent = total ? Math.round((answered / total) * 100) : 0;
     const sending = state === 'sending';
 
@@ -382,11 +491,11 @@ export default function FormViewPageLayout() {
                     {/* ml-auto keeps this on the right when Back is hidden. */}
                     <button
                         type="button"
-                        onClick={isLast ? () => void handleSubmit() : goNext}
+                        onClick={willSubmit ? () => void handleSubmit() : goNext}
                         disabled={sending}
                         className="bg-theme-form-container-active text-theme-form-on-active ml-auto rounded-md px-5 py-2 text-sm font-medium transition-opacity disabled:opacity-60"
                     >
-                        {getStatus(state, isLast)}
+                        {getStatus(state, willSubmit)}
                     </button>
                 </footer>
 

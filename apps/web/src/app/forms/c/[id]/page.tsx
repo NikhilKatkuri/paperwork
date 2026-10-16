@@ -1,13 +1,8 @@
 'use client';
-import FormCreatePageCreateLayout from '@/features/forms/components/layouts/FormCreatePageCreateLayout';
-import { FormProvider } from '@/features/forms/providers/form';
+import FormLayout from '@/features/forms/components/form';
 
 function Page() {
-    return (
-        <FormProvider>
-            <FormCreatePageCreateLayout />
-        </FormProvider>
-    );
+    return <FormLayout />;
 }
 
 export default Page;

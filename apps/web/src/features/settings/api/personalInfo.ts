@@ -130,16 +130,15 @@ export function useRetrievePersonalInfo() {
             // Fetch from API
             const path = endpoints.auth.sensitiveInfo;
 
-            const res = await http.get<HandlerResponse>(path);
+            // The server wraps the payload as `{ success, data }`; the
+            // client unwraps it, so `data` here is the personal-info object.
+            const res = await http.get<sensitiveData>(path);
 
-            if (res.status === 200 && res.data?.data) {
-                setPersonalInfo(res.data.data);
-                storeToCache(res.data.data);
+            if (res.data) {
+                setPersonalInfo(res.data);
+                storeToCache(res.data);
             } else {
-                console.log(
-                    'Failed to retrieve personal information:',
-                    res.data?.message
-                );
+                console.log('Failed to retrieve personal information.');
             }
         } catch (error) {
             console.error('Error retrieving personal information:', error);

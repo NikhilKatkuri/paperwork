@@ -6,10 +6,17 @@ import { CreateFormDoc, FormDto } from '@paperwork/types';
 
 function useCreateForm() {
     const { loading, execute: createForm } = useApiAction(
-        async (formData: CreateFormDoc) =>
-            http.post<FormDto>(endpoints.forms.createForm, {
-                data: formData,
-            })
+        async (formData: CreateFormDoc) => {
+            // `isPublished` and `responseCount` are server-owned: the API
+            // rejects them as unrecognized keys, and the server forces its
+            // own defaults regardless.
+            const payload: Record<string, unknown> = { ...formData };
+            delete payload.isPublished;
+            delete payload.responseCount;
+            return http.post<FormDto>(endpoints.forms.createForm, {
+                data: payload,
+            });
+        }
     );
 
     return {

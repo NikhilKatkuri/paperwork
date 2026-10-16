@@ -20,13 +20,19 @@ export default function useQuestionManager() {
     }, []);
 
     function addQuestion(sectionId: string) {
+        // Defensive: callers must pass a raw section id, but a compound DOM
+        // id (`section-<id>:question-<id>`) slipped through here before and
+        // produced questions in a void section. Normalize regardless.
+        const cleanSectionId = sectionId.includes(':')
+            ? (sectionId.split(':')[0]?.replace(/^section-/, '') ?? sectionId)
+            : sectionId.replace(/^section-/, '');
         const newMap = new Map(questionsMap);
         const maxIndex = [...newMap.values()]
-            .filter((q) => q.sectionId === sectionId)
+            .filter((q) => q.sectionId === cleanSectionId)
             .reduce((m, q) => Math.max(m, q.index ?? -1), -1);
         const question: QuestionDoc = {
             id: generateObjectId(),
-            sectionId,
+            sectionId: cleanSectionId,
             index: maxIndex + 1,
             question: '',
             slug: `q-${Date.now().toString(36)}`,

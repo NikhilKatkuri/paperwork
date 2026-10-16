@@ -56,25 +56,19 @@ export default function useAccountAction() {
 
             try {
                 const path = endpoints.auth.accountAction;
+                // The action endpoint returns its `{ success, message }`
+                // result unwrapped (no `data` envelope), so a resolved
+                // promise is the success case.
                 const res = await http.post<AccountActionResponse>(path, {
                     action,
                     password,
                 });
 
-                if (res.data && res.data.success) {
-                    storeCache({
-                        twofactorEnabled:
-                            action === 'enable-2fa' ? true : false,
-                    });
-                    return { ok: true, data: res.data };
-                }
-
-                return {
-                    ok: false,
-                    error:
-                        res.data?.message ||
-                        'Failed to execute account action.',
-                };
+                storeCache({
+                    twofactorEnabled:
+                        action === 'enable-2fa' ? true : false,
+                });
+                return { ok: true as const, data: res.data };
             } catch (e: unknown) {
                 let msg = 'An unexpected error occurred. Please try again.';
 

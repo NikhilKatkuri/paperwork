@@ -26,7 +26,7 @@ function Clamped({ text }: Readonly<{ text: string }>) {
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="text-theme-form-container-active hover:underline"
+                className="font-medium text-neutral-900 hover:underline"
             >
                 {open ? 'Show less' : 'Show more'}
             </button>
@@ -36,7 +36,7 @@ function Clamped({ text }: Readonly<{ text: string }>) {
 
 function Chip({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <span className="bg-theme-form-on-surface/8 border-theme-form-on-surface/15 inline-block max-w-full rounded-full border px-2 py-0.5 text-xs">
+        <span className="inline-block max-w-full rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-800">
             {children}
         </span>
     );
@@ -61,11 +61,7 @@ export default function AnswerValue({
         .filter((v) => v.trim());
 
     if (!answers.length) {
-        return (
-            <span className="text-theme-form-on-surface/40 text-xs">
-                No answer
-            </span>
-        );
+        return <span className="text-xs text-neutral-400">No answer</span>;
     }
 
     switch (question?.type) {
@@ -79,7 +75,7 @@ export default function AnswerValue({
 
             return (
                 <span
-                    className="text-theme-form-container-active inline-flex items-center gap-0.5"
+                    className="inline-flex items-center gap-0.5 text-neutral-900"
                     aria-label={`${answers[0]} out of ${scale}`}
                 >
                     {Array.from({ length: scale }, (_, i) => i + 1).map((n) => (
@@ -98,27 +94,31 @@ export default function AnswerValue({
 
         case QuestionTypeEnum.LINEAR_SCALE: {
             const value = Number(answers[0]);
-            const high = Math.max(
-                2,
-                Math.min(Number(question.ratingConfig?.scale) || 5, 10)
+            // Linear scales carry their own bounds; fall back to the legacy
+            // rating scale only for responses stored before scaleConfig.
+            const lower = Number(question.scaleConfig?.lowerBound ?? 1);
+            const upper = Number(
+                question.scaleConfig?.upperBound ??
+                    question.ratingConfig?.scale ??
+                    5
+            );
+            const span = Math.max(1, upper - lower);
+            const pct = Math.min(
+                100,
+                Math.max(0, ((value - lower) / span) * 100)
             );
 
             return (
                 <span className="inline-flex items-center gap-2">
-                    <span className="bg-theme-form-on-surface/10 relative inline-block h-1.5 w-24 overflow-hidden rounded-full">
+                    <span className="relative inline-block h-1.5 w-24 overflow-hidden rounded-full bg-neutral-200">
                         <span
-                            className="bg-theme-form-container-active absolute inset-y-0 left-0 rounded-full"
-                            style={{
-                                width: `${Math.min(
-                                    100,
-                                    Math.max(0, (value / high) * 100)
-                                )}%`,
-                            }}
+                            className="absolute inset-y-0 left-0 rounded-full bg-neutral-900"
+                            style={{ width: `${pct}%` }}
                         />
                     </span>
-                    <span className="text-theme-form-on-surface text-xs font-medium">
+                    <span className="text-xs font-medium text-neutral-900">
                         {answers[0]}
-                        <span className="opacity-50">/{high}</span>
+                        <span className="text-neutral-400">/{upper}</span>
                     </span>
                 </span>
             );
@@ -137,15 +137,25 @@ export default function AnswerValue({
         case QuestionTypeEnum.DROP_DOWN:
             return <Chip>{answers[0]}</Chip>;
 
-        case QuestionTypeEnum.DATE:
+        case QuestionTypeEnum.DATE: {
+            const parsed = new Date(answers[0]);
+            return (
+                <span className="text-xs text-neutral-900">
+                    {Number.isNaN(parsed.getTime())
+                        ? answers[0]
+                        : parsed.toLocaleDateString(undefined, {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                          })}
+                </span>
+            );
+        }
+
         case QuestionTypeEnum.TIME:
             return (
-                <span className="text-theme-form-on-surface text-xs">
-                    {new Date(answers[0]).toLocaleDateString(undefined, {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                    })}
+                <span className="text-xs tabular-nums text-neutral-900">
+                    {answers[0]}
                 </span>
             );
 
@@ -153,7 +163,7 @@ export default function AnswerValue({
         case QuestionTypeEnum.TEXT:
         default:
             return (
-                <span className="text-theme-form-on-surface text-xs whitespace-pre-wrap">
+                <span className="text-xs whitespace-pre-wrap text-neutral-900">
                     <Clamped text={answers.join(', ')} />
                 </span>
             );

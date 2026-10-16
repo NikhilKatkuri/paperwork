@@ -54,14 +54,15 @@ class FormRepository {
         return db.forms.orderBy('updatedAt').reverse().toArray();
     }
 
-    async save(form: FormDto): Promise<void> {
+    async save(form: FormDto, opts?: { dirty?: boolean }): Promise<void> {
+        const dirty = opts?.dirty ?? true;
         await db.forms.put({
             ...form,
             createdAt: toISOString(form.createdAt),
             updatedAt: toISOString(form.updatedAt),
             v: toVersion(form.v) + 1,
-            isDirty: true,
-            lastSyncedAt: null,
+            isDirty: dirty,
+            lastSyncedAt: dirty ? null : toISOString(Date.now()),
         });
     }
 

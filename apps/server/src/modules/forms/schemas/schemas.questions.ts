@@ -1,6 +1,7 @@
 import { QuestionDocument } from '@/types';
 import mongoose, { Schema } from 'mongoose';
 import transform from '@/schemas/tranformer';
+import { sectionActionSchema } from './schemas.sections';
 
 const questionDependsOnSchema = new Schema(
     {
@@ -14,6 +15,9 @@ const optionSchema = new Schema(
     {
         index: { type: Number, required: true },
         label: { type: String, required: true, maxlength: 100 },
+        // Per-option conditional navigation. Optional and cast through the
+        // shared action schema (target required only for GO_TO_SECTION).
+        action: { type: sectionActionSchema, required: false },
     },
     { _id: false }
 );
@@ -146,6 +150,9 @@ const questionsSchema = new Schema<QuestionDocument>(
 questionsSchema.index({ formId: 1, sectionId: 1, index: 1 });
 
 questionsSchema.pre('validate', function (this: QuestionDocument) {
+    // NOTE: `this.invalidate()` (not `throw`) so failures surface as a
+    // mongoose ValidationError → 400 with field errors, instead of a 500
+    // with an internal message.
     const isOptionBased = (OPTION_BASED_TYPES as readonly string[]).includes(
         this.type
     );
@@ -153,34 +160,48 @@ questionsSchema.pre('validate', function (this: QuestionDocument) {
         isOptionBased &&
         (!this.optionsConfig || this.optionsConfig.options.length === 0)
     ) {
-        throw new Error(`${this.type} questions require at least one option`);
+        this.invalidate(
+            'optionsConfig',
+            `${this.type} questions require at least one option`
+        );
     }
     if (
         !isOptionBased &&
         this.optionsConfig &&
         this.optionsConfig.options.length > 0
     ) {
-        throw new Error(
+        this.invalidate(
+            'optionsConfig',
             `options are only valid for ${OPTION_BASED_TYPES.join(', ')} questions`
         );
     }
 
     if (this.type === 'RATING' && !this.ratingConfig) {
-        throw new Error('RATING questions require ratingConfig');
+        this.invalidate('ratingConfig', 'RATING questions require ratingConfig');
     }
 
-    if (this.type === 'LINEAR_SCALE' && !(this as any).scaleConfig && !this.ratingConfig) {
-        throw new Error('LINEAR_SCALE questions require scaleConfig');
+    if (
+        this.type === 'LINEAR_SCALE' &&
+        !(this as any).scaleConfig &&
+        !this.ratingConfig
+    ) {
+        this.invalidate(
+            'scaleConfig',
+            'LINEAR_SCALE questions require scaleConfig'
+        );
     }
 
     if (this.type === 'MATRIX' && !this.matrixConfig) {
-        throw new Error('MATRIX questions require matrixConfig');
+        this.invalidate('matrixConfig', 'MATRIX questions require matrixConfig');
     }
 
     if (this.optionsConfig && this.optionsConfig.options.length > 0) {
         const indices = this.optionsConfig.options.map((opt) => opt.index);
         if (new Set(indices).size !== indices.length) {
-            throw new Error('options must have unique index values');
+            this.invalidate(
+                'optionsConfig',
+                'options must have unique index values'
+            );
         }
     }
 });

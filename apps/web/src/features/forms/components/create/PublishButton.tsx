@@ -9,9 +9,8 @@ import { flushFormNow } from '../../lib/sync-engine';
 import { useForm } from '../../providers/form';
 
 interface PublishResponse {
-    success: boolean;
-    message: string;
-    data?: { form?: { isPublished?: boolean } };
+    form?: { isPublished?: boolean };
+    isPublished?: boolean;
 }
 
 function PublishButton() {
@@ -64,11 +63,10 @@ function PublishButton() {
 
             const res = await http.post<PublishResponse>(path, {});
 
-            if (!res.data.success) {
-                throw new Error(res.data.message || 'Failed to update');
-            }
-
-            const confirmed = res.data.data?.form?.isPublished ?? next;
+            // A resolved promise is a 2xx; the server wraps the form as
+            // `{ form }` for publish lifecycles.
+            const confirmed =
+                res.data.form?.isPublished ?? res.data.isPublished ?? next;
 
             updateFormState((prev) => ({ ...prev, isPublished: confirmed }));
             await formRepository.setPublished(formId, confirmed);
@@ -100,6 +98,8 @@ function PublishButton() {
             type="button"
             onClick={() => void toggle()}
             disabled={busy}
+            aria-pressed={isPublished}
+            aria-live="polite"
             className={
                 isPublished
                     ? 'border-theme-form-on-surface/30 text-theme-form-on-surface hover:bg-theme-form-on-surface/5 rounded-md border px-3 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60'

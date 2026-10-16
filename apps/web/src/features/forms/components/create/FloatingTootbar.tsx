@@ -22,6 +22,22 @@ function FloatingTootbar() {
             ) as HTMLElement | null;
 
             if (selectedElement) {
+                // The element `id` is a compound DOM id
+                // (`section-<id>` / `section-<id>:question-<id>`) — never a
+                // section id. Resolve the real one via `data-section-id`.
+                const holder = selectedElement.closest(
+                    '[data-section-id]'
+                ) as HTMLElement | null;
+                const sectionId = holder?.dataset.sectionId;
+
+                if (!sectionId) {
+                    activeElementRef.current = null;
+                    positionRef.current = null;
+                    setTopPosition(null);
+                    setActiveSectionId(null);
+                    return;
+                }
+
                 activeElementRef.current = selectedElement;
 
                 const rect = selectedElement.getBoundingClientRect();
@@ -29,7 +45,7 @@ function FloatingTootbar() {
 
                 positionRef.current = newTop;
                 setTopPosition(newTop);
-                setActiveSectionId(selectedElement.id);
+                setActiveSectionId(sectionId);
 
                 return;
             }

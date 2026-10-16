@@ -3,7 +3,7 @@ import { SectionAction, SectionRule } from '@paperwork/types';
 import mongoose, { Schema } from 'mongoose';
 import transform from '@/schemas/tranformer';
 
-const sectionActionSchema = new Schema<SectionAction & { sectionId?: string }>(
+export const sectionActionSchema = new Schema<SectionAction & { sectionId?: string }>(
     {
         type: {
             type: String,
@@ -48,6 +48,8 @@ const sectionSchema = new Schema<SectionDocument>(
 );
 
 sectionSchema.pre('validate', function (this: SectionDocument) {
+    // NOTE: `this.invalidate()` (not `throw`) so failures surface as a
+    // mongoose ValidationError → 400, instead of a 500.
     if (!this._id) return;
     const selfId: string = this._id.toHexString();
 
@@ -55,7 +57,8 @@ sectionSchema.pre('validate', function (this: SectionDocument) {
         this.defaultAction?.type === 'GO_TO_SECTION' &&
         this.defaultAction?.targetSectionId === selfId
     ) {
-        throw new Error(
+        this.invalidate(
+            'defaultAction',
             'A section cannot navigate to itself via defaultAction'
         );
     }
@@ -64,7 +67,10 @@ sectionSchema.pre('validate', function (this: SectionDocument) {
             rule.action?.type === 'GO_TO_SECTION' &&
             rule.action?.targetSectionId === selfId
         ) {
-            throw new Error('A section cannot navigate to itself via onAnswer');
+            this.invalidate(
+                'rules',
+                'A section cannot navigate to itself via onAnswer'
+            );
         }
     }
 });

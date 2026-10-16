@@ -7,8 +7,11 @@ import { CSS } from '@dnd-kit/utilities';
 
 import {
     QuestionTypeEnum,
+    type MatrixConfig,
     type QuestionDoc,
     type QuestionType,
+    type RatingConfig,
+    type ScaleConfig,
 } from '@paperwork/types';
 import { useForm } from '@/features/forms/providers/form';
 import { generateObjectId } from '@/features/forms/utils';
@@ -39,6 +42,52 @@ const createOverlayFallback = (type: QuestionType): QuestionDoc => ({
     formId: '',
 });
 
+/**
+ * Fresh configs for a newly-selected type, so the question is submittable
+ * immediately — the editors only persist configs once the user touches them,
+ * and a config-less question used to fail sync validation on the next
+ * autosave. Stale configs from the previous type are dropped at the call
+ * site (set to `undefined`, which serializes away).
+ */
+function defaultsForType(type: QuestionType): Partial<QuestionDoc> {
+    switch (type) {
+        case QuestionTypeEnum.CHOICE:
+        case QuestionTypeEnum.RADIO:
+        case QuestionTypeEnum.DROP_DOWN:
+            return {
+                optionsConfig: {
+                    options: [{ index: 0, label: 'Option 1' }],
+                },
+            };
+        case QuestionTypeEnum.RATING: {
+            const ratingConfig: RatingConfig = {
+                icon: 'STAR',
+                scale: 5,
+            };
+            return { ratingConfig };
+        }
+        case QuestionTypeEnum.LINEAR_SCALE: {
+            const scaleConfig: ScaleConfig = {
+                lowerBound: 1,
+                upperBound: 5,
+            };
+            return { scaleConfig };
+        }
+        case QuestionTypeEnum.MATRIX: {
+            const matrixConfig: MatrixConfig = {
+                rows: [{ id: 'row-1', label: 'Row 1' }],
+                columns: [
+                    { id: 'col-1', label: 'Column 1' },
+                    { id: 'col-2', label: 'Column 2' },
+                ],
+            };
+            return { matrixConfig };
+        }
+        default:
+            return {};
+    }
+}
+
 export default function QuestionCard({
     id,
     sectionId,
@@ -52,7 +101,14 @@ export default function QuestionCard({
 
     const question = getQuestionById(id);
     const config = question ?? overlayFallback;
-    const currentOption = questionTypesMap[config.type];
+    // Never trust the stored type blindly: poisoned/legacy cache records
+    // without a known type used to crash here (`currentOption.icon`).
+    const safeType = (
+        Object.values(QuestionTypeEnum) as string[]
+    ).includes(config.type as string)
+        ? (config.type as QuestionType)
+        : QuestionTypeEnum.TEXT;
+    const currentOption = questionTypesMap[safeType];
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [showMoreOptions, setShowMoreOptions] = useState(false);
@@ -163,6 +219,7 @@ export default function QuestionCard({
     return (
         <div
             id={`section-${sectionId}:question-${id}`}
+            data-section-id={sectionId}
             ref={isOverlay ? undefined : setNodeRef}
             style={style}
             className={cn(
@@ -245,7 +302,7 @@ export default function QuestionCard({
                                     ) as QuestionType[]
                                 ).map((type) => {
                                     const option = questionTypesMap[type];
-                                    const selected = type === config.type;
+                                    const selected = type === safeType;
 
                                     return (
                                         <button
@@ -254,7 +311,20 @@ export default function QuestionCard({
                                             role="option"
                                             aria-selected={selected}
                                             onClick={() => {
-                                                patch('type', type);
+                                                updateQuestion(id, (prev) => ({
+                                                    ...prev,
+                                                    type,
+                                                    // Drop configs from the
+                                                    // previous type, then
+                                                    // attach fresh ones —
+                                                    // stale configs fail
+                                                    // server validation.
+                                                    optionsConfig: undefined,
+                                                    ratingConfig: undefined,
+                                                    scaleConfig: undefined,
+                                                    matrixConfig: undefined,
+                                                    ...defaultsForType(type),
+                                                }));
                                                 setIsDropdownOpen(false);
                                             }}
                                             className={cn(
@@ -302,7 +372,7 @@ export default function QuestionCard({
 
             <QuestionTypeRenderer
                 id={id}
-                type={config.type}
+                type={safeType}
                 update={(changes) =>
                     updateQuestion(id, (prev) => ({ ...prev, ...changes }))
                 }

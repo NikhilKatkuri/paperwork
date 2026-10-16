@@ -65,6 +65,8 @@ export const endpoints = {
         updateForm: (formId: string): string => `/forms/${formId}`,
         bulkUpdateForm: (formId: string): string => `/forms/${formId}/bulk`,
         deleteForm: (formId: string): string => `/forms/${formId}`,
+        duplicateForm: (formId: string): string =>
+            `/forms/${formId}/duplicate`,
         fill: (formId: string): string => `/forms/${formId}/fill`,
         submitFill: (formId: string): string => `/forms/${formId}/fill`,
         submissionStatus: (formId: string, submissionId: string): string =>
@@ -89,6 +91,11 @@ export const endpoints = {
             `/forms/${formId}/fill/responses/summary${toQuery({
                 q: query.q,
                 questionId: query.questionId,
+            })}`,
+        exportResponsesCsv: (formId: string, query?: { q?: string; questionId?: string }): string =>
+            `/forms/${formId}/fill/responses/export/csv${toQuery({
+                q: query?.q,
+                questionId: query?.questionId,
             })}`,
     },
 } as const;

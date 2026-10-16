@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { toast } from 'sonner';
+import { cn } from '@/utils/cn';
 import Toggle from '../common/Toggle';
 import { useForm } from '../../providers/form';
+import { flushFormNow, getSyncError } from '../../lib/sync-engine';
 
 export interface FormSettingsData {
     maxResponses?: number;
@@ -93,14 +96,25 @@ function NumberField({
                 type="number"
                 min={0}
                 value={value ?? ''}
-                onChange={(e) =>
+                onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') {
+                        onChange(undefined);
+                        return;
+                    }
+                    const n = Number(raw);
+                    // `type=number` still permits 'e', '-', '0': none are
+                    // valid limits (schema requires positive ints), so map
+                    // everything non-positive/non-finite to "no limit"
+                    // instead of 400ing the whole sync.
                     onChange(
-                        e.target.value === ''
+                        !Number.isFinite(n) || n <= 0
                             ? undefined
-                            : Number(e.target.value)
-                    )
-                }
+                            : Math.trunc(n)
+                    );
+                }}
                 placeholder={placeholder}
+                aria-label={placeholder ?? 'Limit value'}
                 className="border-theme-form-container-border bg-theme-surface w-24 rounded-md border px-2.5 py-1.5 text-right text-[13.5px] focus:outline-none"
             />
             {suffix && <span className="text-[12.5px]">{suffix}</span>}
@@ -146,15 +160,67 @@ export interface FormSettingsProps {
     onSave?: (settings: FormSettingsData) => void;
 }
 
+type SavePhase = 'idle' | 'saving' | 'saved';
+
 function toProviderPayload(settings: FormSettingsData) {
+    const parseDate = (val: string | undefined): Date | undefined => {
+        if (!val) return undefined;
+        const d = new Date(val);
+        return Number.isNaN(d.getTime()) ? undefined : d;
+    };
+    const redirect = settings.redirectUrl?.trim() ?? '';
     return {
         ...settings,
-        startDate: settings.startDate
-            ? new Date(settings.startDate)
-            : undefined,
-        closeDate: settings.closeDate
-            ? new Date(settings.closeDate)
-            : undefined,
+        startDate: parseDate(settings.startDate),
+        closeDate: parseDate(settings.closeDate),
+        // The API requires an absolute URL; bare domains ("example.com")
+        // used to 400 the entire sync. Assume https when omitted.
+        redirectUrl:
+            redirect && !/^https?:\/\//i.test(redirect)
+                ? `https://${redirect}`
+                : redirect || undefined,
+        customConfirmationMessage:
+            settings.customConfirmationMessage?.trim() || undefined,
+    };
+}
+
+type ComparableSettings = Record<string, string | number | boolean | null>;
+
+/** Canonical shape for dirty-checking: Dates → ISO, missing → null. */
+function canonicalize(
+    source: Partial<Record<keyof FormSettingsData, unknown>>
+): ComparableSettings {
+    const iso = (val: unknown): string | null => {
+        if (val === undefined || val === null || val === '') return null;
+        const d = val instanceof Date ? val : new Date(val as string);
+        return Number.isNaN(d.getTime()) ? null : d.toISOString();
+    };
+    const num = (val: unknown): number | null =>
+        typeof val === 'number' && Number.isFinite(val) ? val : null;
+    const str = (val: unknown): string | null => {
+        const t = String(val ?? '').trim();
+        return t ? t : null;
+    };
+    // Same normalization as toProviderPayload, so a saved value compares
+    // equal to the edited one (no perpetual "unsaved" state).
+    const rawRedirect = str(source.redirectUrl);
+    const redirect =
+        rawRedirect && !/^https?:\/\//i.test(rawRedirect)
+            ? `https://${rawRedirect}`
+            : rawRedirect;
+    return {
+        maxResponses: num(source.maxResponses),
+        maxResponsesPerUser: num(source.maxResponsesPerUser),
+        closeDate: iso(source.closeDate),
+        startDate: iso(source.startDate),
+        timeLimitPerResponse: num(source.timeLimitPerResponse),
+        collectEmail: Boolean(source.collectEmail),
+        shuffleQuestions: Boolean(source.shuffleQuestions),
+        allowEditResponse: Boolean(source.allowEditResponse),
+        saveAndContinueLater: Boolean(source.saveAndContinueLater),
+        progressBar: Boolean(source.progressBar),
+        customConfirmationMessage: str(source.customConfirmationMessage),
+        redirectUrl: redirect,
     };
 }
 
@@ -166,9 +232,34 @@ export default function FormSettings({ onSave }: Readonly<FormSettingsProps>) {
             ...DEFAULT_SETTINGS,
         };
     });
+    // Once the user touches a control, provider updates (background
+    // refresh, parent re-renders) must not overwrite the in-progress edits.
+    const touchedRef = useRef(false);
+    const mountedRef = useRef(true);
+    const [phase, setPhase] = useState<SavePhase>('idle');
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+        };
+    }, []);
+
+    // Dirty when the edited values differ from the provider's canonical
+    // state — drives the Save button's enabled/label UI.
+    const isDirty =
+        JSON.stringify(canonicalize(settings)) !==
+        JSON.stringify(canonicalize((form?.settings ?? {}) as Partial<Record<keyof FormSettingsData, unknown>>));
+
+    useEffect(() => {
+        // New form opened — accept provider state again.
+        touchedRef.current = false;
+    }, [form?.id]);
 
     useEffect(() => {
         function sync() {
+            if (touchedRef.current) return;
             if (form?.settings) {
                 const formSettings = form.settings as Record<string, unknown>;
 
@@ -210,6 +301,7 @@ export default function FormSettings({ onSave }: Readonly<FormSettingsProps>) {
 
     function set<K extends keyof FormSettingsData>(key: K) {
         return (value: FormSettingsData[K]) => {
+            touchedRef.current = true;
             setSettings((prev) => ({
                 ...prev,
                 [key]: value,
@@ -217,12 +309,54 @@ export default function FormSettings({ onSave }: Readonly<FormSettingsProps>) {
         };
     }
 
-    const handleSave = () => {
-        updateFormState((prev) => ({
-            ...prev,
-            settings: toProviderPayload(settings),
-        }));
-        onSave?.(settings);
+    const handleSave = async () => {
+        const targetId = form?.id;
+        if (!form || !targetId) {
+            toast.error('Form is still loading. Try again in a moment.');
+            return;
+        }
+        if (phase === 'saving') return;
+        setPhase('saving');
+        setSaveError(null);
+        try {
+            updateFormState((prev) => ({
+                ...prev,
+                settings: toProviderPayload(settings),
+            }));
+            onSave?.(settings);
+
+            // Let the debounced autosave persist + enqueue first, then push
+            // immediately instead of waiting out the 4s flush timer.
+            await new Promise((resolve) => setTimeout(resolve, 650));
+            const outcome = await flushFormNow(targetId);
+
+            if (outcome.sent) {
+                touchedRef.current = false;
+                if (!mountedRef.current) return;
+                setPhase('saved');
+                toast.success('Settings synced to server.');
+                window.setTimeout(() => {
+                    if (!mountedRef.current) return;
+                    setPhase((p) => (p === 'saved' ? 'idle' : p));
+                }, 2000);
+            } else if ((outcome.changes ?? 0) > 0) {
+                throw new Error(outcome.message ?? 'Sync did not complete.');
+            } else {
+                // Nothing was queued — surface why (e.g. expired session)
+                // instead of pretending success.
+                throw new Error(
+                    getSyncError(targetId) ??
+                        'Nothing to sync. Change a setting and retry.'
+                );
+            }
+        } catch (error) {
+            const message =
+                error instanceof Error ? error.message : 'Save failed.';
+            if (!mountedRef.current) return;
+            setSaveError(message);
+            setPhase('idle');
+            toast.error(message);
+        }
     };
 
     return (
@@ -429,14 +563,49 @@ export default function FormSettings({ onSave }: Readonly<FormSettingsProps>) {
                     </section>
                 </div>
 
-                <div className="border-theme-form-container-border mt-12 flex justify-end border-t pt-6">
+                <div className="border-theme-form-container-border mt-12 flex flex-col items-end gap-2 border-t pt-6">
+                    {saveError ? (
+                        <p role="alert" className="text-xs text-red-500">
+                            {saveError}
+                        </p>
+                    ) : null}
                     <button
                         type="button"
-                        onClick={handleSave}
-                        className="rounded-md bg-[#2F4858] px-4 py-2 text-[13.5px] font-medium text-white transition-colors"
+                        onClick={() => void handleSave()}
+                        disabled={!isDirty || phase === 'saving'}
+                        aria-live="polite"
+                        className={cn(
+                            'flex items-center gap-2 rounded-md px-4 py-2 text-[13.5px] font-medium transition-colors',
+                            phase === 'saved'
+                                ? 'bg-green-700 text-white'
+                                : !isDirty || phase === 'saving'
+                                  ? 'bg-theme-form-on-surface/10 text-theme-form-on-surface/50 cursor-not-allowed'
+                                  : 'bg-[#2F4858] text-white hover:opacity-90'
+                        )}
                     >
-                        Save changes
+                        {phase === 'saving' ? (
+                            <>
+                                <span className="material-symbols-outlined animate-spin text-base">
+                                    progress_activity
+                                </span>
+                                Saving…
+                            </>
+                        ) : phase === 'saved' ? (
+                            <>
+                                <span className="material-symbols-outlined text-base">
+                                    check
+                                </span>
+                                Saved
+                            </>
+                        ) : (
+                            'Save changes'
+                        )}
                     </button>
+                    {!isDirty && phase === 'idle' ? (
+                        <p className="text-theme-form-on-surface/50 text-xs">
+                            No unsaved changes
+                        </p>
+                    ) : null}
                 </div>
             </div>
         </div>

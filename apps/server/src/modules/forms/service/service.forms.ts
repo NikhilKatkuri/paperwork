@@ -15,6 +15,7 @@ import {
 import { emailQueue } from '@/queues';
 import fieldsValidator from '../validators/validator.feilds';
 import { formIndexCache } from '@/redis/formIndex';
+import { logger, logError } from '@/utils/logger';
 
 class FormsService {
     /**
@@ -110,6 +111,15 @@ class FormsService {
             }),
         } as unknown as FormDto;
         } catch (error) {
+            // Never mask the cause: the generic message reaches the client,
+            // but the real error (validation, duplicate key, transaction)
+            // must be in the logs or failures are untraceable.
+            if (!(error instanceof AppError)) {
+                logError(logger, 'form.create_failed', error, {
+                    event: 'FORM_CREATE_FAILED',
+                    userId,
+                });
+            }
             if (error instanceof AppError) throw error;
             throw AppError.FormCreationFailed('Failed to create form');
         } finally {
@@ -135,14 +145,23 @@ class FormsService {
             throw AppError.FormNotFound('Form not found');
         }
 
+        // NOTE: never object-spread a Mongoose document (`{...doc}` yields
+        // internal `$__`/`_doc` fields, not the data — this previously
+        // shipped garbage sections/questions that crashed the editor).
+        // `toJSON()` applies the transform (`_id` → `id`, dates → ISO).
+        const { formId: _formId, ...formData } = form.toJSON() as any;
         return {
-            ...form.toJSON(),
-            sections: sections.map(({ formId: _formId, ...section }) =>
-                section.toJSON ? section.toJSON() : section
-            ),
-            questions: questions.map(({ formId: _formId, ...question }) =>
-                question.toJSON ? question.toJSON() : question
-            ),
+            ...formData,
+            sections: sections.map((section) => {
+                const { formId: _sFormId, ...rest } =
+                    section.toJSON() as any;
+                return rest;
+            }),
+            questions: questions.map((question) => {
+                const { formId: _qFormId, ...rest } =
+                    question.toJSON() as any;
+                return rest;
+            }),
         } as unknown as FormDto;
     }
 
@@ -370,6 +389,13 @@ class FormsService {
                 .select('-__v')
                 .lean();
         } catch (error) {
+            if (!(error instanceof AppError)) {
+                logError(logger, 'form.bulk_update_failed', error, {
+                    event: 'FORM_BULK_UPDATE_FAILED',
+                    userId,
+                    formId,
+                });
+            }
             if (error instanceof AppError) throw error;
             throw AppError.Internal('Failed to update form and its components');
         } finally {
@@ -420,6 +446,11 @@ class FormsService {
     /**
      * Flips isPublished/isPrivate.
      *
+     * Idempotent: requesting the state the form is already in returns the
+     * form instead of throwing. The editor cannot always know the server
+     * state (stale local cache), and a 409 there surfaces as a confusing
+     * "already published" error for an action the user considers valid.
+     *
      * No cache invalidation here: the id/name index only holds `_id` and `name`,
      * and neither changes here. The 5 minute Redis TTL is the safety net.
      */
@@ -435,9 +466,7 @@ class FormsService {
         }
 
         if (form[field] === bool) {
-            throw AppError.Conflict(
-                `Form is already ${bool ? 'published' : 'unpublished'}`
-            );
+            return form.toJSON();
         }
 
         form[field] = bool;

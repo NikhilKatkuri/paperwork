@@ -6,6 +6,7 @@ import { createDefaultForm } from '@/features/forms/utils/default';
 import { useAuth } from '@/providers';
 import { FormDto } from '@paperwork/types';
 import { useRef } from 'react';
+import { toast } from 'sonner';
 
 function UserFab() {
     const { loading, createForm } = useCreateForm();
@@ -23,8 +24,18 @@ function UserFab() {
 
             const res = await createForm(defaultForm);
 
-            if (!res.ok || !res.data || !res.data.id) {
-                console.error('Failed to create form on server:', res);
+            if (!res.ok) {
+                console.error('Failed to create form on server:', res.error);
+                toast.error(res.error || 'Failed to create form');
+                return;
+            }
+
+            if (!res.data || !res.data.id) {
+                console.error(
+                    'Form creation returned no form id:',
+                    res.data
+                );
+                toast.error('Server did not return the new form. Try again.');
                 return;
             }
 
@@ -36,7 +47,12 @@ function UserFab() {
                 userId: formDto.userId ?? decodedToken?.userId ?? '',
             });
         } catch (error) {
-            console.error('Form creation failed:', error);
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : 'Form creation failed';
+            console.error('Form creation failed:', message);
+            toast.error(message);
             stateRef.current = false;
             return;
         }

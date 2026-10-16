@@ -6,7 +6,7 @@ import type { ResponseFilters } from '../../../api/user/formResponses';
 import { QuestionDoc } from '@paperwork/types';
 
 const CONTROL =
-    'rounded-lg border border-theme-form-container-border/60 bg-theme-form-container text-sm text-theme-form-on-surface outline-none transition-colors placeholder:text-theme-form-on-surface/40 hover:border-theme-form-container-active/40 focus:border-theme-form-container-active';
+    'border-theme-form-container-border bg-theme-form-container text-theme-form-on-container rounded-lg border text-sm outline-none transition-colors placeholder:text-theme-form-on-surface/40 hover:border-theme-form-container-active focus:border-theme-form-container-active';
 
 interface ResponseFiltersProps {
     filters: ResponseFilters;
@@ -46,7 +46,7 @@ export default function ResponseFiltersBar({
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             {/* Outlined search field with a leading icon. */}
             <div className="relative flex-1 sm:min-w-60">
-                <span className="material-symbols-outlined text-theme-form-on-surface/40 pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-lg">
+                <span className="material-symbols-outlined pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-lg text-neutral-400">
                     search
                 </span>
                 <input
@@ -102,7 +102,7 @@ export default function ResponseFiltersBar({
                         setTerm('');
                         onChange({ sort: 'newest' });
                     }}
-                    className="text-theme-form-on-surface/70 hover:bg-theme-form-on-surface/5 flex shrink-0 items-center gap-1 self-start rounded-lg px-2.5 py-2 text-xs transition-colors sm:self-auto"
+                    className="flex shrink-0 items-center gap-1 self-start rounded-lg px-2.5 py-2 text-xs text-neutral-600 transition-colors hover:bg-neutral-100 sm:self-auto"
                 >
                     <span className="material-symbols-outlined text-base">
                         close

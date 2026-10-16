@@ -11,6 +11,7 @@ interface MenuButtonProps {
     onClickEdit?: () => void;
     onClickDuplicate?: () => void;
     onClickDelete?: () => void;
+    busy?: boolean;
     showMenu: boolean;
     setShowMenu: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -20,6 +21,7 @@ const MenuButton = ({
     onClickEdit,
     onClickDuplicate,
     onClickDelete,
+    busy,
     showMenu,
     setShowMenu,
 }: MenuButtonProps) => (
@@ -30,13 +32,19 @@ const MenuButton = ({
                 e.preventDefault();
                 setShowMenu((prev) => !prev);
             }}
+            aria-label="Form actions"
+            aria-expanded={showMenu}
+            aria-haspopup="menu"
             className="hover:bg-brand-light/60 flex h-10 w-10 items-center justify-center rounded-full transition-all duration-150 ease-in-out"
         >
             <span className="material-symbols-outlined">more_vert</span>
         </button>
 
         {showMenu && (
-            <div className="absolute top-12 right-0 z-50 w-36 rounded-md border border-gray-200 bg-white py-1 shadow-lg *:text-sm">
+            <div
+                role="menu"
+                className="absolute top-12 right-0 z-50 w-36 rounded-md border border-gray-200 bg-white py-1 shadow-lg *:text-sm"
+            >
                 <button
                     onClick={(e) => {
                         e.preventDefault();
@@ -53,9 +61,10 @@ const MenuButton = ({
                         onClickDuplicate?.();
                         setShowMenu(false);
                     }}
-                    className="flex w-full items-center px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
+                    disabled={busy}
+                    className="flex w-full items-center px-4 py-2 text-left text-gray-700 hover:bg-gray-100 disabled:opacity-50"
                 >
-                    Duplicate
+                    {busy ? 'Working…' : 'Duplicate'}
                 </button>
                 <button
                     onClick={(e) => {
@@ -63,9 +72,10 @@ const MenuButton = ({
                         onClickDelete?.();
                         setShowMenu(false);
                     }}
-                    className="flex w-full items-center px-4 py-2 text-left text-red-600 hover:bg-red-50"
+                    disabled={busy}
+                    className="flex w-full items-center px-4 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
                 >
-                    Delete
+                    {busy ? 'Working…' : 'Delete'}
                 </button>
             </div>
         )}
@@ -83,7 +93,16 @@ const Icon = () => (
 export default function FormsView({
     viewAsRow,
     form,
-}: Readonly<{ viewAsRow: boolean; form?: FormDB }>) {
+    busy,
+    onDelete,
+    onDuplicate,
+}: Readonly<{
+    viewAsRow: boolean;
+    form?: FormDB;
+    busy?: boolean;
+    onDelete?: () => void;
+    onDuplicate?: () => void;
+}>) {
     const [showMenu, setShowMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -100,11 +119,16 @@ export default function FormsView({
                 setShowMenu(false);
             }
         }
+        function handleEscape(event: KeyboardEvent) {
+            if (event.key === 'Escape') setShowMenu(false);
+        }
         if (showMenu) {
             document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('keydown', handleEscape);
         }
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
         };
     }, [showMenu]);
 
@@ -128,6 +152,9 @@ export default function FormsView({
                             ref={menuRef}
                             showMenu={showMenu}
                             setShowMenu={setShowMenu}
+                            busy={busy}
+                            onClickDelete={onDelete}
+                            onClickDuplicate={onDuplicate}
                         />
                     </div>
                 </div>
@@ -148,6 +175,9 @@ export default function FormsView({
                         ref={menuRef}
                         showMenu={showMenu}
                         setShowMenu={setShowMenu}
+                        busy={busy}
+                        onClickDelete={onDelete}
+                        onClickDuplicate={onDuplicate}
                     />
                 </div>
             </div>

@@ -7,12 +7,6 @@ export interface AccountData {
     twofactorEnabled: boolean;
 }
 
-interface AccountResponse {
-    success: boolean;
-    data: AccountData;
-    message: string;
-}
-
 export interface CacheItem {
     expAt: number;
     data: AccountData;
@@ -63,11 +57,13 @@ function useAccountMetaOnly() {
 
         try {
             const path = endpoints.auth.account;
-            const res = await http.get<AccountResponse>(path);
+            // The server wraps the payload as `{ success, data }`; the
+            // client unwraps it, so `data` here is the account object.
+            const res = await http.get<AccountData>(path);
 
-            if (res.data.success && res.data.data) {
-                storeCache(res.data.data);
-                return res.data.data;
+            if (res.data) {
+                storeCache(res.data);
+                return res.data;
             }
 
             return null;

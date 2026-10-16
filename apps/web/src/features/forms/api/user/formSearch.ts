@@ -14,19 +14,13 @@ export interface FormSearchHit {
 }
 
 interface SearchResponse {
-    success: boolean;
-    message: string;
-    data: { forms: FormSearchHit[] };
+    forms: FormSearchHit[];
 }
 
 interface FormResponse {
-    success: boolean;
-    message: string;
-    data: {
-        form: Partial<FormDB>;
-        sections: FormDB['sections'];
-        questions: (FormDB['questions'][number] & { sectionId?: string })[];
-    };
+    form: Partial<FormDB>;
+    sections: FormDB['sections'];
+    questions: (FormDB['questions'][number] & { sectionId?: string })[];
 }
 
 /** Below this length a query is too broad to be worth running at all. */
@@ -116,13 +110,7 @@ export function useFormSearch(query: string) {
                     .then((res) => {
                         if (controller.signal.aborted) return;
 
-                        if (!res.data.success) {
-                            throw new Error(
-                                res.data.message || 'Search failed'
-                            );
-                        }
-
-                        const hits = res.data.data?.forms ?? [];
+                        const hits = res.data.forms ?? [];
 
                         storageService.set(
                             hitCacheKey(term),
@@ -180,11 +168,7 @@ export function useEnsureForm() {
                 endpoints.forms.formById(formId)
             );
 
-            if (!res.data.success) {
-                throw new Error(res.data.message || 'Failed to load form');
-            }
-
-            const { form, sections, questions } = res.data.data;
+            const { form, sections, questions } = res.data;
 
             const sectionIndexById = new Map(
                 sections.map((section) => [section.id, section.index])
