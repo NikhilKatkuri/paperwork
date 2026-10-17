@@ -102,6 +102,18 @@ export const rateLimitConfig: Record<string, LimiterPreset> = {
             'Action rate limit exceeded. Please slow down and try again later.',
         severity: 'medium',
     },
+
+    /**
+     * Dedicated preset for the submission status poll. Polling is a
+     * well-behaved client (1.5s interval, ≤20 attempts), but it shares the
+     * `low` bucket with real submits in the current routes — a busy page
+     * could throttle its own submission. Separate window, generous ceiling.
+     */
+    submissionStatus: {
+        windowMs: 15 * 60 * 1000,
+        limit: scale(200),
+        severity: 'low',
+    },
 } satisfies Record<string, LimiterPreset>;
 
 export const buildRateLimitMessage = (message?: string) => ({

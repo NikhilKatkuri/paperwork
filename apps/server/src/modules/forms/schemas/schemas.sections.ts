@@ -1,9 +1,11 @@
-import { SectionDocument } from '@/types';
+import { SectionDocument, TemplateDocument } from '@/types';
 import { SectionAction, SectionRule } from '@paperwork/types';
 import mongoose, { Schema } from 'mongoose';
 import transform from '@/schemas/tranformer';
 
-export const sectionActionSchema = new Schema<SectionAction & { sectionId?: string }>(
+export const sectionActionSchema = new Schema<
+    SectionAction & { sectionId?: string }
+>(
     {
         type: {
             type: String,
@@ -31,6 +33,20 @@ const rulesSchema = new Schema<SectionRule>({
     expectedValue: { type: Schema.Types.Mixed, required: true },
     action: { type: sectionActionSchema, required: true },
 });
+
+export const SectionTemplateSchema = new Schema<
+    TemplateDocument['sections'][number]
+>(
+    {
+        id: { type: String, required: true, index: true },
+        index: { type: Number, required: true, min: 0 },
+        title: { type: String, required: true, maxlength: 200 },
+        description: { type: String, required: false, maxlength: 1000 },
+        rules: { type: [rulesSchema], default: [], required: false },
+        defaultAction: { type: sectionActionSchema, required: false },
+    },
+    { _id: false, timestamps: false }
+);
 
 const sectionSchema = new Schema<SectionDocument>(
     {

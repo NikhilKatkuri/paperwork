@@ -12,6 +12,7 @@
         "format:check": "prettier --check src/",
         "update:disposable": "tsx src/scripts/update-disposable-domains.ts",
         "seed:demo": "tsx src/scripts/seed-demo-form.ts",
+        "seed:party-template": "tsx src/scripts/seed-party-template.ts",
         "lint": "eslint src",
         "check-types": "tsc --noEmit"
     },
@@ -25,7 +26,7 @@
         "cloudinary": "^2.10.0",
         "cookie-parser": "^1.4.7",
         "cors": "^2.8.6",
-        "csv-writer": "^1.6.0",
+        "csv-stringify": "^6.9.0",
         "dotenv": "^17.4.2",
         "express": "^5.2.1",
         "express-rate-limit": "^8.5.2",

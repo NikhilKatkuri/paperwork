@@ -3,12 +3,14 @@ import { AppError } from '@/utils/AppError';
 import FormsModel from '@/modules/forms/schemas/schemas.forms';
 import SectionModel from '@/modules/forms/schemas/schemas.sections';
 import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
-import FormResponseModel from '@/modules/forms/schemas/schemas.fill';
+import FormResponseModel, {
+    ResponseCounterModel,
+} from '@/modules/forms/schemas/schemas.fill';
 
-import { FormResponse } from '@paperwork/types';
-import { FormDocument, QuestionDocument } from '@/types';
+import { FormResponse, ValidationRule } from '@paperwork/types';
+import { FormDocument, FormResponseDocument } from '@/types';
 
-import FileService from '@/modules/forms/service/service.internal.file';
+import { logError, logger } from '@/utils/logger';
 
 export interface ResponseQuery {
     search?: string;
@@ -16,9 +18,22 @@ export interface ResponseQuery {
     sort?: 'newest' | 'oldest';
 }
 
+/** Caps for the summary aggregation so free-text answers cannot blow up memory. */
+const SUMMARY_MAX_GROUPS = 5000;
+const SUMMARY_VALUES_PER_QUESTION = 100;
+
 /** Escape a user string before using it inside a `$regex`. */
 function escapeRegex(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+}
+
+/** MongoDB duplicate-key error (E11000). */
+function isDuplicateKeyError(error: unknown): boolean {
+    return Boolean(
+        error &&
+        typeof error === 'object' &&
+        (error as { code?: number }).code === 11000
+    );
 }
 
 /**
@@ -68,15 +83,21 @@ class FillService {
         return true;
     }
 
-    async verifier(form: FormDocument, userId: string, email?: string) {
+    /**
+     * Availability checks shared by the fill read and submit paths.
+     *
+     * The per-user submission limit is intentionally NOT checked here: this
+     * runs on every `GET /fill`, and counting the user's responses just to
+     * serve a form is wasted work. The limit is enforced on write (`post`).
+     */
+    verifier(form: FormDocument, userId: string, email?: string) {
         this.assertFormAvailability(form);
         this.assertAllowedDomain(form, userId, email);
         this.assertFormSchedule(form);
         this.assertMaxResponseLimit(form);
-        await this.assertUserSubmissionLimit(form, userId);
     }
 
-    private async assertOwner(formId: string, ownerId: string) {
+    async assertOwner(formId: string, ownerId: string) {
         const form = await FormsModel.findOne({
             _id: formId,
             userId: ownerId,
@@ -135,31 +156,256 @@ class FillService {
         }
     }
 
-    private async assertUserSubmissionLimit(
-        form: FormDocument,
-        userId: string
+    /**
+     * Atomic per-user submission limit.
+     *
+     * A plain `countDocuments` check races: two concurrent submits both see
+     * `limit - 1` and both insert. Instead, a per-(form,user) counter is
+     * incremented with the limit as a filter — concurrent transactions
+     * touching the same counter document conflict, so at most `limit`
+     * transactions ever commit. An aborted transaction rolls the increment
+     * back together with the response.
+     */
+    private async claimUserSubmissionSlot(
+        formId: string,
+        userId: string,
+        limit: number,
+        session: mongoose.ClientSession
     ): Promise<void> {
-        const limit = form.settings?.maxResponsesPerUser;
-        if (!limit || !userId) return;
+        const counterId = `${formId}:${userId}`;
 
-        const userCount = await FormResponseModel.countDocuments({
-            formId: form.toObject()._id,
+        // Seed from existing responses so a limit added after the fact (or
+        // legacy rows predating the counter) still counts correctly.
+        const existingCount = await FormResponseModel.countDocuments({
+            formId,
             userId,
-        });
+        }).session(session);
 
-        if (userCount >= limit) {
+        await ResponseCounterModel.updateOne(
+            { _id: counterId },
+            { $setOnInsert: { count: existingCount } },
+            { upsert: true, session }
+        );
+
+        const granted = await ResponseCounterModel.findOneAndUpdate(
+            { _id: counterId, count: { $lt: limit } },
+            { $inc: { count: 1 } },
+            { session, returnDocument: 'after' }
+        ).lean();
+
+        if (!granted) {
             throw AppError.FormClosed('User submission limit reached');
         }
     }
 
+    /**
+     * Strict per-question answer validation.
+     *
+     * Presence of required answers is deliberately NOT enforced here: with
+     * conditional navigation the server cannot know which sections the
+     * respondent actually visited (skipped sections must not block submit),
+     * so requiredness stays a client-side concern. Values that ARE sent are
+     * checked against the question's own configuration.
+     */
+    private assertAnswerValid(
+        question: Record<string, any>,
+        values: string[]
+    ): void {
+        const fail = (message: string) => {
+            throw AppError.BadRequest(
+                `Invalid answer for "${question.question ?? 'question'}": ${message}`
+            );
+        };
+
+        switch (question.type) {
+            case 'RADIO':
+            case 'DROP_DOWN':
+            case 'CHOICE': {
+                const options: { label?: unknown }[] =
+                    question.optionsConfig?.options ?? [];
+
+                if (options.length) {
+                    const labels = new Set(
+                        options.map((option) => String(option.label))
+                    );
+                    for (const value of values) {
+                        if (!labels.has(value)) {
+                            fail(
+                                `"${value}" is not one of the configured options`
+                            );
+                        }
+                    }
+                }
+
+                if (question.type !== 'CHOICE' && values.length > 1) {
+                    fail('only one option may be selected');
+                }
+                break;
+            }
+
+            case 'LINEAR_SCALE': {
+                const config = question.scaleConfig;
+                if (config && values.length === 1) {
+                    const n = Number(values[0]);
+                    if (
+                        !Number.isFinite(n) ||
+                        n < config.lowerBound ||
+                        n > config.upperBound
+                    ) {
+                        fail(
+                            `value must be a number between ${config.lowerBound} and ${config.upperBound}`
+                        );
+                    }
+                }
+                break;
+            }
+
+            case 'RATING': {
+                const config = question.ratingConfig;
+                if (config && values.length === 1) {
+                    const n = Number(values[0]);
+                    if (!Number.isInteger(n) || n < 1 || n > config.scale) {
+                        fail(
+                            `rating must be a whole number between 1 and ${config.scale}`
+                        );
+                    }
+                }
+                break;
+            }
+
+            default:
+                break;
+        }
+
+        const rule: ValidationRule | undefined = question.validationRule;
+        if (rule) this.assertValidationRule(rule, values, fail);
+    }
+
+    private assertValidationRule(
+        rule: ValidationRule,
+        values: string[],
+        fail: (message: string) => never
+    ): void {
+        const first = values[0] ?? '';
+
+        switch (rule.ruleType) {
+            case 'EMAIL':
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(first)) {
+                    fail(
+                        rule.customErrorMessage ??
+                            'must be a valid email address'
+                    );
+                }
+                break;
+
+            case 'URL': {
+                let valid = false;
+                try {
+                    const url = new URL(first);
+                    valid =
+                        url.protocol === 'http:' || url.protocol === 'https:';
+                } catch {
+                    valid = false;
+                }
+                if (!valid) {
+                    fail(rule.customErrorMessage ?? 'must be a valid URL');
+                }
+                break;
+            }
+
+            case 'MIN_CHAR_COUNT':
+                if (values.join(' ').length < rule.value) {
+                    fail(
+                        rule.customErrorMessage ??
+                            `must be at least ${rule.value} characters`
+                    );
+                }
+                break;
+
+            case 'MAX_CHAR_COUNT':
+                if (values.join(' ').length > rule.value) {
+                    fail(
+                        rule.customErrorMessage ??
+                            `must be at most ${rule.value} characters`
+                    );
+                }
+                break;
+
+            case 'CHECKBOX_MIN_SELECT':
+                if (values.length < rule.value) {
+                    fail(
+                        rule.customErrorMessage ??
+                            `select at least ${rule.value} option(s)`
+                    );
+                }
+                break;
+
+            case 'CHECKBOX_MAX_SELECT':
+                if (values.length > rule.value) {
+                    fail(
+                        rule.customErrorMessage ??
+                            `select at most ${rule.value} option(s)`
+                    );
+                }
+                break;
+
+            case 'NUMBER_GREATER_THAN': {
+                const n = Number(first);
+                if (!Number.isFinite(n) || n <= rule.value) {
+                    fail(
+                        rule.customErrorMessage ??
+                            `must be greater than ${rule.value}`
+                    );
+                }
+                break;
+            }
+
+            case 'NUMBER_LESS_THAN': {
+                const n = Number(first);
+                if (!Number.isFinite(n) || n >= rule.value) {
+                    fail(
+                        rule.customErrorMessage ??
+                            `must be less than ${rule.value}`
+                    );
+                }
+                break;
+            }
+
+            case 'NUMBER_BETWEEN': {
+                const n = Number(first);
+                if (!Number.isFinite(n) || n < rule.min || n > rule.max) {
+                    fail(
+                        rule.customErrorMessage ??
+                            `must be a number between ${rule.min} and ${rule.max}`
+                    );
+                }
+                break;
+            }
+
+            case 'REGEX_MATCH': {
+                try {
+                    const pattern = new RegExp(rule.pattern);
+                    if (!pattern.test(first)) {
+                        fail(
+                            rule.customErrorMessage ??
+                                'does not match the required format'
+                        );
+                    }
+                } catch {
+                    // An unparsable pattern was accepted at build time by a
+                    // bug; skip the check rather than blocking submissions.
+                }
+                break;
+            }
+        }
+    }
+
     async get(formId: string, userId: string, email?: string) {
-        const form = (await FormsModel.findById(formId)
-            .select('-__v')
-            .lean()) as FormDocument;
-
-        await this.verifier(form, userId, email);
-
-        const [sections, allQuestions] = await Promise.all([
+        // All three reads are independent: fetch them concurrently, then
+        // verify the form. A missing/unavailable form still throws the
+        // correct status via `verifier`.
+        const [form, sections, allQuestions] = await Promise.all([
+            FormsModel.findById(formId).select('-__v').lean(),
             SectionModel.find({ formId })
                 .sort({ index: 1 })
                 .select('-__v -createdAt -updatedAt')
@@ -169,6 +415,8 @@ class FillService {
                 .select('-__v -createdAt -updatedAt')
                 .lean(),
         ]);
+
+        this.verifier(form as FormDocument, userId, email);
 
         if (!sections.length)
             throw AppError.SectionNotFound('Form has no content');
@@ -195,13 +443,34 @@ class FillService {
     }
 
     async post(data: FormResponse) {
-        const { formId, userId, email, answers, metadata } = data;
+        const {
+            formId,
+            userId,
+            email,
+            answers,
+            metadata,
+            idempotencyKey,
+            isCompleted,
+            currentSectionId,
+        } = data;
         // Basic shape validation: valid question IDs, no duplicates,
         // non-empty values. Full per-rule validation happens per question
         // type where config is available; at minimum reject junk.
         if (!Array.isArray(answers) || answers.length === 0) {
             throw AppError.BadRequest('Answers are required');
         }
+
+        // Idempotent replay: the same key for the same form returns the
+        // already-stored response instead of creating a second one. The
+        // unique index below closes the concurrent-submit race.
+        if (idempotencyKey) {
+            const existing = await FormResponseModel.findOne({
+                formId,
+                idempotencyKey,
+            }).lean();
+            if (existing) return existing as FormResponseDocument;
+        }
+
         const session = await mongoose.startSession();
         session.startTransaction();
 
@@ -231,19 +500,38 @@ class FillService {
                 );
             }
 
-            await this.verifier(updatedForm as FormDocument, userId, email);
+            this.verifier(updatedForm as FormDocument, userId, email);
 
-            const validQuestionIds = await QuestionsModel.find({ formId })
-                .distinct('_id')
-                .session(session);
+            const limit = updatedForm.settings?.maxResponsesPerUser;
+            if (limit && userId) {
+                await this.claimUserSubmissionSlot(
+                    formId,
+                    userId,
+                    limit,
+                    session
+                );
+            }
 
-            const validIdStrings = new Set(
-                validQuestionIds.map((id) => id.toString())
+            // One read gives both the validity set and the configuration
+            // needed to validate each answer against its own question.
+            const questions = await QuestionsModel.find({ formId })
+                .select(
+                    '_id question type optionsConfig ratingConfig scaleConfig validationRule'
+                )
+                .session(session)
+                .lean();
+
+            const questionById = new Map(
+                questions.map((question) => [
+                    question._id.toString(),
+                    question as Record<string, any>,
+                ])
             );
+
             const seen = new Set<string>();
             for (const ans of answers) {
                 const qid = ans?.questionId?.toString();
-                if (!qid || !validIdStrings.has(qid)) {
+                if (!qid || !questionById.has(qid)) {
                     throw AppError.BadRequest('Invalid questions');
                 }
                 if (seen.has(qid)) {
@@ -254,10 +542,16 @@ class FillService {
                 if (
                     !Array.isArray(vals) ||
                     vals.length === 0 ||
-                    vals.some((v: unknown) => typeof v !== 'string' || v.trim() === '')
+                    vals.some(
+                        (v: unknown) => typeof v !== 'string' || v.trim() === ''
+                    )
                 ) {
-                    throw AppError.BadRequest('Answer values must be non-empty strings');
+                    throw AppError.BadRequest(
+                        'Answer values must be non-empty strings'
+                    );
                 }
+
+                this.assertAnswerValid(questionById.get(qid)!, vals);
             }
 
             const response = await FormResponseModel.create(
@@ -268,6 +562,9 @@ class FillService {
                         email,
                         answers,
                         metadata,
+                        idempotencyKey,
+                        isCompleted,
+                        currentSectionId,
                     },
                 ],
                 { session }
@@ -277,6 +574,17 @@ class FillService {
             return response[0];
         } catch (error) {
             await session.abortTransaction();
+
+            // Concurrent duplicate: two submissions with the same key raced
+            // and the unique index rejected the loser. Return the stored one.
+            if (isDuplicateKeyError(error) && idempotencyKey) {
+                const existing = await FormResponseModel.findOne({
+                    formId,
+                    idempotencyKey,
+                }).lean();
+                if (existing) return existing as FormResponseDocument;
+            }
+
             throw error;
         } finally {
             session.endSession();
@@ -302,15 +610,18 @@ class FillService {
         const safePage = Math.max(1, Math.trunc(page) || 1);
         const skip = (safePage - 1) * safeLimit;
 
+        const direction = options.sort === 'oldest' ? 1 : -1;
+
         const result = await FormResponseModel.aggregate([
             { $match: buildResponseMatch(formId.toString(), options) },
             {
                 $facet: {
                     data: [
                         {
-                            $sort: {
-                                createdAt: options.sort === 'oldest' ? 1 : -1,
-                            },
+                            // `_id` breaks ties: without it, rows sharing a
+                            // millisecond timestamp could repeat or vanish
+                            // across pages.
+                            $sort: { createdAt: direction, _id: direction },
                         },
                         { $skip: skip },
                         { $limit: safeLimit },
@@ -339,7 +650,11 @@ class FillService {
      * Per-question totals across every response, not just one page, so the
      * summary does not change as the user pages through the list.
      */
-    async responsesSummary(formId: string, options: ResponseQuery = {}, ownerId?: string) {
+    async responsesSummary(
+        formId: string,
+        options: ResponseQuery = {},
+        ownerId?: string
+    ) {
         if (ownerId) await this.assertOwner(formId, ownerId);
         else {
             const form = await FormsModel.findById(formId).lean();
@@ -348,30 +663,55 @@ class FillService {
 
         const match = buildResponseMatch(formId.toString(), options);
 
-        const [totalResponses, breakdown] = await Promise.all([
-            FormResponseModel.countDocuments(match),
-            FormResponseModel.aggregate([
-                { $match: match },
-                { $unwind: '$answers' },
-                { $unwind: '$answers.value' },
-                {
-                    $group: {
-                        _id: {
-                            questionId: '$answers.questionId',
-                            value: '$answers.value',
+        /**
+         * One round-trip instead of countDocuments + aggregate. `$facet`
+         * computes the total and the per-value breakdown from the same
+         * cursor position, so the counts and rows cannot disagree mid-write.
+         *
+         * Free-text questions can produce arbitrarily many distinct values,
+         * so the group stage is bounded: the top GROUPS results by count.
+         * `answered` is derived from those groups (a value that only occurs
+         * once can fall off the tail on extremely diverse forms).
+         */
+        const result = await FormResponseModel.aggregate([
+            { $match: match },
+            {
+                $facet: {
+                    total: [{ $count: 'count' }],
+                    breakdown: [
+                        { $unwind: '$answers' },
+                        { $unwind: '$answers.value' },
+                        {
+                            $group: {
+                                _id: {
+                                    questionId: '$answers.questionId',
+                                    value: '$answers.value',
+                                },
+                                count: { $sum: 1 },
+                            },
                         },
-                        count: { $sum: 1 },
-                    },
+                        { $sort: { count: -1 } },
+                        { $limit: SUMMARY_MAX_GROUPS },
+                    ],
                 },
-            ]),
-        ]);
+            },
+        ])
+            .allowDiskUse(true)
+            .option({ maxTimeMS: 10_000 })
+            .exec();
+
+        const totalResponses = result[0]?.total?.[0]?.count ?? 0;
+        const breakdown: {
+            _id: { questionId: string; value: string };
+            count: number;
+        }[] = result[0]?.breakdown ?? [];
 
         const byQuestion = new Map<
             string,
             { answered: number; values: { value: string; count: number }[] }
         >();
 
-        breakdown.forEach((row: any) => {
+        breakdown.forEach((row) => {
             const { questionId, value } = row._id;
             const entry = byQuestion.get(questionId) ?? {
                 answered: 0,
@@ -387,8 +727,9 @@ class FillService {
             ([questionId, entry]) => ({
                 questionId,
                 answered: entry.answered,
-                // Most-answered first so the summary reads top-down.
-                values: entry.values.toSorted((a, b) => b.count - a.count),
+                // The top values per question; the query is pre-sorted by
+                // count so a simple slice preserves the most-answered first.
+                values: entry.values.slice(0, SUMMARY_VALUES_PER_QUESTION),
             })
         );
 
@@ -413,7 +754,31 @@ class FillService {
         return response;
     }
 
-    async exportResponses(formId: string, exportType: string, ownerId?: string) {
+    /**
+     * Streaming export.
+     *
+     * Returns a cursor instead of a materialised string: the controller
+     * pipes it through a CSV serializer straight to the socket, so memory
+     * stays flat regardless of response count and a client abort stops the
+     * DB read (the cursor is closed when iteration stops).
+     *
+     * Columns are keyed by question id, not by title, so two questions
+     * sharing a title can no longer overwrite each other's column.
+     */
+    async exportResponses(
+        formId: string,
+        exportType: string,
+        ownerId?: string,
+        options: ResponseQuery = {}
+    ): Promise<{
+        cursor: AsyncIterable<Record<string, any>>;
+        questionIdToColumn: Map<string, string>;
+        columns: string[];
+    }> {
+        if (exportType.toLowerCase() !== 'csv') {
+            throw AppError.BadRequest('Unsupported export type');
+        }
+
         try {
             if (ownerId) await this.assertOwner(formId, ownerId);
             else {
@@ -421,41 +786,63 @@ class FillService {
                 if (!form) throw AppError.FormNotFound('Form not found');
             }
 
-            const questions = (await QuestionsModel.find({
-                formId,
-            })) as QuestionDocument[];
+            const questions = await QuestionsModel.find({ formId })
+                .sort({ index: 1 })
+                .select('_id question')
+                .lean();
 
             if (!questions.length)
                 throw AppError.QuestionNotFound(
                     'No questions found for this form'
                 );
 
-            const responses = await FormResponseModel.find({ formId })
-                .sort({ createdAt: -1 })
-                .limit(10000)
-                .select('-__v -updatedAt')
-                .lean();
-
-            if (responses.length === 0) {
+            // Cheap indexed count so "nothing to export" is a 400 rather
+            // than a headers-only CSV.
+            const total = await FormResponseModel.countDocuments(
+                buildResponseMatch(formId, options)
+            );
+            if (total === 0) {
                 throw AppError.BadRequest('No responses to export');
             }
 
-            const fileService = new FileService();
-            const questionIdMap = new Map<string, string>();
+            const seen = new Map<string, number>();
+            const questionIdToColumn = new Map<string, string>();
+            const columns: string[] = ['email', 'submittedAt'];
 
-            questions.forEach((q) =>
-                questionIdMap.set(q._id?.toString(), q.question)
-            );
+            for (const question of questions) {
+                const base =
+                    String(question.question ?? '').trim() ||
+                    'Untitled question';
+                const n = seen.get(base) ?? 0;
+                seen.set(base, n + 1);
 
-            const headers = questions.map((q) => q.question);
-
-            if (exportType.toLowerCase() === 'csv') {
-                return fileService.CSVExport(headers, questionIdMap, responses);
+                const column = n === 0 ? base : `${base} (${n + 1})`;
+                questionIdToColumn.set(String(question._id), column);
+                columns.push(column);
             }
 
-            throw AppError.BadRequest('Unsupported export type');
+            const cursor = FormResponseModel.find(
+                buildResponseMatch(formId, options)
+            )
+                .sort({ createdAt: -1, _id: -1 })
+                .select('email answers.questionId answers.value createdAt')
+                .lean()
+                .cursor({ batchSize: 500 });
+
+            return {
+                cursor: cursor as unknown as AsyncIterable<Record<string, any>>,
+                questionIdToColumn,
+                columns,
+            };
         } catch (error) {
             if (error instanceof AppError) throw error;
+            if (error instanceof mongoose.Error.CastError) {
+                throw AppError.BadRequest('Invalid id');
+            }
+            logError(logger, 'form.responses_export_failed', error, {
+                event: 'DB_QUERY_FAILED',
+                formId,
+            });
             throw AppError.Internal('Failed to export responses');
         }
     }

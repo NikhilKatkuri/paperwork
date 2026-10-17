@@ -1,4 +1,4 @@
-import { QuestionDocument } from '@/types';
+import { QuestionDocument, TemplateDocument } from '@/types';
 import mongoose, { Schema } from 'mongoose';
 import transform from '@/schemas/tranformer';
 import { sectionActionSchema } from './schemas.sections';
@@ -121,6 +121,31 @@ const fieldValidationRuleSchema = new Schema(
     { _id: false }
 );
 
+export const QuestionTemplateSchema = new Schema<
+    TemplateDocument['questions'][number]
+>(
+    {
+        sectionId: { type: String, required: true, index: true },
+        index: { type: Number, required: true, default: 0, min: 0 },
+        slug: { type: String, required: true, index: true },
+
+        type: { type: String, enum: questionEnum, required: true },
+        question: { type: String, required: true, maxlength: 500 },
+
+        helpText: { type: String, default: '', maxlength: 500 },
+
+        optionsConfig: { type: optionConfigSchema, default: undefined },
+        dependsOn: { type: questionDependsOnSchema, default: undefined },
+        ratingConfig: { type: ratingConfigSchema, default: undefined },
+        matrixConfig: { type: matrixConfigSchema, default: undefined },
+        validationRule: { type: fieldValidationRuleSchema, default: undefined },
+
+        placeholder: { type: String, default: '', maxlength: 100 },
+        isRequired: { type: Boolean, default: false },
+    },
+    { _id: false, timestamps: false }
+);
+
 const questionsSchema = new Schema<QuestionDocument>(
     {
         formId: { type: String, required: true, index: true },
@@ -177,7 +202,10 @@ questionsSchema.pre('validate', function (this: QuestionDocument) {
     }
 
     if (this.type === 'RATING' && !this.ratingConfig) {
-        this.invalidate('ratingConfig', 'RATING questions require ratingConfig');
+        this.invalidate(
+            'ratingConfig',
+            'RATING questions require ratingConfig'
+        );
     }
 
     if (
@@ -192,7 +220,10 @@ questionsSchema.pre('validate', function (this: QuestionDocument) {
     }
 
     if (this.type === 'MATRIX' && !this.matrixConfig) {
-        this.invalidate('matrixConfig', 'MATRIX questions require matrixConfig');
+        this.invalidate(
+            'matrixConfig',
+            'MATRIX questions require matrixConfig'
+        );
     }
 
     if (this.optionsConfig && this.optionsConfig.options.length > 0) {

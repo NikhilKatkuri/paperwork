@@ -1,19 +1,21 @@
 import { cacheRedis } from '@/redis';
 import FillService from '@/modules/forms/service/service.fill';
 import { emailQueue } from '@/queues';
-import { Job } from 'bullmq';
+import { Job, UnrecoverableError } from 'bullmq';
 import { worker } from '@/workers/index';
 import { logError, workerLogger } from '@/utils/logger';
+import { AppError } from '@/utils/AppError';
 
 interface SubmissionJob {
     submissionId: string;
     formId: string;
     userId: string;
     email: string;
-    answers: { questionId: string; slug: string; value: string[] }[];
+    answers: { questionId: string; questionSlug?: string; value: string[] }[];
     metadata: { userAgent: string; ipAddress: string };
     idempotencyKey: string;
     isCompleted: boolean;
+    currentSectionId?: string;
 }
 
 const submissionKey = (submissionId: string) => `submission:${submissionId}`;
@@ -44,29 +46,23 @@ class SubmissionWorker {
         });
     }
 
+    /**
+     * Single-write status update. The base record (submissionId/formId/
+     * createdAt) is read once per job in `process` instead of doing a
+     * GET-then-SET for every transition.
+     */
     private async updateStatus(
         submissionId: string,
         status: 'processing' | 'done' | 'failed',
-        extra: Record<string, string> = {}
+        extra: Record<string, unknown> = {},
+        base: Record<string, unknown> = {}
     ): Promise<void> {
-        let parsed: any = null;
-        try {
-            const current = await cacheRedis.get(submissionKey(submissionId));
-            if (!current) return;
-            try {
-                parsed = JSON.parse(current);
-            } catch {
-                // Poisoned status value: overwrite with a clean record.
-                parsed = { submissionId };
-            }
-        } catch {
-            return;
-        }
         try {
             await cacheRedis.set(
                 submissionKey(submissionId),
                 JSON.stringify({
-                    ...parsed,
+                    submissionId,
+                    ...base,
                     status,
                     ...extra,
                     updatedAt: Date.now(),
@@ -93,22 +89,30 @@ class SubmissionWorker {
             metadata,
             idempotencyKey,
             isCompleted,
+            currentSectionId,
         } = job.data;
 
         // Idempotency: a retry after a successful write must not double-save.
-        // The status record carries responseId once done.
+        // The status record carries responseId once done. The parsed record
+        // is reused as the base for subsequent status writes.
+        let base: Record<string, unknown> = {};
         try {
             const existing = await cacheRedis.get(submissionKey(submissionId));
             if (existing) {
                 try {
                     const parsed = JSON.parse(existing);
                     if (parsed?.status === 'done' && parsed?.responseId) return;
-                } catch { /* treat as not-done */ }
+                    if (parsed && typeof parsed === 'object') base = parsed;
+                } catch {
+                    /* poisoned value: overwrite from scratch */
+                }
             }
-        } catch { /* cache unavailable: proceed */ }
+        } catch {
+            /* cache unavailable: proceed */
+        }
 
         // Mark processing
-        await this.updateStatus(submissionId, 'processing');
+        await this.updateStatus(submissionId, 'processing', {}, base);
 
         try {
             const response = await this.service.post({
@@ -119,13 +123,19 @@ class SubmissionWorker {
                 metadata,
                 idempotencyKey,
                 isCompleted,
+                currentSectionId,
             });
 
             if (!response) throw new Error('Failed to save response');
 
-            await this.updateStatus(submissionId, 'done', {
-                responseId: response._id.toString(),
-            });
+            await this.updateStatus(
+                submissionId,
+                'done',
+                {
+                    responseId: response._id.toString(),
+                },
+                base
+            );
 
             // Trigger email
             await emailQueue.add(
@@ -153,10 +163,46 @@ class SubmissionWorker {
                 attempt: job.attemptsMade,
             });
 
-            await this.updateStatus(submissionId, 'failed', {
-                error: (error as Error).message,
-            });
-            throw error; // rethrow so BullMQ retries
+            // 4xx failures (form closed, limit reached, invalid answers)
+            // are deterministic: retrying cannot succeed.
+            const deterministic =
+                error instanceof AppError &&
+                error.statusCode >= 400 &&
+                error.statusCode < 500;
+
+            const totalAttempts = job.opts.attempts ?? 1;
+            const isFinalAttempt = job.attemptsMade + 1 >= totalAttempts;
+
+            if (deterministic || isFinalAttempt) {
+                await this.updateStatus(
+                    submissionId,
+                    'failed',
+                    {
+                        error: (error as Error).message,
+                    },
+                    base
+                );
+            } else {
+                /**
+                 * Keep the status at `processing` between attempts: marking
+                 * it `failed` now would make the polling client give up even
+                 * though BullMQ is about to retry and may yet succeed.
+                 */
+                await this.updateStatus(
+                    submissionId,
+                    'processing',
+                    {
+                        lastError: (error as Error).message,
+                    },
+                    base
+                );
+            }
+
+            if (deterministic) {
+                throw new UnrecoverableError(error.message);
+            }
+
+            throw error; // transient (DB/cache) failures retry with backoff
         }
     }
 }

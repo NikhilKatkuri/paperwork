@@ -2,13 +2,15 @@ import express from 'express';
 import FillController from '@/modules/forms/controllers/controller.fill';
 import validate from '@/middleware/validate';
 import {
+    exportResponsesSchema,
     fillFormSchema,
     postFormSchema,
     responseIdSchema,
     responsesQuerySchema,
+    submissionStatusSchema,
 } from '../validators/validator.fill';
 import protect from '@/middleware/protect';
-import { lowLimiter } from '@/middleware/limiter';
+import { lowLimiter, submissionStatusLimiter } from '@/middleware/limiter';
 
 const fillRouter = express.Router({ mergeParams: true });
 const fillController = new FillController();
@@ -50,6 +52,7 @@ fillRouter.get(
     '/responses/export/:exportType',
     lowLimiter,
     protect,
+    validate(exportResponsesSchema),
     fillController.exportResponses
 );
 fillRouter.get(
@@ -62,8 +65,9 @@ fillRouter.get(
 
 fillRouter.get(
     '/submissions/:submissionId/status',
-    lowLimiter,
+    submissionStatusLimiter,
     protect,
+    validate(submissionStatusSchema),
     fillController.getSubmissionStatus
 );
 

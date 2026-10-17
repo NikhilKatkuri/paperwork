@@ -5,6 +5,7 @@ import {
     Question,
     Section,
     SectionReference,
+    Template,
 } from '@paperwork/types';
 
 import { Document } from 'mongoose';
@@ -16,3 +17,4 @@ export type QuestionDocument = MongooseDocument<Question & SectionReference>;
 export type SectionDocument = MongooseDocument<Section & FormReference>;
 
 export type FormResponseDocument = MongooseDocument<FormResponse>;
+export type TemplateDocument = MongooseDocument<Template>;

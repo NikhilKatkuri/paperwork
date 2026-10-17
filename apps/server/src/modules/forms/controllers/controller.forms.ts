@@ -1,23 +1,14 @@
 import { NextFunction, Response, Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import FormsService from '@/modules/forms/service/service.forms';
+import AutoBoundClass from '@/utils/AutoBoundClass';
 
-class FormsController {
-    service = new FormsService();
-
+class FormsController extends AutoBoundClass {
     constructor() {
-        const methods = Object.getOwnPropertyNames(
-            FormsController.prototype
-        ).filter(
-            (prop) =>
-                prop !== 'constructor' &&
-                typeof (this as any)[prop] === 'function'
-        );
-
-        for (const method of methods) {
-            (this as any)[method] = (this as any)[method].bind(this);
-        }
+        super();
     }
+
+    service = new FormsService();
 
     private getRequestData(req: Request) {
         return {

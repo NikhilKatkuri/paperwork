@@ -46,11 +46,31 @@ export const postFormSchema = z.object({
 
 export const responseIdSchema = z.object({
     params: z.object({
+        formId: zodObjectId,
         responseId: zodObjectId,
     }),
     query: z.object({
         page: z.string().optional(),
         limit: z.string().optional(),
+    }),
+});
+
+export const exportResponsesSchema = z.object({
+    params: z.object({
+        formId: zodObjectId,
+        exportType: z.enum(['csv']),
+    }),
+    query: z.object({
+        q: z.string().trim().max(120).optional(),
+        questionId: zodObjectId.optional(),
+        sort: z.enum(['newest', 'oldest']).default('newest'),
+    }),
+});
+
+export const submissionStatusSchema = z.object({
+    params: z.object({
+        formId: zodObjectId,
+        submissionId: z.string().min(1).max(64),
     }),
 });
 

@@ -164,9 +164,11 @@ class Trend {
             }
         } catch {
             // Redis is optional: a cache outage must not fail the request.
-            return hotCached && hotCached.expireAt > now
-                ? hotCached.data
-                : null;
+            // Serve the in-memory entry if it is still valid, else miss.
+            if (hotCached && hotCached.expireAt > now) {
+                return hotCached.data;
+            }
+            return null;
         }
 
         return null;

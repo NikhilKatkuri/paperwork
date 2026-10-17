@@ -42,3 +42,4 @@ export const refreshTokenLimiter = createLimiter('refreshToken');
 export const createFormsLimiter = createLimiter('createForms');
 export const createFormsInnerLimiter = createLimiter('createFormsInner');
 export const actionLimiter = createLimiter('action');
+export const submissionStatusLimiter = createLimiter('submissionStatus');

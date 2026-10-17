@@ -1,6 +1,6 @@
 import { FormSettings, FORM_THEMES } from '@paperwork/types';
 import mongoose, { Schema } from 'mongoose';
-import { FormDocument } from '@/types';
+import { FormDocument, TemplateDocument } from '@/types';
 import transform from '@/schemas/tranformer';
 
 const FormsSettingSchema = new Schema<FormSettings>(
@@ -32,6 +32,22 @@ const FormsSettingSchema = new Schema<FormSettings>(
     {
         _id: false,
         timestamps: false,
+        strict: true,
+    }
+);
+
+export const TemplateFormSchema = new Schema<TemplateDocument['form']>(
+    {
+        name: { type: String, required: true, maxlength: 200 },
+        isPrivate: { type: Boolean, default: false },
+        isPublished: { type: Boolean, default: false },
+        allowedDomains: { type: [String], default: undefined },
+        theme: { type: String, enum: FORM_THEMES, default: 'default' },
+
+        settings: { type: FormsSettingSchema, default: () => ({}) },
+    },
+    {
+        timestamps: true,
         strict: true,
     }
 );

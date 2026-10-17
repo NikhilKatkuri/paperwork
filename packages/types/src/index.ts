@@ -7,6 +7,7 @@ export * from './types.user';
 export * from './types.auth';
 export * from './types.token';
 export * from './types.profile';
+export * from './types.template';
 export * from './api';
 export * from './dto';
 

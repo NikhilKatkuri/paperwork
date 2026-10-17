@@ -19,10 +19,13 @@ import {
     putRequestFormSchema,
     searchFormsSchema,
 } from '../validators/validator.form';
+import formsTemplateRouter from './route.template';
 
 const formsRouter = express.Router({ mergeParams: true });
 
 const controller = new FormsController();
+
+formsRouter.use('/templates', formsTemplateRouter);
 
 formsRouter.get('/', limiter, protect, controller.getAll);
 formsRouter.post(

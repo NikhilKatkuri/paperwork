@@ -1,10 +1,14 @@
 import { Response, NextFunction, Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
 
+import { createHash } from 'node:crypto';
+import { once } from 'node:events';
+
+import { stringify } from 'csv-stringify';
+
 import FillService from '@/modules/forms/service/service.fill';
 import { AppError } from '@/utils/AppError';
 import { cacheRedis, trendEngine } from '@/redis';
-import mongoose from 'mongoose';
 import { submissionQueue } from '@/queues';
 import { submissionKey } from '@/workers/SubmissionWorker';
 import { cacheLogger, logError } from '@/utils/logger';
@@ -33,10 +37,11 @@ class FillController {
             throw AppError.Unauthorized('User not authenticated');
         }
 
-        const { formId, responseId, exportType } = req.params as {
+        const { formId, responseId, exportType, submissionId } = req.params as {
             formId: string;
             responseId: string;
             exportType: string;
+            submissionId: string;
         };
         if (!formId) {
             throw AppError.BadRequest('Form ID is required');
@@ -58,10 +63,11 @@ class FillController {
                   ? [String(a.value)]
                   : [],
         }));
-        const userAgent = body.metadata?.userAgent
-            ?? req.headers['user-agent'] ?? 'Unknown';
-        const ipAddress = body.metadata?.ipAddress
-            ?? (req.ip || req.socket.remoteAddress || 'Unknown') as string;
+        const userAgent =
+            body.metadata?.userAgent ?? req.headers['user-agent'] ?? 'Unknown';
+        const ipAddress =
+            body.metadata?.ipAddress ??
+            ((req.ip || req.socket.remoteAddress || 'Unknown') as string);
         const pageRaw = (req.query as any)?.page;
         const limitRaw = (req.query as any)?.limit;
         const page = Number.parseInt(String(pageRaw ?? '1'), 10);
@@ -83,6 +89,7 @@ class FillController {
             limit: Number.isFinite(limit) ? limit : 20,
             responseId,
             exportType,
+            submissionId,
         };
     }
 
@@ -109,7 +116,9 @@ class FillController {
                     // to the DB path which throws the correct status.
                     try {
                         trendEngine.invalidate?.(formId);
-                    } catch { /* ignore */ }
+                    } catch {
+                        /* ignore */
+                    }
                     formData = null;
                     if (
                         verifyError instanceof AppError ||
@@ -121,14 +130,20 @@ class FillController {
             }
 
             if (!formData) {
-                let dbPromise = this.inFlightReads.get(formId);
+                // Keyed by user as well: domain-restricted (private) forms
+                // must not let a second user reuse the first user's verified
+                // read, which would bypass their own domain check.
+                const readKey = `${formId}:${userId}`;
+                let dbPromise = this.inFlightReads.get(readKey);
                 const isFirst = !dbPromise;
 
                 if (isFirst) {
-                    dbPromise = this.service.get(formId, userId).finally(() => {
-                        this.inFlightReads.delete(formId);
-                    });
-                    this.inFlightReads.set(formId, dbPromise);
+                    dbPromise = this.service
+                        .get(formId, userId, email)
+                        .finally(() => {
+                            this.inFlightReads.delete(readKey);
+                        });
+                    this.inFlightReads.set(readKey, dbPromise);
                 }
 
                 const db = await dbPromise;
@@ -170,23 +185,68 @@ class FillController {
     async submit(req: Request, res: Response, next: NextFunction) {
         try {
             const { ...params } = this.getContent(req);
-            const submissionId = new mongoose.Types.ObjectId().toString();
 
-            await cacheRedis.set(
-                submissionKey(submissionId),
-                JSON.stringify({
-                    submissionId,
-                    status: 'pending',
-                    formId: params.formId,
-                    createdAt: Date.now(),
-                }),
-                'EX',
-                3600 // 1hr
-            );
-            await submissionQueue.add('submit', {
-                submissionId,
-                ...params,
-            });
+            /**
+             * The submission id is derived from the idempotency key, so a
+             * double-click produces the same id, the same status record and
+             * the same BullMQ job (deduplicated by jobId) instead of two
+             * independent submissions racing to create two responses.
+             */
+            const submissionId = createHash('sha1')
+                .update(`submission:${params.formId}:${params.idempotencyKey}`)
+                .digest('hex')
+                .slice(0, 24);
+
+            // Store the respondent's own email when provided; the
+            // authenticated email is only the fallback.
+            const email = params.responseEmail ?? params.email;
+
+            /**
+             * A repeated key whose submission is already in flight or done
+             * must not be re-queued (the client is polling the same id), and
+             * a failed one is retried by replacing its status. Check the
+             * status record before touching the queue.
+             */
+            const statusKey = submissionKey(submissionId);
+            let existingStatus: string | undefined;
+            try {
+                const raw = await cacheRedis.get(statusKey);
+                if (raw) {
+                    existingStatus = JSON.parse(raw)?.status;
+                }
+            } catch {
+                /* cache unavailable: fall through and queue */
+            }
+
+            const alreadySettled =
+                existingStatus === 'done' ||
+                existingStatus === 'pending' ||
+                existingStatus === 'processing';
+
+            if (!alreadySettled) {
+                await Promise.all([
+                    cacheRedis.set(
+                        statusKey,
+                        JSON.stringify({
+                            submissionId,
+                            status: 'pending',
+                            formId: params.formId,
+                            createdAt: Date.now(),
+                        }),
+                        'EX',
+                        3600 // 1hr
+                    ),
+                    // No custom jobId: a retained failed job with the same
+                    // id would silently absorb the retry. Duplicate queue
+                    // entries are harmless — `post` collapses them via the
+                    // idempotency key.
+                    submissionQueue.add('submit', {
+                        ...params,
+                        submissionId,
+                        email,
+                    }),
+                ]);
+            }
 
             res.status(StatusCodes.ACCEPTED).json({
                 success: true,
@@ -251,10 +311,14 @@ class FillController {
                 questionId?: string;
             };
 
-            const summary = await this.service.responsesSummary(formId, {
-                search: query.q,
-                questionId: query.questionId,
-            }, userId);
+            const summary = await this.service.responsesSummary(
+                formId,
+                {
+                    search: query.q,
+                    questionId: query.questionId,
+                },
+                userId
+            );
 
             res.status(StatusCodes.OK).json({
                 success: true,
@@ -269,7 +333,11 @@ class FillController {
     async getResponse(req: Request, res: Response, next: NextFunction) {
         try {
             const { formId, responseId, userId } = this.getContent(req);
-            const response = await this.service.getResponse(formId, responseId, userId);
+            const response = await this.service.getResponse(
+                formId,
+                responseId,
+                userId
+            );
             res.status(StatusCodes.OK).json({
                 success: true,
                 message: 'Response retrieved successfully',
@@ -281,23 +349,78 @@ class FillController {
     }
 
     async exportResponses(req: Request, res: Response, next: NextFunction) {
-        const { formId, exportType, userId } = this.getContent(req);
         try {
-            const text = await this.service.exportResponses(formId, exportType, userId);
+            const { formId, exportType, userId } = this.getContent(req);
+            const query = (req.query ?? {}) as {
+                q?: string;
+                questionId?: string;
+                sort?: 'newest' | 'oldest';
+            };
+
+            const { cursor, questionIdToColumn, columns } =
+                await this.service.exportResponses(formId, exportType, userId, {
+                    search: query.q,
+                    questionId: query.questionId,
+                    sort: query.sort,
+                });
+
             res.setHeader('Content-Type', 'text/csv; charset=utf-8');
             res.setHeader(
                 'Content-Disposition',
                 `attachment; filename="responses-${formId}.csv"`
             );
-            res.status(StatusCodes.OK).send(text);
+            res.setHeader('Cache-Control', 'no-store');
+
+            // BOM so Excel opens UTF-8 content (e.g. Hindi answers) correctly.
+            const stringifier = stringify({ header: true, columns, bom: true });
+            stringifier.on('error', (streamError) => {
+                res.destroy(streamError as Error);
+            });
+            stringifier.pipe(res);
+
+            for await (const response of cursor) {
+                const row: Record<string, string> = {
+                    email: response.email ?? '',
+                    submittedAt: response.createdAt
+                        ? new Date(response.createdAt).toISOString()
+                        : '',
+                };
+
+                for (const answer of response.answers ?? []) {
+                    const column = questionIdToColumn.get(
+                        String(answer.questionId)
+                    );
+                    if (!column) continue;
+
+                    const value = answer.value;
+                    row[column] = Array.isArray(value)
+                        ? value.map(String).join('; ')
+                        : String(value ?? '');
+                }
+
+                if (!stringifier.write(row)) {
+                    // Respect backpressure: the DB cursor waits while the
+                    // client's socket is congested instead of buffering the
+                    // whole export in memory.
+                    await once(stringifier, 'drain');
+                }
+            }
+
+            stringifier.end();
         } catch (error) {
+            // Once headers are out, the only correct failure mode is
+            // destroying the socket: a JSON error would corrupt the CSV.
+            if (res.headersSent) {
+                res.destroy(error as Error);
+                return;
+            }
             next(error);
         }
     }
 
     async getSubmissionStatus(req: Request, res: Response, next: NextFunction) {
         try {
-            const { submissionId } = req.params as { submissionId: string };
+            const { submissionId, userId } = this.getContent(req);
             if (!submissionId) {
                 throw AppError.BadRequest('Submission ID is required');
             }
@@ -312,12 +435,28 @@ class FillController {
                 throw AppError.NotFound('Submission not found or expired');
             }
 
-            let status: unknown;
+            let status: any;
             try {
                 status = JSON.parse(raw);
             } catch {
+                logError(
+                    cacheLogger,
+                    'submission_status_corrupted',
+                    new Error('Status payload is not valid JSON'),
+                    { event: 'CACHE_READ_FAILED', submissionId }
+                );
                 throw AppError.Internal('Submission status corrupted');
             }
+
+            /**
+             * Status keys are derived from the idempotency key, which the
+             * client generates and could guess. Verify the caller owns the
+             * form the submission belongs to before echoing anything back.
+             */
+            if (!status?.formId || typeof status.formId !== 'string') {
+                throw AppError.NotFound('Submission not found or expired');
+            }
+            await this.service.assertOwner(status.formId, userId);
 
             res.status(StatusCodes.OK).json({
                 success: true,

@@ -20,7 +20,6 @@ export interface FormSettings {
 
 export interface Form {
     name: string;
-    description?: string;
     userId: string;
     isPrivate: boolean;
     isPublished: boolean;
