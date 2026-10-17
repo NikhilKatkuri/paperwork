@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
 import { FormDB } from '@/types';
-import { toISOString } from '@/features/forms/types/db.types';
+import { toDate, toISOString } from '@/features/forms/types/db.types';
 
 interface MenuButtonProps {
     ref: React.RefObject<HTMLDivElement | null>;
@@ -107,7 +107,7 @@ export default function FormsView({
     const menuRef = useRef<HTMLDivElement>(null);
 
     const title = form?.name || 'Untitled Form';
-    const dateText = toISOString(form?.createdAt);
+    const dateText = toDate(form?.createdAt);
     const formUrl = `/forms/c/${form?.id}`;
 
     useEffect(() => {

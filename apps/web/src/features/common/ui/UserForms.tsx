@@ -117,10 +117,9 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
         async (formId: string) => {
             setBusyId(formId);
             try {
-                const res = await http.post<{ form: { id?: string; _id?: string } }>(
-                    endpoints.forms.duplicateForm(formId),
-                    {}
-                );
+                const res = await http.post<{
+                    form: { id?: string; _id?: string };
+                }>(endpoints.forms.duplicateForm(formId), {});
                 const raw = res.data.form ?? res.data;
                 const newId =
                     (raw as { id?: string }).id ??
@@ -233,7 +232,7 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
                 </p>
             )}
 
-            <div className="mt-5 h-auto flex-1">
+            <div className="mt-5 h-auto flex-1 pb-24">
                 <div
                     className={cn(
                         'grid',
@@ -283,7 +282,9 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
                                 form={form}
                                 busy={busyId === form.id}
                                 onDelete={() => void handleDelete(form.id)}
-                                onDuplicate={() => void handleDuplicate(form.id)}
+                                onDuplicate={() =>
+                                    void handleDuplicate(form.id)
+                                }
                             />
                         ))
                     ) : (

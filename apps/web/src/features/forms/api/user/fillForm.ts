@@ -18,6 +18,11 @@ const MAX_POLL_ATTEMPTS = 20;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const newIdempotencyKey = () =>
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 /**
  * Load a form for filling.
  *
@@ -95,13 +100,22 @@ export function useSubmitForm(formId: string | undefined) {
 
     const cancelledRef = useRef(false);
 
+    /**
+     * Stable per-form-session idempotency key. A fresh UUID per click would
+     * make each double-click a distinct submission server-side; one key per
+     * session lets the server collapse repeats. Rotated after a terminal
+     * outcome so a deliberately new response gets a new key.
+     */
+    const idempotencyKeyRef = useRef('');
+
     useEffect(() => {
         cancelledRef.current = false;
+        idempotencyKeyRef.current = '';
 
         return () => {
             cancelledRef.current = true;
         };
-    }, []);
+    }, [formId]);
 
     const poll = useCallback(
         async (submissionId: string) => {
@@ -131,12 +145,16 @@ export function useSubmitForm(formId: string | undefined) {
                         status === 'completed' ||
                         status === 'success'
                     ) {
+                        // Terminal: the next intentional submit is a new
+                        // response and needs its own key.
+                        idempotencyKeyRef.current = '';
                         setState('accepted');
                         setMessage('Response recorded');
                         return;
                     }
 
                     if (status === 'failed' || status === 'error') {
+                        idempotencyKeyRef.current = '';
                         setState('failed');
                         setMessage('Your response could not be recorded');
                         return;
@@ -173,14 +191,18 @@ export function useSubmitForm(formId: string | undefined) {
                     questionId: p.questionId,
                     value: p.values,
                 }));
+
+                // Reuse the session key so a rapid double-click (or a retry
+                // after a network error) maps to the same server-side
+                // submission instead of creating a second response.
+                if (!idempotencyKeyRef.current) {
+                    idempotencyKeyRef.current = newIdempotencyKey();
+                }
+
                 const res = await http.post<{ submissionId: string }>(
                     endpoints.forms.submitFill(formId),
                     {
-                        idempotencyKey:
-                            typeof crypto !== 'undefined' &&
-                            'randomUUID' in crypto
-                                ? crypto.randomUUID()
-                                : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                        idempotencyKey: idempotencyKeyRef.current,
                         answers,
                         metadata: {
                             userAgent:

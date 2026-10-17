@@ -59,14 +59,14 @@ export const endpoints = {
         cloudinary: '/cloudinary/signature',
     },
     forms: {
-        allForms: (page:number = 1, limit: number = 50): string => `/forms?limit=${limit}&page=${page}`,
+        allForms: (page: number = 1, limit: number = 50): string =>
+            `/forms?limit=${limit}&page=${page}`,
         getFormById: (formId: string): string => `/forms/${formId}`,
         createForm: '/forms',
         updateForm: (formId: string): string => `/forms/${formId}`,
         bulkUpdateForm: (formId: string): string => `/forms/${formId}/bulk`,
         deleteForm: (formId: string): string => `/forms/${formId}`,
-        duplicateForm: (formId: string): string =>
-            `/forms/${formId}/duplicate`,
+        duplicateForm: (formId: string): string => `/forms/${formId}/duplicate`,
         fill: (formId: string): string => `/forms/${formId}/fill`,
         submitFill: (formId: string): string => `/forms/${formId}/fill`,
         submissionStatus: (formId: string, submissionId: string): string =>
@@ -75,6 +75,19 @@ export const endpoints = {
         unpublishForm: (formId: string): string => `/forms/${formId}/unpublish`,
         searchForms: (q: string, limit: number = 10): string =>
             `/forms/search${toQuery({ q, limit })}`,
+        allTemplates: (query?: {
+            category?: string;
+            isFeatured?: boolean;
+        }): string =>
+            `/forms/templates/all${toQuery({
+                category: query?.category,
+                isFeatured:
+                    query?.isFeatured === undefined
+                        ? undefined
+                        : String(query.isFeatured),
+            })}`,
+        cloneTemplate: (templateId: string): string =>
+            `/forms/templates/${templateId}/clone`,
         formById: (formId: string): string => `/forms/${formId}`,
         formResponses: (formId: string, query: ResponseQuery): string =>
             `/forms/${formId}/fill/responses${toQuery({
@@ -92,7 +105,10 @@ export const endpoints = {
                 q: query.q,
                 questionId: query.questionId,
             })}`,
-        exportResponsesCsv: (formId: string, query?: { q?: string; questionId?: string }): string =>
+        exportResponsesCsv: (
+            formId: string,
+            query?: { q?: string; questionId?: string }
+        ): string =>
             `/forms/${formId}/fill/responses/export/csv${toQuery({
                 q: query?.q,
                 questionId: query?.questionId,

@@ -46,6 +46,37 @@ export function toISOString(
     return fallback;
 }
 
+export function toDate(value: unknown, fallback: Date = new Date()): string {
+    const options: Intl.DateTimeFormatOptions = {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    };
+
+    const isValidDate = (d: Date) => !Number.isNaN(d.getTime());
+
+    let date: Date;
+
+    if (value instanceof Date && isValidDate(value)) {
+        date = value;
+    } else if (typeof value === 'number' && Number.isFinite(value)) {
+        const d = new Date(value);
+        date = isValidDate(d) ? d : fallback;
+    } else if (typeof value === 'string') {
+        const d = new Date(value);
+        date = isValidDate(d) ? d : fallback;
+    } else {
+        date = fallback;
+    }
+
+    // Fallback safety check if the fallback itself is invalid
+    if (!isValidDate(date)) {
+        date = new Date();
+    }
+
+    return date.toLocaleDateString('en-US', options);
+}
+
 /** Coerce a document version into a finite number, defaulting to 0. */
 export function toVersion(value: unknown): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : 0;

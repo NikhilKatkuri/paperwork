@@ -5,6 +5,7 @@ import { http } from '@/api/http';
 import { endpoints } from '@/api/endpoints';
 import storageService from '@/providers/StorageService';
 import formRepository from '../../repositories/formRepository';
+import { FormDto } from '@paperwork/types';
 import { FormDB } from '@/types';
 
 /** A search hit carries only what a result row needs. */
@@ -15,12 +16,6 @@ export interface FormSearchHit {
 
 interface SearchResponse {
     forms: FormSearchHit[];
-}
-
-interface FormResponse {
-    form: Partial<FormDB>;
-    sections: FormDB['sections'];
-    questions: (FormDB['questions'][number] & { sectionId?: string })[];
 }
 
 /** Below this length a query is too broad to be worth running at all. */
@@ -155,8 +150,13 @@ export function useEnsureForm() {
         try {
             const cached = await formRepository.get(formId);
 
-            // Already cached with no unsynced edits - nothing to fetch.
-            if (cached && !cached.isDirty) return true;
+            /**
+             * A cached record is usable whether or not it has unsynced edits:
+             * the editor mounts from IndexedDB and revalidates clean records
+             * itself. Overwriting a dirty record here would discard local
+             * work, so dirty copies are kept as-is.
+             */
+            if (cached) return true;
         } catch (error) {
             console.warn('[search] local lookup failed', error);
         }
@@ -164,37 +164,23 @@ export function useEnsureForm() {
         setLoadingId(formId);
 
         try {
-            const res = await http.get<FormResponse>(
+            /**
+             * The endpoint returns the flat `FormDto` (sections/questions at
+             * the top level). Persist it exactly like the editor provider
+             * does, so a freshly cloned form is available the moment
+             * `/forms/c/:id` mounts.
+             */
+            const res = await http.get<FormDto>(
                 endpoints.forms.formById(formId)
             );
 
-            const { form, sections, questions } = res.data;
-
-            const sectionIndexById = new Map(
-                sections.map((section) => [section.id, section.index])
-            );
-
-            const hydrated: FormDB = {
-                ...(form as FormDB),
-                sections,
-                questions: questions.map((question) => {
-                    const { sectionId, ...rest } = question;
-
-                    return {
-                        ...rest,
-                        id: question.id ?? question.id,
-                        sectionIdx: sectionId
-                            ? (sectionIndexById.get(sectionId) ?? 0)
-                            : 0,
-                    };
-                }) as unknown as FormDB['questions'],
+            const formData: FormDB = {
+                ...res.data,
+                isDirty: false,
+                lastSyncedAt: new Date().toISOString(),
             };
 
-            /**
-             * `seed` leaves a record with unsynced local edits alone, so opening
-             * a form never discards work that has not reached the server.
-             */
-            await formRepository.seed(hydrated);
+            await formRepository.save(formData, { dirty: false });
 
             return true;
         } catch (e) {

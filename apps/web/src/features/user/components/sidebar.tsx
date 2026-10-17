@@ -7,11 +7,12 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 
 interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+    icon_name: string;
     name: string;
     isHovered?: () => boolean;
 }
 
-function IconButton({ name, isHovered, ...props }: IconButtonProps) {
+function IconButton({ icon_name, name, isHovered, ...props }: IconButtonProps) {
     const _isHovered = isHovered?.() ?? false;
     return (
         <div className="group flex cursor-pointer flex-col items-center justify-center">
@@ -33,7 +34,7 @@ function IconButton({ name, isHovered, ...props }: IconButtonProps) {
                             : 'group-hover:text-theme-form-on-surface-hover group-hover:scale-110'
                     )}
                 >
-                    {name}
+                    {icon_name}
                 </span>
             </button>
 
@@ -44,10 +45,10 @@ function IconButton({ name, isHovered, ...props }: IconButtonProps) {
     );
 }
 
-function Wrapper({ children }: Readonly<{ children: React.ReactNode }>) {
+export function Wrapper({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
         <div className="z-50 h-full w-24 bg-slate-100 max-[44rem]:fixed max-[44rem]:bottom-0 max-[44rem]:left-0 max-[44rem]:h-20 max-[44rem]:w-full">
-            <div className="bg-brand-light/30 grid h-full w-full grid-cols-3 items-center py-6 max-[44rem]:py-0 min-[44rem]:grid-cols-1 min-[44rem]:grid-rows-[66px_66px_1fr] min-[44rem]:gap-4">
+            <div className="bg-brand-light/30 grid h-full w-full grid-cols-4 items-center py-6 max-[44rem]:py-0 min-[44rem]:grid-cols-1 min-[44rem]:grid-rows-[66px_66px_66px_1fr] min-[44rem]:gap-4">
                 {children}
             </div>
         </div>
@@ -60,6 +61,9 @@ function getHover(pathname: string) {
     }
     if (pathname === '/user') {
         return 'home';
+    }
+    if (pathname === '/forms/templates') {
+        return 'templates';
     }
     return undefined;
 }
@@ -75,11 +79,19 @@ export default function Sidebar() {
             <IconButton
                 onClick={() => router.push('/user')}
                 name="home"
+                icon_name="Home"
                 isHovered={() => getHover(pathname) === 'home'}
+            />
+            <IconButton
+                onClick={() => router.push('/forms/templates')}
+                name="Templates"
+                icon_name="apps_plus"
+                isHovered={() => getHover(pathname) === 'templates'}
             />
             <IconButton
                 onClick={() => router.push('/user/settings')}
                 name="settings"
+                icon_name="Settings"
                 isHovered={() => getHover(pathname) === 'settings'}
             />
 
