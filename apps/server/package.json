@@ -14,7 +14,8 @@
         "seed:demo": "tsx src/scripts/seed-demo-form.ts",
         "seed:party-template": "tsx src/scripts/seed-party-template.ts",
         "lint": "eslint src",
-        "check-types": "tsc --noEmit"
+        "check-types": "tsc --noEmit",
+        "test": "tsx src/tests/submission-flow.test.ts"
     },
     "keywords": [],
     "author": "",
