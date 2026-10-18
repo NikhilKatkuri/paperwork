@@ -9,8 +9,8 @@ import { sanitizeError } from '@/utils/sanitize';
  * Per-request correlation id, propagated through `async_hooks`.
  *
  * `src/middleware/requestId.ts` opens a scope with `runWithRequestContext`, so
- * every `logger.info(...)` downstream — inside services, repositories, redis
- * helpers, BullMQ workers — is tagged with the active request id without any
+ * every `logger.info(...)` downstream — inside services, repositories and
+ * workers — is tagged with the active request id without any
  * function having to accept or forward one.
  *
  * This is the *only* mutable request-scoped state in the process. It is not a

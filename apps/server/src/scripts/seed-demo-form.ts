@@ -321,9 +321,10 @@ async function main() {
         await disconnectDB();
 
         /**
-         * Importing the service pulls in the Redis-backed QueueManager, whose
-         * open handles keep the event loop alive after the database closes -
-         * without this the script would hang forever after printing its result.
+         * Importing the service can leave background handles (timers,
+         * worker loops) that keep the event loop alive after the database
+         * closes - without this the script would hang forever after
+         * printing its result.
          */
         process.exit(0);
     }

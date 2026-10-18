@@ -1,16 +1,13 @@
 import { Response, NextFunction, Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
 
-import { createHash } from 'node:crypto';
 import { once } from 'node:events';
 
 import { stringify } from 'csv-stringify';
 
 import FillService from '@/modules/forms/service/service.fill';
 import { AppError } from '@/utils/AppError';
-import { cacheRedis, trendEngine } from '@/redis';
-import { submissionQueue } from '@/queues';
-import { submissionKey } from '@/workers/SubmissionWorker';
+import { trendEngine } from '@/redis';
 import { cacheLogger, logError } from '@/utils/logger';
 
 class FillController {
@@ -186,72 +183,38 @@ class FillController {
         try {
             const { ...params } = this.getContent(req);
 
-            /**
-             * The submission id is derived from the idempotency key, so a
-             * double-click produces the same id, the same status record and
-             * the same BullMQ job (deduplicated by jobId) instead of two
-             * independent submissions racing to create two responses.
-             */
-            const submissionId = createHash('sha1')
-                .update(`submission:${params.formId}:${params.idempotencyKey}`)
-                .digest('hex')
-                .slice(0, 24);
-
             // Store the respondent's own email when provided; the
             // authenticated email is only the fallback.
             const email = params.responseEmail ?? params.email;
 
             /**
-             * A repeated key whose submission is already in flight or done
-             * must not be re-queued (the client is polling the same id), and
-             * a failed one is retried by replacing its status. Check the
-             * status record before touching the queue.
+             * Persisted synchronously — there is no queue or background
+             * worker any more. The stored response is the submission record:
+             * a repeated idempotency key resolves to the same row (and the
+             * same id), and the confirmation email is written to the Mongo
+             * outbox inside the same transaction.
              */
-            const statusKey = submissionKey(submissionId);
-            let existingStatus: string | undefined;
-            try {
-                const raw = await cacheRedis.get(statusKey);
-                if (raw) {
-                    existingStatus = JSON.parse(raw)?.status;
-                }
-            } catch {
-                /* cache unavailable: fall through and queue */
-            }
+            const response = await this.service.post({
+                formId: params.formId,
+                userId: params.userId,
+                email,
+                answers: params.answers,
+                metadata: params.metadata,
+                idempotencyKey: params.idempotencyKey,
+                isCompleted: params.isCompleted,
+                currentSectionId: params.currentSectionId,
+            });
 
-            const alreadySettled =
-                existingStatus === 'done' ||
-                existingStatus === 'pending' ||
-                existingStatus === 'processing';
+            const submissionId = String(response._id);
 
-            if (!alreadySettled) {
-                await Promise.all([
-                    cacheRedis.set(
-                        statusKey,
-                        JSON.stringify({
-                            submissionId,
-                            status: 'pending',
-                            formId: params.formId,
-                            createdAt: Date.now(),
-                        }),
-                        'EX',
-                        3600 // 1hr
-                    ),
-                    // No custom jobId: a retained failed job with the same
-                    // id would silently absorb the retry. Duplicate queue
-                    // entries are harmless — `post` collapses them via the
-                    // idempotency key.
-                    submissionQueue.add('submit', {
-                        ...params,
-                        submissionId,
-                        email,
-                    }),
-                ]);
-            }
-
-            res.status(StatusCodes.ACCEPTED).json({
+            res.status(StatusCodes.CREATED).json({
                 success: true,
                 message: 'Submission received',
-                data: { submissionId }, // client uses this to poll
+                data: {
+                    submissionId,
+                    responseId: submissionId,
+                    status: 'done',
+                },
             });
         } catch (error) {
             next(error);
@@ -420,43 +383,22 @@ class FillController {
 
     async getSubmissionStatus(req: Request, res: Response, next: NextFunction) {
         try {
-            const { submissionId, userId } = this.getContent(req);
+            const { formId, submissionId, userId } = this.getContent(req);
             if (!submissionId) {
                 throw AppError.BadRequest('Submission ID is required');
             }
-            let raw: string | null = null;
-            try {
-                raw = await cacheRedis.get(submissionKey(submissionId));
-            } catch {
-                throw AppError.Internal('Submission status unavailable');
-            }
-
-            if (!raw) {
-                throw AppError.NotFound('Submission not found or expired');
-            }
-
-            let status: any;
-            try {
-                status = JSON.parse(raw);
-            } catch {
-                logError(
-                    cacheLogger,
-                    'submission_status_corrupted',
-                    new Error('Status payload is not valid JSON'),
-                    { event: 'CACHE_READ_FAILED', submissionId }
-                );
-                throw AppError.Internal('Submission status corrupted');
-            }
 
             /**
-             * Status keys are derived from the idempotency key, which the
-             * client generates and could guess. Verify the caller owns the
-             * form the submission belongs to before echoing anything back.
+             * Cold-path endpoint kept for API compatibility. The submission
+             * id is the id of the persisted response, and ownership is
+             * verified against the form the response belongs to — a guessed
+             * id from another user's form resolves to 404.
              */
-            if (!status?.formId || typeof status.formId !== 'string') {
-                throw AppError.NotFound('Submission not found or expired');
-            }
-            await this.service.assertOwner(status.formId, userId);
+            const status = await this.service.getSubmission(
+                formId,
+                submissionId,
+                userId
+            );
 
             res.status(StatusCodes.OK).json({
                 success: true,

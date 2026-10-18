@@ -48,8 +48,8 @@ const requestId = (req: Request, res: Response, next: NextFunction): void => {
     req.id = id;
     res.setHeader(REQUEST_ID_HEADER, id);
 
-    // Everything downstream — body parsers, controllers, services, redis and
-    // queue helpers — now runs inside this scope, so any `logger.*` call picks
+    // Everything downstream — body parsers, controllers, services and
+    // workers — now runs inside this scope, so any `logger.*` call picks
     // up the id automatically. `next` returns synchronously after the chain
     // settles; ALS keeps the id alive for the whole async continuation.
     runWithRequestContext(id, next);

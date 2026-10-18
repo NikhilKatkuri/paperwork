@@ -6,6 +6,8 @@ import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
 import FormResponseModel, {
     ResponseCounterModel,
 } from '@/modules/forms/schemas/schemas.fill';
+import emailOutboxService from '@/modules/email/services/emailOutbox.service';
+import { EmailPriority } from '@/modules/email/types/emailOutbox.type';
 
 import { FormResponse, ValidationRule } from '@paperwork/types';
 import { FormDocument, FormResponseDocument } from '@/types';
@@ -35,6 +37,45 @@ function isDuplicateKeyError(error: unknown): boolean {
         (error as { code?: number }).code === 11000
     );
 }
+
+/**
+ * A transaction that lost a write race (or hit another retryable failure).
+ *
+ * Submissions used to be processed by a BullMQ worker whose job retries
+ * absorbed these conflicts. Now that persistence is synchronous, the
+ * transaction itself must retry them, otherwise a double-click can surface
+ * as a 500 instead of the (correct) single response.
+ */
+function isTransientTransactionError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+
+    const candidate = error as {
+        code?: number;
+        errorLabels?: string[];
+        hasErrorLabel?: (label: string) => boolean;
+    };
+
+    // WriteConflict.
+    if (candidate.code === 112) return true;
+
+    if (typeof candidate.hasErrorLabel === 'function') {
+        return candidate.hasErrorLabel('TransientTransactionError');
+    }
+
+    return (
+        Array.isArray(candidate.errorLabels) &&
+        candidate.errorLabels.includes('TransientTransactionError')
+    );
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Bounded retries for transient transaction conflicts. A double-click burst
+ * can pit several same-key submissions against the shared form counter
+ * document, so the ceiling is generous but still bounded.
+ */
+const TRANSACTION_MAX_ATTEMPTS = 5;
 
 /**
  * Build the `$match` for the response list.
@@ -442,7 +483,87 @@ class FillService {
         };
     }
 
-    async post(data: FormResponse) {
+    async post(data: FormResponse): Promise<FormResponseDocument> {
+        const { formId, answers, idempotencyKey } = data;
+
+        // Basic shape validation: valid question IDs, no duplicates,
+        // non-empty values. Full per-rule validation happens per question
+        // type where config is available; at minimum reject junk.
+        if (!Array.isArray(answers) || answers.length === 0) {
+            throw AppError.BadRequest('Answers are required');
+        }
+
+        /**
+         * Bounded retry loop.
+         *
+         * - Idempotent replay: the same key for the same form returns the
+         *   already-stored response instead of creating a second one. The
+         *   unique index closes the concurrent-submit race; the replay is
+         *   re-checked on every attempt because a competing transaction may
+         *   have committed between attempts.
+         * - Transient conflicts (WriteConflict / TransientTransactionError)
+         *   used to be absorbed by BullMQ job retries. Persistence is
+         *   synchronous now, so the transaction retries itself a few times
+         *   with jitter before surfacing an error.
+         */
+        for (let attempt = 1; ; attempt++) {
+            if (idempotencyKey) {
+                const existing = await FormResponseModel.findOne({
+                    formId,
+                    idempotencyKey,
+                }).lean();
+                if (existing) return existing as FormResponseDocument;
+            }
+
+            try {
+                return await this.persistWithTransaction(data);
+            } catch (error) {
+                // Concurrent duplicate: two submissions with the same key
+                // raced and the unique index rejected the loser. Return the
+                // stored one; if it is not visible yet the winning
+                // transaction may still be committing, so retry.
+                if (isDuplicateKeyError(error) && idempotencyKey) {
+                    const existing = await FormResponseModel.findOne({
+                        formId,
+                        idempotencyKey,
+                    }).lean();
+                    if (existing) return existing as FormResponseDocument;
+                    if (attempt < TRANSACTION_MAX_ATTEMPTS) {
+                        await sleep(
+                            25 * attempt + Math.floor(Math.random() * 25)
+                        );
+                        continue;
+                    }
+                    throw error;
+                }
+
+                if (
+                    attempt < TRANSACTION_MAX_ATTEMPTS &&
+                    isTransientTransactionError(error)
+                ) {
+                    await sleep(25 * attempt + Math.floor(Math.random() * 25));
+                    continue;
+                }
+
+                throw error;
+            }
+        }
+    }
+
+    /**
+     * The actual write, inside one MongoDB transaction:
+     *   response counter increment → availability/limits → answer validation
+     *   → response insert → confirmation-email outbox insert.
+     *
+     * The outbox record must belong to the same transaction as the response:
+     * a committed response without its confirmation email (or an email for a
+     * rolled-back response) would both be wrong. `addEmailToOutbox` only
+     * writes the outbox row — the email itself is sent later by the outbox
+     * worker, never inside the transaction.
+     */
+    private async persistWithTransaction(
+        data: FormResponse
+    ): Promise<FormResponseDocument> {
         const {
             formId,
             userId,
@@ -453,28 +574,28 @@ class FillService {
             isCompleted,
             currentSectionId,
         } = data;
-        // Basic shape validation: valid question IDs, no duplicates,
-        // non-empty values. Full per-rule validation happens per question
-        // type where config is available; at minimum reject junk.
-        if (!Array.isArray(answers) || answers.length === 0) {
-            throw AppError.BadRequest('Answers are required');
-        }
-
-        // Idempotent replay: the same key for the same form returns the
-        // already-stored response instead of creating a second one. The
-        // unique index below closes the concurrent-submit race.
-        if (idempotencyKey) {
-            const existing = await FormResponseModel.findOne({
-                formId,
-                idempotencyKey,
-            }).lean();
-            if (existing) return existing as FormResponseDocument;
-        }
 
         const session = await mongoose.startSession();
         session.startTransaction();
 
         try {
+            /**
+             * Availability/authorization/schedule/limit checks run against
+             * the pre-increment document. The `$inc` below is the atomic
+             * guard for `maxResponses`; verifying the post-increment
+             * document would count the current submission twice and reject
+             * the first response of a form with `maxResponses: 1`.
+             */
+            const form = await FormsModel.findById(formId)
+                .session(session)
+                .lean();
+
+            if (!form) {
+                throw AppError.FormNotFound('Form not found');
+            }
+
+            this.verifier(form as FormDocument, userId, email);
+
             const updatedForm = await FormsModel.findOneAndUpdate(
                 {
                     _id: formId,
@@ -499,8 +620,6 @@ class FillService {
                     'Response limit reached or form unavailable'
                 );
             }
-
-            this.verifier(updatedForm as FormDocument, userId, email);
 
             const limit = updatedForm.settings?.maxResponsesPerUser;
             if (limit && userId) {
@@ -570,24 +689,103 @@ class FillService {
                 { session }
             );
 
-            await session.commitTransaction();
-            return response[0];
-        } catch (error) {
-            await session.abortTransaction();
-
-            // Concurrent duplicate: two submissions with the same key raced
-            // and the unique index rejected the loser. Return the stored one.
-            if (isDuplicateKeyError(error) && idempotencyKey) {
-                const existing = await FormResponseModel.findOne({
-                    formId,
-                    idempotencyKey,
-                }).lean();
-                if (existing) return existing as FormResponseDocument;
+            const created = response[0];
+            if (!created) {
+                throw AppError.Internal('Failed to save response');
             }
 
+            const responseId = created._id.toString();
+
+            /**
+             * Confirmation email, enqueued in the same transaction as the
+             * response. A recipient is required to send anything, so the
+             * guard matches the old worker's; the response schema also
+             * requires an email, making it defensive.
+             */
+            if (email) {
+                await emailOutboxService.addEmailToOutbox(
+                    {
+                        type: 'sendFormSubmissionConfirmedEmail',
+                        payload: {
+                            submissionId: responseId,
+                            responseId,
+                            email,
+                            formId,
+                            formName: updatedForm.name ?? 'Form',
+                        },
+                        priority: EmailPriority.FORM_SUBMISSION_CONFIRMATION,
+                    },
+                    session
+                );
+            }
+
+            await session.commitTransaction();
+            return created;
+        } catch (error) {
+            await session.abortTransaction();
             throw error;
         } finally {
             session.endSession();
+        }
+    }
+
+    /**
+     * Submission status, read from persisted data.
+     *
+     * The submission id is the id of the stored response (the same value the
+     * submit endpoint returns), so a replay with the same idempotency key
+     * resolves to the same id. Ownership is verified against the form.
+     */
+    async getSubmission(
+        formId: string,
+        submissionId: string,
+        ownerId?: string
+    ) {
+        try {
+            if (ownerId) await this.assertOwner(formId, ownerId);
+            else {
+                const form = await FormsModel.findById(formId).lean();
+                if (!form) throw AppError.FormNotFound('Form not found');
+            }
+
+            if (!mongoose.isValidObjectId(submissionId)) {
+                throw AppError.NotFound('Submission not found');
+            }
+
+            const response = (await FormResponseModel.findOne({
+                _id: submissionId,
+                formId,
+            })
+                .select('_id formId createdAt')
+                .lean()) as {
+                _id: unknown;
+                formId?: unknown;
+                createdAt?: Date;
+            } | null;
+
+            if (!response) throw AppError.NotFound('Submission not found');
+
+            const id = String(response._id);
+
+            return {
+                submissionId: id,
+                responseId: id,
+                formId: String(response.formId ?? formId),
+                status: 'done' as const,
+                createdAt: response.createdAt,
+                submittedAt: response.createdAt,
+            };
+        } catch (error) {
+            if (error instanceof AppError) throw error;
+            if (error instanceof mongoose.Error.CastError) {
+                throw AppError.NotFound('Submission not found');
+            }
+            logError(logger, 'form.submission_status_failed', error, {
+                event: 'DB_QUERY_FAILED',
+                formId,
+                submissionId,
+            });
+            throw AppError.Internal('Failed to load submission status');
         }
     }
 

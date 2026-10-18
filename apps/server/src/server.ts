@@ -1,7 +1,6 @@
 import app from './app';
 import config from '@/config';
 import { connectDB, disconnectDB } from '@/db/connection';
-import SubmissionWorker from './workers/SubmissionWorker';
 import { fatal, logger } from '@/utils/logger';
 import emailOutboxWorker from './modules/email/workers/emailOutbox.worker';
 
@@ -12,13 +11,6 @@ const boot = async (): Promise<void> => {
     });
 
     emailOutboxWorker.start();
-
-    try {
-        new SubmissionWorker();
-    } catch (error) {
-        fatal('submission_worker_failed', error);
-        process.exit(1);
-    }
 
     let server: ReturnType<typeof app.listen>;
 

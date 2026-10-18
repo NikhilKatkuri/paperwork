@@ -61,6 +61,14 @@ const formsSchema = new Schema<FormDocument>(
         allowedDomains: { type: [String], default: undefined },
         theme: { type: String, enum: FORM_THEMES, default: 'default' },
 
+        /**
+         * Server-owned counter for `settings.maxResponses`. It must be
+         * declared here or `strict: true` strips the `$inc` on submission
+         * (and `responseCount: 0` on create/clone), which silently disables
+         * the form-wide response limit.
+         */
+        responseCount: { type: Number, default: 0, min: 0 },
+
         settings: { type: FormsSettingSchema, default: () => ({}) },
     },
     {
