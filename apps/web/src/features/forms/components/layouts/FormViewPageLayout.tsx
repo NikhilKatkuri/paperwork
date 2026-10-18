@@ -186,6 +186,10 @@ export default function FormViewPageLayout() {
     const { form, loading, error } = useFillForm(id);
     const { state, message, submit } = useSubmitForm(id);
 
+    const confirmationMessage =
+        form?.form?.settings?.customConfirmationMessage?.trim() || undefined;
+    const redirectUrl = form?.form?.settings?.redirectUrl?.trim() || undefined;
+
     const [current, setCurrent] = useState(0);
     /** Sections visited before `current`, so Back follows the path actually taken. */
     const [history, setHistory] = useState<number[]>([]);
@@ -268,6 +272,25 @@ export default function FormViewPageLayout() {
 
         target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, [errors, current]);
+
+    /**
+     * Owner-configured post-submit redirect. Only http(s) targets are
+     * followed — the URL comes from the form document, not the respondent.
+     * `replace` keeps the just-submitted form out of the back-button history.
+     */
+    useEffect(() => {
+        if (state !== 'accepted' || !redirectUrl) return;
+
+        try {
+            const target = new URL(redirectUrl);
+
+            if (target.protocol === 'http:' || target.protocol === 'https:') {
+                window.location.replace(target.toString());
+            }
+        } catch {
+            // Malformed URL — keep the confirmation screen instead.
+        }
+    }, [state, redirectUrl]);
 
     const failValidation = useCallback((next: Record<string, string>) => {
         scrollToErrorRef.current = true;
@@ -418,7 +441,8 @@ export default function FormViewPageLayout() {
         );
     }
 
-    if (state === 'accepted') return themed(<Done message={message} />);
+    if (state === 'accepted')
+        return themed(<Done message={confirmationMessage} />);
 
     const section = sections[current];
     const isLast = current >= sections.length - 1;
