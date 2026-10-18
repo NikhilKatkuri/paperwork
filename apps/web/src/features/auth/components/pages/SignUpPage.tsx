@@ -6,6 +6,8 @@ import Navbar from '../client/Navbar';
 import { redirect, useSearchParams } from 'next/navigation';
 import CheckEmailContainer from '../client/containers/CheckEmailContainer';
 import SignUpContainer from '../client/containers/SignUpContainer';
+import Image from 'next/image';
+import HeroImage from './HeroImage';
 
 function renderStep(step: number) {
     switch (step) {
@@ -29,7 +31,7 @@ const SignUpPage = () => {
 
     return (
         <div className={cn(LayoutConfig.layout)}>
-            <section className={cn(LayoutConfig.leftSection)}></section>
+            <HeroImage />
             <section className={cn(LayoutConfig.rightSection)}>
                 <Navbar />
                 {renderStep(currentStep)}

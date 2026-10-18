@@ -6,6 +6,7 @@ import Navbar from '../client/Navbar';
 import SignInContainer from '../client/containers/SignInContainer';
 import CheckEmailContainer from '../client/containers/CheckEmailContainer';
 import { redirect, useSearchParams } from 'next/navigation';
+import HeroImage from './HeroImage';
 
 const renderStep = (step: number) => {
     switch (step) {
@@ -28,7 +29,8 @@ const SignInPage = () => {
     }
     return (
         <div className={cn(LayoutConfig.layout)}>
-            <section className={cn(LayoutConfig.leftSection)}></section>
+            <HeroImage />
+
             <section className={cn(LayoutConfig.rightSection)}>
                 <Navbar />
                 {renderStep(currentStep)}

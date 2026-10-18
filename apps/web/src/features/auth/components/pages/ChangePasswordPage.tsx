@@ -3,11 +3,13 @@ import Image from 'next/image';
 import LayoutConfig from '../ui/config';
 import Navbar from '../client/Navbar';
 import ChangePasswordComponent from '../client/ChangePasswordComponent';
+import HeroImage from './HeroImage';
 
 function ChangePasswordPage() {
     return (
         <div className={cn(LayoutConfig.layout)}>
-            <section className={cn(LayoutConfig.leftSection)}></section>
+            <HeroImage />
+
             <section className={cn(LayoutConfig.rightSection)}>
                 <Navbar />
                 <div className="flex h-full w-full flex-col items-center justify-center space-y-5">
