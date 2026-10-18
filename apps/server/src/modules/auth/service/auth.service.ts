@@ -25,6 +25,7 @@ import {
 import { MongooseDocument } from '@/types';
 import emailOutboxService from '@/modules/email/services/emailOutbox.service';
 import { EmailPriority } from '@/modules/email/types/emailOutbox.type';
+import CloudinaryService from '@/modules/signatures/cloudinary/service/cloudinary.service';
 
 class AuthService extends AutoBoundController {
     constructor() {
@@ -365,16 +366,41 @@ class AuthService extends AutoBoundController {
             // Strip undefined so partial PATCH cannot null/unset fields.
             const clean = Object.fromEntries(
                 Object.entries(updateData).filter(([, v]) => v !== undefined)
-            );
+            ) as { fullName?: string; avatarUrl?: string; bio?: string };
             if (Object.keys(clean).length === 0) {
                 throw AppError.BadRequest('No update data provided');
             }
+
+            const previous =
+                clean.avatarUrl !== undefined
+                    ? await ProfileRepoBoot.findByUserId(userId, {
+                          sensitiveData: 0,
+                      })
+                    : null;
+
             const profile = await ProfileRepoBoot.updateProfile(userId, clean, {
                 sensitiveData: 0,
             });
             if (!profile) {
                 throw AppError.NotFound('Profile not found');
             }
+
+            // Only after the database points at the new avatar may the
+            // previous URL's asset be destroyed. The helper never throws,
+            // so a Cloudinary failure cannot undo the successful update.
+            if (
+                clean.avatarUrl !== undefined &&
+                previous !== null &&
+                Boolean(previous.avatarUrl) &&
+                previous.avatarUrl !== clean.avatarUrl
+            ) {
+                await CloudinaryService.cleanupReplacedAsset({
+                    userId,
+                    previousUrl: previous.avatarUrl,
+                    currentUrl: clean.avatarUrl,
+                });
+            }
+
             return profile.toJSON();
         } catch (error) {
             if (error instanceof AppError) throw error;

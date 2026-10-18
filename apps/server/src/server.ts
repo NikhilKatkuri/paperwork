@@ -3,6 +3,7 @@ import config from '@/config';
 import { connectDB, disconnectDB } from '@/db/connection';
 import { fatal, logger } from '@/utils/logger';
 import emailOutboxWorker from './modules/email/workers/emailOutbox.worker';
+import avatarCleanupOutboxWorker from './modules/signatures/cloudinary/workers/avatarCleanupOutbox.worker';
 
 const boot = async (): Promise<void> => {
     await connectDB().catch((error: unknown) => {
@@ -11,6 +12,8 @@ const boot = async (): Promise<void> => {
     });
 
     emailOutboxWorker.start();
+
+    avatarCleanupOutboxWorker.start();
 
     let server: ReturnType<typeof app.listen>;
 
