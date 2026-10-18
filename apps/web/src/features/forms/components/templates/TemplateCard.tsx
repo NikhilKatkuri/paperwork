@@ -14,6 +14,8 @@ interface TemplateCardProps {
     onPreview: (template: TemplateSummary) => void;
     cloning: boolean;
     disabled: boolean;
+    showFeaturedLabel?: boolean;
+    className?: string;
 }
 
 export default function TemplateCard({
@@ -22,6 +24,8 @@ export default function TemplateCard({
     onPreview,
     cloning,
     disabled,
+    className,
+    showFeaturedLabel = true,
 }: TemplateCardProps) {
     const stats = useMemo(() => getTemplateStats(template), [template]);
     const featured = isFeatured(template);
@@ -73,7 +77,8 @@ export default function TemplateCard({
             className={cn(
                 'hover:bg-brand-light border-theme-skeletion-surface relative grid w-full cursor-pointer items-center gap-2 rounded-md border p-4 transition-all duration-150 ease-in-out *:text-sm',
                 FOCUS_RING,
-                disabled && !cloning && 'pointer-events-none opacity-50'
+                disabled && !cloning && 'pointer-events-none opacity-50',
+                className
             )}
         >
             <div className="flex flex-col gap-2">
@@ -88,13 +93,13 @@ export default function TemplateCard({
                         <p className="text-theme-on-surface truncate font-medium">
                             {template.name}
                         </p>
-                        {featured && (
-                            <span className="bg-brand-light text-on-brand-light inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium">
-                                <span className="material-symbols-outlined material-filled text-xs">
+                        {showFeaturedLabel && featured && (
+                            <p className="bg-brand-light text-on-brand-light inline-flex shrink-0 items-center gap-1 rounded-xl px-2 py-0.5 text-[11px] font-medium">
+                                <span className="material-symbols-outlined material-filled text-[2px]">
                                     star
                                 </span>
                                 Featured
-                            </span>
+                            </p>
                         )}
                     </div>
                 </div>
