@@ -34,13 +34,15 @@ function Navbar({ setMode }: Readonly<NavbarProps>) {
     return (
         <div className="border-theme-form-container-border/70 bg-theme-form-container sticky top-0 z-20 flex min-h-16 w-full items-center gap-3 border-b px-3 py-2 sm:px-5">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-                <Image
-                    src="/paperwork_icon-vector-master.svg"
-                    alt="Paperwork Icon"
-                    height={32}
-                    width={32}
-                    className="aspect-square h-7 w-7 shrink-0"
-                />
+                <Link href={'/user'}>
+                    <Image
+                        src="/paperwork_icon-vector-master.svg"
+                        alt="Paperwork Icon"
+                        height={32}
+                        width={32}
+                        className="aspect-square h-7 w-7 shrink-0"
+                    />
+                </Link>
                 <input
                     type="text"
                     placeholder="Untitled Form"

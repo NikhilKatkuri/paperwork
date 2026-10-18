@@ -32,10 +32,8 @@ function ViewFormsHeader({
                         <p className="">Last opened by me</p>
                     </div>
                 ) : null}
-                <button className="hover:bg-brand-light/60 flex aspect-square h-10 items-center justify-center rounded-full transition-all duration-150 ease-in-out xl:hidden">
-                    <span className="material-symbols-outlined">apps</span>
-                </button>
-                <div className="hidden items-center justify-end gap-4 xl:flex">
+
+                <div className="flex items-center justify-end gap-4">
                     <button
                         onClick={setViewAsRow}
                         className="hover:bg-brand-light/60 flex aspect-square h-10 items-center justify-center rounded-full transition-all duration-150 ease-in-out"
