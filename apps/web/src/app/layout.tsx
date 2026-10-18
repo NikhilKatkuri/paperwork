@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import '@/styles/globals.css';
 import { Toaster } from '@/components/ui/sonner';
+import WelcomeDialog from '@/components/ui/WelcomeDialog';
 import { AuthGuardProvider, AuthProvider } from '@/providers';
 import { APP_NAME } from '@/lib/useDocumentTitle';
 
@@ -45,6 +46,7 @@ export default function RootLayout({
                 <AuthProvider>
                     <AuthGuardProvider>{children}</AuthGuardProvider>
                 </AuthProvider>
+                <WelcomeDialog />
             </body>
         </html>
     );

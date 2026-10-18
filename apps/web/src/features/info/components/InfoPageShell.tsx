@@ -10,6 +10,7 @@ export interface TocItem {
 }
 
 const headerLinks = [
+    { label: 'About', href: '/about' },
     { label: 'Privacy', href: '/privacy' },
     { label: 'Terms', href: '/terms' },
     { label: 'Help', href: '/help' },

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { siteConfig } from '@/config/site';
 
 const footerLinks = [
+    { label: 'About', href: '/about' },
     { label: 'Privacy', href: '/privacy' },
     { label: 'Terms', href: '/terms' },
     { label: 'Help', href: '/help' },

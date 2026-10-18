@@ -49,7 +49,12 @@ export default function TermsPage() {
                     behind it, and these terms are not governed by a
                     jurisdiction clause. Where a deployment is operated by an
                     organization, that operator is responsible for the service
-                    it provides.
+                    it provides. What the software does, and the project&rsquo;s
+                    own disclaimer, are described on the{' '}
+                    <a href="/about" className={linkClass}>
+                        About the Project
+                    </a>{' '}
+                    page.
                 </p>
             </InfoSection>
 
@@ -98,12 +103,20 @@ export default function TermsPage() {
                 <InfoList
                     items={[
                         'Break the law or help others do so, including through the data you collect with forms.',
-                        'Attempt to access accounts, data or systems you are not authorized to access.',
-                        'Interfere with the service: overwhelming it, scraping it abusively, probing it for vulnerabilities outside a responsible-reporting process, or bypassing rate limits and access controls.',
+                        'Collect or share other people\u2019s personal or sensitive information without the authorization and legal basis the rules that apply to you require.',
+                        'Attempt to access accounts, data or systems you are not authorized to access, or bypass access controls.',
+                        'Interfere with the service: overwhelming it, scraping it abusively, probing it for vulnerabilities outside a responsible-reporting process, abusing public endpoints, or intentionally exhausting shared resources such as rate limits, storage or email sending.',
                         'Send spam or use forms to harass, deceive or phish people.',
                         'Upload malicious code or content that would damage the service or other users.',
+                        'Upload content that infringes someone else\u2019s intellectual property, privacy or other rights.',
                     ]}
                 />
+                <p>
+                    If you are submitting a form, review it before sharing
+                    personal information: check who is asking, why, and whether
+                    the request makes sense, and only provide what the form
+                    actually needs.
+                </p>
                 <p>
                     We may remove content or restrict accounts that violate
                     these rules, and may report unlawful activity where

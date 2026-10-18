@@ -5,7 +5,7 @@ export const PUBLIC_FILL_PREFIX = '/forms/v';
  * client-side AuthGuardProvider must not block them behind the session
  * loading screen.
  */
-export const INFO_PATHS = ['/privacy', '/terms', '/help', '/contact'];
+export const INFO_PATHS = ['/about', '/privacy', '/terms', '/help', '/contact'];
 
 export const AUTH_PATHS = [
     '/auth/signin',
