@@ -13,11 +13,6 @@ export interface SubmitResult {
     message?: string;
 }
 
-const POLL_INTERVAL_MS = 1500;
-const MAX_POLL_ATTEMPTS = 20;
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const newIdempotencyKey = () =>
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
@@ -89,91 +84,30 @@ export function useFillForm(formId: string | undefined) {
 }
 
 /**
- * Submit answers and follow the submission status.
+ * Submit answers.
  *
- * The endpoint answers 202 and processes asynchronously, so the returned
- * submissionId is polled until it settles or the attempts run out.
+ * Persistence is synchronous: the endpoint stores the response (and its
+ * confirmation-email outbox row) in one MongoDB transaction and answers with
+ * the stored submission. There is nothing to poll any more — a 2xx response
+ * means the response was recorded, and write failures surface here as errors.
  */
 export function useSubmitForm(formId: string | undefined) {
     const [state, setState] = useState<SubmissionState>('idle');
     const [message, setMessage] = useState<string | undefined>();
 
-    const cancelledRef = useRef(false);
-
     /**
      * Stable per-form-session idempotency key. A fresh UUID per click would
      * make each double-click a distinct submission server-side; one key per
      * session lets the server collapse repeats. Rotated after a terminal
-     * outcome so a deliberately new response gets a new key.
+     * outcome so a deliberately new response gets a new key; kept on failure
+     * so a retry resolves to the same server-side submission instead of
+     * creating a second one.
      */
     const idempotencyKeyRef = useRef('');
 
     useEffect(() => {
-        cancelledRef.current = false;
         idempotencyKeyRef.current = '';
-
-        return () => {
-            cancelledRef.current = true;
-        };
     }, [formId]);
-
-    const poll = useCallback(
-        async (submissionId: string) => {
-            for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
-                await sleep(POLL_INTERVAL_MS);
-
-                if (cancelledRef.current) return;
-
-                try {
-                    const res = await http.get<{
-                        status?: string;
-                        submissionId: string;
-                    }>(
-                        endpoints.forms.submissionStatus(
-                            formId as string,
-                            submissionId
-                        )
-                    );
-
-                    const status = res.data?.status;
-
-                    // Worker states are 'pending' | 'processing' | 'done' |
-                    // 'failed'; the extra spellings are tolerated in case the
-                    // backend settles on them.
-                    if (
-                        status === 'done' ||
-                        status === 'completed' ||
-                        status === 'success'
-                    ) {
-                        // Terminal: the next intentional submit is a new
-                        // response and needs its own key.
-                        idempotencyKeyRef.current = '';
-                        setState('accepted');
-                        setMessage('Response recorded');
-                        return;
-                    }
-
-                    if (status === 'failed' || status === 'error') {
-                        idempotencyKeyRef.current = '';
-                        setState('failed');
-                        setMessage('Your response could not be recorded');
-                        return;
-                    }
-                } catch {
-                    // The submission is already queued server-side, so a failed
-                    // poll is not a failed submission - keep trying.
-                }
-            }
-
-            if (cancelledRef.current) return;
-
-            // Do not claim success after exhausting polls: the worker may
-            // still be processing or may have failed silently.
-            setState('failed');
-            setMessage('Submission is still processing. Please check back later.');
-        },
-        [formId]
-    );
 
     const submit = useCallback(
         async (
@@ -192,27 +126,25 @@ export function useSubmitForm(formId: string | undefined) {
                     value: p.values,
                 }));
 
-                // Reuse the session key so a rapid double-click (or a retry
-                // after a network error) maps to the same server-side
-                // submission instead of creating a second response.
                 if (!idempotencyKeyRef.current) {
                     idempotencyKeyRef.current = newIdempotencyKey();
                 }
 
-                const res = await http.post<{ submissionId: string }>(
-                    endpoints.forms.submitFill(formId),
-                    {
-                        idempotencyKey: idempotencyKeyRef.current,
-                        answers,
-                        metadata: {
-                            userAgent:
-                                typeof navigator !== 'undefined'
-                                    ? navigator.userAgent.slice(0, 500)
-                                    : 'Unknown',
-                            ipAddress: 'client',
-                        },
-                    }
-                );
+                const res = await http.post<{
+                    submissionId: string;
+                    responseId?: string;
+                    status?: string;
+                }>(endpoints.forms.submitFill(formId), {
+                    idempotencyKey: idempotencyKeyRef.current,
+                    answers,
+                    metadata: {
+                        userAgent:
+                            typeof navigator !== 'undefined'
+                                ? navigator.userAgent.slice(0, 500)
+                                : 'Unknown',
+                        ipAddress: 'client',
+                    },
+                });
 
                 const submissionId = res.data?.submissionId;
 
@@ -220,10 +152,12 @@ export function useSubmitForm(formId: string | undefined) {
                     throw new Error('Failed to submit');
                 }
 
-                setState('accepted');
-                setMessage('Submission received. Confirming...');
+                // Terminal: the response is stored, so the next intentional
+                // submit is a new response and needs its own key.
+                idempotencyKeyRef.current = '';
 
-                void poll(submissionId);
+                setState('accepted');
+                setMessage('Response recorded');
 
                 return { state: 'accepted', submissionId };
             } catch (e) {
@@ -241,7 +175,7 @@ export function useSubmitForm(formId: string | undefined) {
                 return failure;
             }
         },
-        [formId, poll]
+        [formId]
     );
 
     return { state, message, submit };
