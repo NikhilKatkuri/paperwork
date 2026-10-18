@@ -7,6 +7,8 @@ import axios, {
     Method,
 } from 'axios';
 import { getErrorMessage } from './error';
+import { getClientMetadataHeaderValue } from '@/lib/requestMetadata';
+import { CLIENT_METADATA_HEADER } from '@paperwork/types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
@@ -54,6 +56,15 @@ class HttpClient {
                 const token = this.getToken();
                 if (token) {
                     config.headers.set('Authorization', `Bearer ${token}`);
+                }
+
+                // Browser-identity hints for the server's metadata contract.
+                // `null` when nothing can be collected (SSR, exotic
+                // environment), in which case the server falls back to
+                // parsing the User-Agent header itself.
+                const metadata = getClientMetadataHeaderValue();
+                if (metadata) {
+                    config.headers.set(CLIENT_METADATA_HEADER, metadata);
                 }
                 return config;
             },

@@ -8,6 +8,11 @@ import AuthServiceBoot from '@/modules/auth/service/auth.service';
 import userAgentService from '../service/userAgent.service';
 import HashBoot from '../service/hash.service';
 import { cacheLogger } from '@/utils/logger';
+import {
+    logMaskedSecurityEvent,
+    logSecurityEvent,
+    SECURITY_EVENTS,
+} from '@/utils/securityAudit';
 
 interface EmailCheckCookie {
     last_check_email: string;
@@ -23,30 +28,37 @@ class AuthController extends AutoBoundController {
 
     async signInController(req: Request, res: Response, next: NextFunction) {
         try {
-            const meta = userAgentService.getMeta(req);
             const { email, password } = req.body;
-            const deviceLabel = [
-                meta.device?.brand,
-                meta.device?.model,
-                meta.browser?.family,
-                meta.os?.family,
-            ]
-                .filter(Boolean)
-                .join(' ') || 'Unknown device';
-            const geoLabel = [
-                (meta.location as any)?.city,
-                (meta.location as any)?.region,
-                (meta.location as any)?.country,
-            ]
-                .filter(Boolean)
-                .join(', ') || (meta.ip ?? 'Unknown location');
+            // One metadata snapshot per request: device/location labels and
+            // the masked IP all come from the same trusted-proxy-aware parse.
+            const labels = userAgentService.getSecurityLabels(req);
+
             await AuthServiceBoot.signIn({
                 payload: { email, password },
-                geo: geoLabel.slice(0, 300),
-                device: deviceLabel.slice(0, 300),
+                geo: labels.location,
+                device: labels.device,
+                ip: labels.ip ?? undefined,
                 res,
             });
         } catch (error) {
+            // Credential rejections are logged masked at the source so brute
+            // force is visible without the log store becoming a list of
+            // addresses. Server faults (5xx) are not authentication decisions
+            // and stay out of the security trail.
+            if (
+                error instanceof AppError &&
+                (error.statusCode === statusCodes.UNAUTHORIZED ||
+                    error.statusCode === statusCodes.FORBIDDEN)
+            ) {
+                logMaskedSecurityEvent(SECURITY_EVENTS.SIGNIN_FAILED, req, {
+                    stage: 'password',
+                    reason:
+                        error.statusCode === statusCodes.UNAUTHORIZED
+                            ? 'invalid_credentials'
+                            : 'account_disabled',
+                    statusCode: error.statusCode,
+                });
+            }
             next(error);
         }
     }
@@ -57,24 +69,28 @@ class AuthController extends AutoBoundController {
             if (!otp) {
                 throw AppError.BadRequest('OTP is required');
             }
-            const meta = userAgentService.getMeta(req);
-            const deviceLabel = [
-                meta.device?.brand,
-                meta.device?.model,
-                meta.browser?.family,
-            ]
-                .filter(Boolean)
-                .join(' ') || 'Unknown device';
-            const geoLabel =
-                (meta.ip ?? 'Unknown location').slice(0, 300);
+            const labels = userAgentService.getSecurityLabels(req);
+
             await AuthServiceBoot.verify2FA({
                 otp: otp.toString(),
-                geo: geoLabel,
-                device: deviceLabel.slice(0, 300),
+                geo: labels.location,
+                device: labels.device,
+                ip: labels.ip ?? undefined,
                 res,
                 req,
             });
         } catch (error) {
+            if (
+                error instanceof AppError &&
+                error.statusCode === statusCodes.BAD_REQUEST
+            ) {
+                logMaskedSecurityEvent(SECURITY_EVENTS.SIGNIN_FAILED, req, {
+                    stage: '2fa',
+                    reason: error.message.toLowerCase().includes('otp')
+                        ? 'invalid_otp'
+                        : 'invalid_2fa_session',
+                });
+            }
             next(error);
         }
     }
@@ -128,13 +144,38 @@ class AuthController extends AutoBoundController {
             if (!refreshToken) {
                 throw AppError.Unauthorized('No refresh token provided');
             }
-            let decode: TokenPayload | null = null;
 
-            decode = TokenBoot.verifyToken<TokenPayload>(
-                refreshToken,
-                'refresh'
-            );
+            let decode: TokenPayload | null = null;
+            try {
+                decode = TokenBoot.verifyToken<TokenPayload>(
+                    refreshToken,
+                    'refresh'
+                );
+            } catch (error) {
+                // Routine expiry is not a security signal — sessions age out
+                // all the time. Everything else (forged signature, malformed
+                // token) is logged before the request is rejected.
+                if (!(
+                    error instanceof AppError &&
+                    error.message === 'Token has expired'
+                )) {
+                    logSecurityEvent(SECURITY_EVENTS.TOKEN_INVALID, req, {
+                        stage: 'refresh',
+                        reason:
+                            error instanceof AppError
+                                ? error.message
+                                      .toLowerCase()
+                                      .replace(/\s+/g, '_')
+                                : 'unknown',
+                    });
+                }
+                throw error;
+            }
             if (!decode?.userId || !decode?.email) {
+                logSecurityEvent(SECURITY_EVENTS.TOKEN_INVALID, req, {
+                    stage: 'refresh',
+                    reason: 'missing_claims',
+                });
                 throw AppError.Unauthorized('Invalid refresh token');
             }
 
@@ -284,6 +325,11 @@ class AuthController extends AutoBoundController {
                 currentPassword,
                 newPassword
             );
+
+            logSecurityEvent(SECURITY_EVENTS.PASSWORD_CHANGED, req, {
+                userId,
+            });
+
             res.status(statusCodes.OK).json({
                 success: true,
                 message: 'Password changed successfully',

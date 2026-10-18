@@ -70,32 +70,50 @@ export interface NetworkInfo {
 }
 
 /**
- * Normalizes IPv4-mapped IPv6 addresses (`::ffff:127.0.0.1`) so that a client
- * appears as one stable value regardless of the socket family.
+ * Normalizes an address so the same client appears as one stable value
+ * regardless of the socket family or formatting:
+ *
+ * - strips IPv4-mapped IPv6 prefixes (`::ffff:127.0.0.1` → `127.0.0.1`)
+ * - unwraps bracketed IPv6 literals (`[::1]` → `::1`)
+ * - maps the loopback shorthand `::1` to `127.0.0.1`
  */
 export const normalizeIp = (
     address: string | null | undefined
 ): string | undefined => {
     if (!address) return undefined;
-    const trimmed = address.trim();
+
+    let trimmed = address.trim();
     if (!trimmed) return undefined;
-    return trimmed.startsWith(IPV4_MAPPED_PREFIX)
-        ? trimmed.slice(IPV4_MAPPED_PREFIX.length)
-        : trimmed;
+
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        trimmed = trimmed.slice(1, -1);
+    }
+    if (trimmed.startsWith(IPV4_MAPPED_PREFIX)) {
+        trimmed = trimmed.slice(IPV4_MAPPED_PREFIX.length);
+    }
+    if (trimmed === '::1') {
+        trimmed = '127.0.0.1';
+    }
+
+    return trimmed || undefined;
 };
 
 /**
  * Extracts client network information.
  *
  * `req.ip` is the only value safe to attribute to a client: it is derived
- * from `X-Forwarded-For` only as far as the `trust proxy` setting allows.
- * In production `app.ts` enables `trust proxy`, which trusts the whole chain,
- * so deployments **must** terminate TLS at a proxy that overwrites
- * `X-Forwarded-For` — otherwise a client can spoof its own address. The raw
- * header is still logged so a spoofing attempt is visible after the fact.
+ * from `X-Forwarded-For` only as far as the configured `trust proxy` policy
+ * allows (see `TRUST_PROXY` in `config`). Deployments that put Node behind a
+ * proxy **must** configure that policy to match their topology; the default
+ * trusts exactly one hop, so a topology where clients can reach Node directly
+ * should set `TRUST_PROXY=false`. The raw header is still captured so a
+ * spoofing attempt stays visible after the fact.
  */
 export const captureNetworkInfo = (req: Request): NetworkInfo => {
-    const trustProxy = req.app.get('trust proxy');
+    // Tolerate hand-built request objects (tests, internal callers) that do
+    // not carry a full Express app: the setting then simply reads as absent.
+    const app = req.app as { get?: (setting: string) => unknown } | undefined;
+    const trustProxy = app?.get?.('trust proxy');
     const header = req.headers['x-forwarded-for'];
 
     return {

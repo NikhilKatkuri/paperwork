@@ -47,6 +47,8 @@ export type EmailJobPayloads = {
         device: string;
         location: string;
         time: string;
+        /** Client IP, masked on the server before it reaches the outbox. */
+        ip?: string;
     };
     sendPasswordChangeAlertEmail: {
         email: string;

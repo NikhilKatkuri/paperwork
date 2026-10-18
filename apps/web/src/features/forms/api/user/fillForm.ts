@@ -137,13 +137,6 @@ export function useSubmitForm(formId: string | undefined) {
                 }>(endpoints.forms.submitFill(formId), {
                     idempotencyKey: idempotencyKeyRef.current,
                     answers,
-                    metadata: {
-                        userAgent:
-                            typeof navigator !== 'undefined'
-                                ? navigator.userAgent.slice(0, 500)
-                                : 'Unknown',
-                        ipAddress: 'client',
-                    },
                 });
 
                 const submissionId = res.data?.submissionId;

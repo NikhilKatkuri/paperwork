@@ -90,6 +90,34 @@ const LOG_LEVELS: Set<LoggerLevel> = new Set([
 const debugEnabled = getEnvVar<boolean>('DEBUG', false);
 
 /**
+ * Express `trust proxy` setting, resolved from `TRUST_PROXY`.
+ *
+ * - `false` / `0` — no proxy in front of Node: forwarding headers are
+ *   ignored entirely and `req.ip` is the socket address.
+ * - a positive integer — trust exactly that many hops from the socket.
+ *   The default of `1` matches a single load balancer / reverse proxy.
+ * - any other string — passed to Express as a trust list (e.g. `loopback`,
+ *   `uniquelocal`, `10.0.0.0/8,172.16.0.0/12`).
+ *
+ * `true` is rejected on purpose: trusting every hop lets any client spoof
+ * its own address with a forged `X-Forwarded-For` header.
+ */
+function resolveTrustProxy(): boolean | number | string {
+    // `getEnvVar` may coerce numeric-looking values; stringify before parsing.
+    const raw = String(getEnvVar<string>('TRUST_PROXY', '1')).trim();
+
+    if (raw === 'false' || raw === '0') return false;
+    if (raw === 'true') {
+        throw new SystemError(
+            '[TRUST_PROXY]',
+            'TRUST_PROXY=true trusts forwarding headers from any source. Use a hop count (e.g. 1) or a trust list (e.g. "loopback, 10.0.0.0/8") instead.'
+        );
+    }
+    if (/^[1-9]\d*$/.test(raw)) return Number(raw);
+    return raw;
+}
+
+/**
  * `LOG_LEVEL` wins when it is a level winston understands; otherwise fall
  * back to `debug` in development (so the default dev experience is verbose)
  * and `info` in production.
@@ -109,6 +137,7 @@ const config: AppConfig = {
     env: getEnvVar<string>('NODE_ENV', 'development'),
     port: getEnvVar<number>('PORT', 5000),
     host: getEnvVar<string>('HOST', '0.0.0.0'),
+    trustProxy: resolveTrustProxy(),
     logger: {
         level: resolveLoggerLevel(),
         requestBody: getEnvVar<boolean>('LOG_REQUEST_BODY', isDev),

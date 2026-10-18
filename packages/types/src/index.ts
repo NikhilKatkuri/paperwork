@@ -4,6 +4,7 @@ export * from './types.questions';
 export * from './types.response';
 export * from './types.sections';
 export * from './types.user';
+export * from './types.metadata';
 export * from './types.auth';
 export * from './types.token';
 export * from './types.profile';

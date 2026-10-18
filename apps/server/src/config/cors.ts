@@ -1,4 +1,5 @@
 import cors from 'cors';
+import { CLIENT_METADATA_HEADER } from '@paperwork/types';
 import config from '@/config';
 
 function normalizeOrigin(o: string): string {
@@ -17,7 +18,14 @@ const corsOptions: cors.CorsOptions = {
         callback(null, false);
     },
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+    // The metadata header must be allowlisted here or every cross-origin
+    // request carrying it fails preflight, even though the server accepts it.
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Request-ID',
+        CLIENT_METADATA_HEADER,
+    ],
     exposedHeaders: ['X-Total-Count', 'X-Request-ID'],
     credentials: true,
     maxAge: 86400,

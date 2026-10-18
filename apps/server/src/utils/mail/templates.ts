@@ -143,7 +143,8 @@ export const formCreation = (formName: string, formId: string) => `
 export const loginAlertTemplate = (
     device: string,
     location: string,
-    time: string
+    time: string,
+    ip?: string
 ) => `
 <div style="background:#f5f7fb;padding:40px 20px;font-family:Inter,Arial,sans-serif;">
   <div style="max-width:600px;margin:auto;background:#fff;border-radius:20px;border:1px solid #eaeaea;overflow:hidden;">
@@ -168,7 +169,8 @@ export const loginAlertTemplate = (
       <div style="background:#f9fafb;border:1px solid #eee;border-radius:14px;padding:20px;margin:24px 0;">
         <p style="margin:0 0 10px;color:#111827;"><strong>Device:</strong> ${escapeHtml(device)}</p>
         <p style="margin:0 0 10px;color:#111827;"><strong>Location:</strong> ${escapeHtml(location)}</p>
-        <p style="margin:0;color:#111827;"><strong>Time:</strong> ${escapeHtml(time)}</p>
+        <p style="margin:0 0 10px;color:#111827;"><strong>Time:</strong> ${escapeHtml(time)}</p>
+        ${ip ? `<p style="margin:0;color:#111827;"><strong>IP address:</strong> ${escapeHtml(ip)} <span style="color:#6b7280;font-size:13px;">(partially masked)</span></p>` : ''}
       </div>
 
       <p style="color:#6b7280;font-size:14px;line-height:1.7;">

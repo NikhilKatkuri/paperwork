@@ -97,11 +97,13 @@ class AuthService extends AutoBoundController {
         payload,
         geo,
         device,
+        ip,
         res,
     }: {
         payload: SignInService;
         geo: string;
         device: string;
+        ip?: string;
         res: Response;
     }) => {
         const { email, password } = payload;
@@ -142,7 +144,14 @@ class AuthService extends AutoBoundController {
             return this.otpFor2FA(userId, email, res);
         }
 
-        return this.cookieForSignIn({ email, device, geo, userId, res });
+        return this.cookieForSignIn({
+            email,
+            device,
+            geo,
+            ip,
+            userId,
+            res,
+        });
     };
 
     private async otpFor2FA(userId: string, email: string, res: Response) {
@@ -178,11 +187,13 @@ class AuthService extends AutoBoundController {
         device,
         res,
         geo,
+        ip,
     }: {
         userId: string;
         email: string;
         device: string;
         geo: string;
+        ip?: string;
         res: Response;
     }) {
         await emailOutboxService.addEmailToOutbox({
@@ -192,6 +203,7 @@ class AuthService extends AutoBoundController {
                 device,
                 location: geo,
                 time: new Date().toISOString(),
+                ...(ip ? { ip } : {}),
             },
             priority: EmailPriority.SECURITY_ALERT,
         });
@@ -219,12 +231,14 @@ class AuthService extends AutoBoundController {
         otp,
         geo,
         device,
+        ip,
         res,
         req,
     }: {
         otp: string;
         geo: string;
         device: string;
+        ip?: string;
         res: Response;
         req: Request;
     }) => {
@@ -291,6 +305,7 @@ class AuthService extends AutoBoundController {
             email: decodedTempToken.email,
             device,
             geo,
+            ip,
             res,
         });
     };

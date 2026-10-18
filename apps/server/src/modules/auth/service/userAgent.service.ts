@@ -1,108 +1,74 @@
-import geoip from 'geoip-lite';
-import AutoBoundClass from '@/utils/AutoBoundClass';
 import type { Request } from 'express';
-import { UAParser } from 'ua-parser-js';
-import { RequestMeta } from '@paperwork/types';
 
+import AutoBoundClass from '@/utils/AutoBoundClass';
+import {
+    buildDeviceLabel,
+    buildLocationLabel,
+    lookupGeo,
+    parseClientMetadata,
+    parseUserAgent,
+} from '@/utils/metadata';
+import { captureNetworkInfo } from '@/utils/requestMeta';
+import { maskIp } from '@/utils/sanitize';
+import type { RequestMetadata } from '@paperwork/types';
+
+/**
+ * Assembles the request metadata contract for security-relevant flows.
+ *
+ * Two sources are kept strictly separate:
+ *
+ * - `server` values come from the HTTP request the server actually received
+ *   (`req.ip` under the configured trusted-proxy policy, the raw header
+ *   bytes, the receive time). They cannot be rewritten by page JavaScript.
+ * - `client` values are validated hints from the browser. They are used to
+ *   fill gaps the User-Agent header does not cover, never to override the
+ *   server's own parse of that header.
+ */
 class UserAgentService extends AutoBoundClass {
     constructor() {
         super();
     }
 
-    public getMeta(req: Request): RequestMeta {
-        return this.getRequestMeta(req);
-    }
-
-    private normalizeIp(ip: string | undefined | null): string | null {
-        if (!ip) return null;
-
-        let value = ip.trim();
-
-        if (value.startsWith('::ffff:')) value = value.slice(7);
-
-        if (value.startsWith('[') && value.endsWith(']'))
-            value = value.slice(1, -1);
-
-        if (value === '::1') value = '127.0.0.1';
-
-        return value || null;
-    }
-
-    private getClientIp(req: Request): string | null {
-        return this.normalizeIp(req.ip);
-    }
-
-    private getGeo(ip: string | null) {
-        if (!ip || ip === '127.0.0.1') return null;
-
-        const geo = geoip.lookup(ip);
-        if (!geo) return null;
+    /** Full metadata record for the current request. */
+    public getMeta(req: Request): RequestMetadata {
+        const network = captureNetworkInfo(req);
+        const userAgent = parseUserAgent(req.headers['user-agent']);
+        const ip = network.ip ?? null;
 
         return {
-            city: geo.city || undefined,
-            region: geo.region || undefined,
-            country: geo.country || undefined,
-            ll: Array.isArray(geo.ll)
-                ? ([geo.ll[0], geo.ll[1]] as [number, number])
-                : undefined,
-            timezone: (geo as any).timezone || undefined,
-        };
-    }
-
-    private getUserAgentInfo(req: Request) {
-        const raw = req.get('user-agent') || req.headers['user-agent'] || null;
-
-        if (!raw || typeof raw !== 'string') {
-            return { raw: null, device: null, browser: null, os: null };
-        }
-
-        let ua: any;
-        try {
-            const parser = new (UAParser as any)(raw);
-            ua = parser.getResult ? parser.getResult() : (UAParser as any)(raw);
-        } catch {
-            return {
-                raw: raw.slice(0, 500),
-                device: null,
-                browser: null,
-                os: null,
-            };
-        }
-
-        const browserVersion = ua.browser?.version || undefined;
-        const osVersion = ua.os?.version || undefined;
-
-        return {
-            raw: raw.slice(0, 500),
-            device: {
-                family: ua.device?.type || undefined,
-                brand: ua.device?.vendor || undefined,
-                model: ua.device?.model || undefined,
-                type: ua.device?.type || undefined,
-            },
-            browser: {
-                family: ua.browser?.name || undefined,
-                version: browserVersion,
-            },
-            os: {
-                family: ua.os?.name || undefined,
-                version: osVersion,
+            client: parseClientMetadata(req),
+            server: {
+                ip,
+                userAgent: userAgent.raw,
+                browser: userAgent.browser,
+                os: userAgent.os,
+                device: userAgent.device,
+                receivedAt: new Date().toISOString(),
+                forwardedFor: network.forwardedFor || null,
+                proxyTrusted: network.proxyTrusted,
+                secure: network.secure,
+                location: lookupGeo(ip),
             },
         };
     }
 
-    private getRequestMeta(req: Request): RequestMeta {
-        const ip = this.getClientIp(req);
-        const geo = this.getGeo(ip);
-        const ua = this.getUserAgentInfo(req);
+    /**
+     * Single source of truth for the human-readable values attached to
+     * security events and sign-in notification emails. The device and
+     * location labels never embed an IP address, and the returned IP is
+     * pre-masked for storage in email content.
+     */
+    public getSecurityLabels(req: Request): {
+        device: string;
+        location: string;
+        ip: string | null;
+    } {
+        const meta = this.getMeta(req);
 
         return {
-            ip,
-            location: geo,
-            device: ua.device,
-            browser: ua.browser,
-            os: ua.os,
-            userAgentRaw: ua.raw,
+            device: buildDeviceLabel(meta),
+            location: buildLocationLabel(meta.server.location),
+            ip: meta.server.ip ? maskIp(meta.server.ip) : null,
         };
     }
 }

@@ -226,13 +226,14 @@ class MailService {
         email: string,
         device: string,
         location: string,
-        time: string
+        time: string,
+        ip?: string
     ) {
         return this.send({
             to: email,
             subject: 'New login detected',
-            text: `We noticed a new login to your account from ${device} in ${location} at ${time}.`,
-            html: loginAlertTemplate(device, location, time),
+            text: `We noticed a new login to your account from ${device} in ${location} at ${time}.${ip ? ` IP address: ${ip} (partially masked).` : ''}`,
+            html: loginAlertTemplate(device, location, time, ip),
         });
     }
 
@@ -296,7 +297,8 @@ class MailService {
                     p.email,
                     p.device,
                     p.location,
-                    p.time
+                    p.time,
+                    p.ip
                 );
             }
 

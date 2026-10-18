@@ -34,6 +34,12 @@ export interface AppConfig {
     env: string;
     port: number;
     host: string;
+    /**
+     * Express `trust proxy` setting. Resolved from `TRUST_PROXY`; defaults to
+     * trusting a single hop (the load balancer). `true` is rejected at
+     * startup because it makes `X-Forwarded-For` spoofable by any client.
+     */
+    trustProxy: boolean | number | string;
     logger: LoggerConfig;
     mongo: {
         uri: string;

@@ -4,34 +4,10 @@ import jwt, { type JwtPayload } from 'jsonwebtoken';
 import config from '@/config';
 import { AppError } from '@/utils/AppError';
 import {
+    classifyTokenError,
     logSecurityEvent,
     SECURITY_EVENTS,
-    type SecurityEvent,
 } from '@/utils/securityAudit';
-
-/**
- * Classifies a `jsonwebtoken` failure so the audit trail can distinguish an
- * expired session from a forged token. Both previously produced the same
- * opaque `unauthorized`, which made credential stuffing indistinguishable from
- * a user whose token simply aged out.
- */
-const classifyTokenError = (
-    error: unknown
-): { event: SecurityEvent; reason: string } => {
-    if (error instanceof jwt.TokenExpiredError) {
-        return { event: SECURITY_EVENTS.TOKEN_EXPIRED, reason: 'expired' };
-    }
-    if (error instanceof jwt.NotBeforeError) {
-        return { event: SECURITY_EVENTS.TOKEN_EXPIRED, reason: 'not_before' };
-    }
-    if (error instanceof jwt.JsonWebTokenError) {
-        return {
-            event: SECURITY_EVENTS.TOKEN_INVALID,
-            reason: error.message.toLowerCase().replace(/\s+/g, '_'),
-        };
-    }
-    return { event: SECURITY_EVENTS.TOKEN_INVALID, reason: 'unknown' };
-};
 
 /**
  * Verifies the bearer access token and populates `req.user`.

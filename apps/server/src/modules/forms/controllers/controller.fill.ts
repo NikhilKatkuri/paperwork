@@ -7,6 +7,8 @@ import { stringify } from 'csv-stringify';
 
 import FillService from '@/modules/forms/service/service.fill';
 import { AppError } from '@/utils/AppError';
+import { lookupGeo, parseUserAgent } from '@/utils/metadata';
+import { captureNetworkInfo } from '@/utils/requestMeta';
 
 class FillController {
     service = new FillService();
@@ -58,11 +60,16 @@ class FillController {
                   ? [String(a.value)]
                   : [],
         }));
-        const userAgent =
-            body.metadata?.userAgent ?? req.headers['user-agent'] ?? 'Unknown';
-        const ipAddress =
-            body.metadata?.ipAddress ??
-            ((req.ip || req.socket.remoteAddress || 'Unknown') as string);
+        // Submission metadata is derived from the request itself. Client
+        // bodies are never trusted for this: a caller can write any value it
+        // likes into `body.metadata`, so accepting it would let a respondent
+        // forge the address or device recorded against their own answer.
+        const network = captureNetworkInfo(req);
+        const userAgent = parseUserAgent(req.headers['user-agent']);
+        const location = lookupGeo(network.ip ?? null);
+        const deviceLabel = [userAgent.device?.brand, userAgent.device?.model]
+            .filter(Boolean)
+            .join(' ');
         const pageRaw = (req.query as any)?.page;
         const limitRaw = (req.query as any)?.limit;
         const page = Number.parseInt(String(pageRaw ?? '1'), 10);
@@ -77,8 +84,12 @@ class FillController {
             currentSectionId: body.currentSectionId,
             responseEmail: body.email,
             metadata: {
-                userAgent: String(userAgent).slice(0, 500),
-                ipAddress: String(ipAddress).slice(0, 100),
+                userAgent: userAgent.raw ?? 'Unknown',
+                ipAddress: network.ip?.slice(0, 100) ?? 'Unknown',
+                browser: userAgent.browser?.family ?? undefined,
+                os: userAgent.os?.family ?? undefined,
+                device: deviceLabel || userAgent.device?.type || undefined,
+                country: location?.country ?? undefined,
             },
             page: Number.isFinite(page) ? page : 1,
             limit: Number.isFinite(limit) ? limit : 20,

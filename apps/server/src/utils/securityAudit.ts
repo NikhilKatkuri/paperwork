@@ -1,4 +1,5 @@
 import type { Request } from 'express';
+import jwt from 'jsonwebtoken';
 
 import config from '@/config';
 import { securityLogger } from '@/utils/logger';
@@ -27,10 +28,41 @@ export const SECURITY_EVENTS = {
     MALFORMED_PAYLOAD: 'SECURITY_MALFORMED_PAYLOAD',
     /** Registration attempt against a blacklisted disposable domain. */
     DISPOSABLE_EMAIL_BLOCKED: 'SECURITY_DISPOSABLE_EMAIL_BLOCKED',
+    /** Sign-in rejected: wrong password (401/403) or failed 2FA step (400). */
+    SIGNIN_FAILED: 'SECURITY_SIGNIN_FAILED',
+    /** Password changed by an authenticated user. */
+    PASSWORD_CHANGED: 'SECURITY_PASSWORD_CHANGED',
 } as const;
 
 export type SecurityEvent =
     (typeof SECURITY_EVENTS)[keyof typeof SECURITY_EVENTS];
+
+/**
+ * Classifies a `jsonwebtoken` failure so the audit trail can distinguish an
+ * expired session from a forged token. Both previously produced the same
+ * opaque `unauthorized`, which made credential stuffing indistinguishable
+ * from a user whose token simply aged out.
+ *
+ * Shared by `protect` (access tokens) and the refresh flow so every JWT
+ * rejection path classifies failures the same way.
+ */
+export const classifyTokenError = (
+    error: unknown
+): { event: SecurityEvent; reason: string } => {
+    if (error instanceof jwt.TokenExpiredError) {
+        return { event: SECURITY_EVENTS.TOKEN_EXPIRED, reason: 'expired' };
+    }
+    if (error instanceof jwt.NotBeforeError) {
+        return { event: SECURITY_EVENTS.TOKEN_EXPIRED, reason: 'not_before' };
+    }
+    if (error instanceof jwt.JsonWebTokenError) {
+        return {
+            event: SECURITY_EVENTS.TOKEN_INVALID,
+            reason: error.message.toLowerCase().replace(/\s+/g, '_'),
+        };
+    }
+    return { event: SECURITY_EVENTS.TOKEN_INVALID, reason: 'unknown' };
+};
 
 /**
  * Statuses fed to the burst detector.

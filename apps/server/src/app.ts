@@ -4,6 +4,7 @@ import helmet from 'helmet';
 
 import cors from 'cors';
 import corsOptions from '@/config/cors';
+import config from '@/config';
 
 import cookieParser from 'cookie-parser';
 import router from './router';
@@ -16,9 +17,12 @@ import securityAudit from '@/middleware/securityAudit';
 
 const app: express.Application = express();
 
-// Trust a single hop (the load balancer) rather than the whole chain, so a
-// client cannot spoof `req.ip` via X-Forwarded-For when Node is reachable.
-app.set('trust proxy', 1);
+// `trust proxy` comes from `TRUST_PROXY` (config). The default trusts exactly
+// one hop — the load balancer in front of Node — so a client cannot spoof
+// `req.ip` through `X-Forwarded-For` unless it can reach Node directly.
+// Deployments with a different topology (no proxy, multiple hops, specific
+// proxy subnets) configure the setting explicitly; see `resolveTrustProxy`.
+app.set('trust proxy', config.trustProxy);
 
 // Correlation id first, ahead of everything that can reject a request.
 // Helmet, CORS and the rate limiters must not be able to emit an
