@@ -76,13 +76,13 @@ function TwoFactorComponent() {
             <footer className="my-3 grid w-full grid-cols-1 space-y-3">
                 <div className="flex w-full items-center justify-center gap-3 text-center text-xs">
                     <Link
-                        href={''}
+                        href="/terms"
                         className="hover:underline active:underline"
                     >
                         Terms of Use
                     </Link>
                     <Link
-                        href={''}
+                        href="/privacy"
                         className="hover:underline active:underline"
                     >
                         Privacy Policy

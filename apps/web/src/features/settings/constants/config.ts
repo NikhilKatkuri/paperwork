@@ -20,3 +20,26 @@ export const SidebarIntent = [
         route: '/user/settings/password',
     },
 ];
+
+export const SidebarInfoLinks = [
+    {
+        name: 'Privacy Policy',
+        icon: 'policy',
+        href: '/privacy',
+    },
+    {
+        name: 'Terms of Service',
+        icon: 'description',
+        href: '/terms',
+    },
+    {
+        name: 'Help center',
+        icon: 'help',
+        href: '/help',
+    },
+    {
+        name: 'Contact & support',
+        icon: 'support_agent',
+        href: '/contact',
+    },
+];

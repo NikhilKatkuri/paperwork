@@ -53,13 +53,13 @@ function CheckEmailContainer() {
                 )}
                 <div className="flex w-full items-center justify-center gap-3 text-center text-xs">
                     <Link
-                        href={''}
+                        href="/terms"
                         className="hover:underline active:underline"
                     >
                         Terms of Use
                     </Link>
                     <Link
-                        href={''}
+                        href="/privacy"
                         className="hover:underline active:underline"
                     >
                         Privacy Policy

@@ -1,5 +1,12 @@
 export const PUBLIC_FILL_PREFIX = '/forms/v';
 
+/**
+ * Static information pages. They render without any auth state, so the
+ * client-side AuthGuardProvider must not block them behind the session
+ * loading screen.
+ */
+export const INFO_PATHS = ['/privacy', '/terms', '/help', '/contact'];
+
 export const AUTH_PATHS = [
     '/auth/signin',
     '/auth/signup',
@@ -32,9 +39,10 @@ export const isAuthPath = (path: string) =>
 export const isPublicFillPath = (path: string) =>
     hasSegmentBoundary(path, PUBLIC_FILL_PREFIX);
 
+export const isInfoPath = (path: string) =>
+    INFO_PATHS.some((p) => hasSegmentBoundary(path, p));
+
 export const isProtectedPath = (path: string) => {
     if (isPublicFillPath(path)) return false;
-    return PROTECTED_PATHS.some(
-        (p) => path === p || path.startsWith(`${p}/`)
-    );
+    return PROTECTED_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
 };

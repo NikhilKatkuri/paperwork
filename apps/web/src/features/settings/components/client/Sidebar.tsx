@@ -1,8 +1,9 @@
 'use client';
 
 import { cn } from '@/utils/cn';
-import { SidebarIntent } from '../../constants/config';
+import { SidebarInfoLinks, SidebarIntent } from '../../constants/config';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import useSignOut from '@/auth/api/SignOut';
 
 function shouldShowSidebar(pathname: string) {
@@ -57,29 +58,20 @@ export default function Sidebar({ currentRoute }: { currentRoute: string }) {
                     More Information
                 </h1>
                 <div className="grid grid-cols-1 gap-3 *:text-sm">
-                    {['Privacy Policy', 'Terms of Service', 'Help center'].map(
-                        (item) => (
-                            <button
-                                key={item}
-
-                                className="w-full"
-                            >
-                                <div
-                                    className={cn(
-                                        'grid w-full cursor-pointer grid-cols-[24px_1fr] items-center gap-4 rounded-lg bg-transparent p-2 transition-colors duration-200 ease-in-out',
-                                        currentRoute.startsWith(item)
-                                            ? 'bg-brand-light/50 text-brand-depth'
-                                            : 'hover:bg-brand-light/50 hover:text-brand-depth'
-                                    )}
-                                >
-                                    <span className="material-symbols-outlined">
-                                        arrow_outward
-                                    </span>
-                                    <p className="text-left">{item}</p>
-                                </div>
-                            </button>
-                        )
-                    )}
+                    {SidebarInfoLinks.map((item) => (
+                        <Link
+                            key={item.name}
+                            href={item.href}
+                            className="w-full"
+                        >
+                            <div className="hover:bg-brand-light/50 hover:text-brand-depth grid w-full cursor-pointer grid-cols-[24px_1fr] items-center gap-4 rounded-lg bg-transparent p-2 transition-colors duration-200 ease-in-out">
+                                <span className="material-symbols-outlined">
+                                    {item.icon}
+                                </span>
+                                <p className="text-left">{item.name}</p>
+                            </div>
+                        </Link>
+                    ))}
                     <button
                         type="button"
                         onClick={handleSignOut}
