@@ -22,13 +22,6 @@
         "typescript"
     ],
     "packageManager": "pnpm@9.15.9",
-    "devEngines": {
-        "packageManager": {
-            "name": "pnpm",
-            "version": "^9.15.9",
-            "onFail": "download"
-        }
-    },
     "scripts": {
         "build": "turbo run build",
         "dev": "turbo run dev",

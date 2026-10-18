@@ -7,6 +7,13 @@ services:
         command: ['mongod', '--replSet', 'rs0', '--bind_ip', '0.0.0.0']
         volumes:
             - mongo_data:/data/db
+        # Bounded container logs: without this the Docker json-file driver
+        # grows without limit, which matters on hosts with small disks.
+        logging:
+            driver: json-file
+            options:
+                max-size: '10m'
+                max-file: '3'
         healthcheck:
             test:
                 [
