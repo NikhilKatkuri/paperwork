@@ -1,7 +1,3 @@
-import { cacheRedis } from '@/redis';
-
-import { cacheLogger, logError } from '@/utils/logger';
-
 export interface FormIndexEntry {
     _id: string;
     name: string;
@@ -46,19 +42,17 @@ class Semaphore {
  * entry. Filtering then happens in memory, which removes both the regex against
  * Mongo and the need for a `name` index at ordinary volumes.
  *
- * Follows the same L1 in-process / L2 Redis shape as `Trend`, but with explicit
- * invalidation on write (see `FormsService`) plus a short TTL as a safety net.
+ * Purely in-memory: explicit invalidation on write (see `FormsService`) keeps
+ * entries fresh, and a short TTL acts as the safety net for anything missed.
  */
 class FormIndexCache {
     private readonly hot = new Map<string, CacheEntry>();
     private readonly dbSemaphore = new Semaphore(5);
 
-    /** L1 lifetime - short, since writes invalidate explicitly. */
+    /** Entry lifetime - short, since writes invalidate explicitly. */
     private readonly HOT_TTL_MS = 60 * 1000;
-    /** L2 lifetime - the safety net for missed invalidations. */
-    private readonly REDIS_TTL_S = 5 * 60;
-    /** Bound L1 growth across many users in one process. */
-    private readonly MAX_L1_ENTRIES = 500;
+    /** Bound growth across many users in one process. */
+    private readonly MAX_ENTRIES = 500;
 
     private key(userId: string): string {
         return `formindex:${userId}`;
@@ -66,15 +60,12 @@ class FormIndexCache {
 
     /**
      * Return the cached index, loading it through `loader` on a miss.
-     *
-     * Redis is treated as strictly optional: a cache failure falls through to
-     * the loader rather than failing the request.
      */
     async getOrLoad(
         userId: string,
         loader: () => Promise<FormIndexEntry[]>
     ): Promise<FormIndexEntry[]> {
-        const cached = await this.read(userId);
+        const cached = this.read(userId);
         if (cached) return cached;
 
         // Bound concurrent loads so a cold key cannot stampede the database.
@@ -82,11 +73,11 @@ class FormIndexCache {
 
         try {
             // Another request may have populated it while we waited.
-            const rechecked = await this.read(userId);
+            const rechecked = this.read(userId);
             if (rechecked) return rechecked;
 
             const rows = await loader();
-            await this.write(userId, rows);
+            this.write(userId, rows);
 
             return rows;
         } finally {
@@ -94,49 +85,23 @@ class FormIndexCache {
         }
     }
 
-    private async read(userId: string): Promise<FormIndexEntry[] | null> {
+    private read(userId: string): FormIndexEntry[] | null {
         const key = this.key(userId);
         const now = Date.now();
 
         const hot = this.hot.get(key);
-        if (hot) {
-            if (hot.expireAt > now) return this.parse(hot.data);
+        if (!hot) return null;
 
-            this.hot.delete(key);
-        }
+        if (hot.expireAt > now) return this.parse(hot.data);
 
-        try {
-            const raw = await cacheRedis.get(key);
-            if (!raw) return null;
-
-            this.setHot(key, raw, now);
-
-            return this.parse(raw);
-        } catch (error) {
-            // Redis unavailable - fall through to the loader.
-            logError(cacheLogger, 'form_index.cache_read_failed', error, {
-                event: 'CACHE_READ_FAILED',
-                key,
-            });
-
-            return null;
-        }
+        this.hot.delete(key);
+        return null;
     }
 
-    private async write(userId: string, rows: FormIndexEntry[]): Promise<void> {
+    private write(userId: string, rows: FormIndexEntry[]): void {
         const key = this.key(userId);
-        const raw = JSON.stringify(rows);
 
-        this.setHot(key, raw, Date.now());
-
-        try {
-            await cacheRedis.set(key, raw, 'EX', this.REDIS_TTL_S);
-        } catch (error) {
-            logError(cacheLogger, 'form_index.cache_write_failed', error, {
-                event: 'CACHE_WRITE_FAILED',
-                key,
-            });
-        }
+        this.setHot(key, JSON.stringify(rows), Date.now());
     }
 
     /**
@@ -144,23 +109,11 @@ class FormIndexCache {
      * deleted, so a rename is visible on the next search.
      */
     async invalidate(userId: string): Promise<void> {
-        const key = this.key(userId);
-
-        this.hot.delete(key);
-
-        try {
-            await cacheRedis.del(key);
-        } catch (error) {
-            // Not fatal - the TTL will expire it anyway.
-            logError(cacheLogger, 'form_index.invalidation_failed', error, {
-                event: 'CACHE_INVALIDATION_FAILED',
-                key,
-            });
-        }
+        this.hot.delete(this.key(userId));
     }
 
     private setHot(key: string, data: string, now: number): void {
-        if (this.hot.size >= this.MAX_L1_ENTRIES) {
+        if (this.hot.size >= this.MAX_ENTRIES) {
             // Cheap eviction: drop the oldest insertion.
             const oldest = this.hot.keys().next();
             if (!oldest.done) this.hot.delete(oldest.value);

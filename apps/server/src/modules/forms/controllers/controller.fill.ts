@@ -7,8 +7,6 @@ import { stringify } from 'csv-stringify';
 
 import FillService from '@/modules/forms/service/service.fill';
 import { AppError } from '@/utils/AppError';
-import { trendEngine } from '@/redis';
-import { cacheLogger, logError } from '@/utils/logger';
 
 class FillController {
     service = new FillService();
@@ -94,85 +92,35 @@ class FillController {
         try {
             const { userId, email, formId } = this.getContent(req);
 
-            let formData: string | null = null;
-            try {
-                formData = await trendEngine.getForm(formId);
-            } catch {
-                formData = null;
+            // Keyed by user as well: domain-restricted (private) forms must
+            // not let a second user reuse the first user's verified read,
+            // which would bypass their own domain check.
+            //
+            // `service.get` performs the availability/domain/schedule checks
+            // (throwing the correct AppError status) before returning the
+            // form, so no separate verification pass is needed here.
+            const readKey = `${formId}:${userId}`;
+            let dbPromise = this.inFlightReads.get(readKey);
+            const isFirst = !dbPromise;
+
+            if (isFirst) {
+                dbPromise = this.service
+                    .get(formId, userId, email)
+                    .finally(() => {
+                        this.inFlightReads.delete(readKey);
+                    });
+                this.inFlightReads.set(readKey, dbPromise);
             }
 
-            // A cache hit is only a fast path: re-verify availability so
-            // unpublished/private/closed forms are never served stale.
-            if (formData) {
-                try {
-                    const parsed = JSON.parse(formData) as any;
-                    const formDoc = parsed?.form ?? parsed;
-                    await this.service.verifier(formDoc, userId, email);
-                } catch (verifyError) {
-                    // Stale or now-inaccessible: drop cache and fall through
-                    // to the DB path which throws the correct status.
-                    try {
-                        trendEngine.invalidate?.(formId);
-                    } catch {
-                        /* ignore */
-                    }
-                    formData = null;
-                    if (
-                        verifyError instanceof AppError ||
-                        (verifyError as any)?.statusCode
-                    ) {
-                        throw verifyError;
-                    }
-                }
-            }
-
-            if (!formData) {
-                // Keyed by user as well: domain-restricted (private) forms
-                // must not let a second user reuse the first user's verified
-                // read, which would bypass their own domain check.
-                const readKey = `${formId}:${userId}`;
-                let dbPromise = this.inFlightReads.get(readKey);
-                const isFirst = !dbPromise;
-
-                if (isFirst) {
-                    dbPromise = this.service
-                        .get(formId, userId, email)
-                        .finally(() => {
-                            this.inFlightReads.delete(readKey);
-                        });
-                    this.inFlightReads.set(readKey, dbPromise);
-                }
-
-                const db = await dbPromise;
-                if (!db) {
-                    throw AppError.NotFound('Form not found');
-                }
-
-                formData = JSON.stringify(db, null, 2);
-
-                if (isFirst) {
-                    await trendEngine
-                        .handleDbFallback(formId, formData)
-                        .catch((err: unknown) => {
-                            // The response is already on its way; a cache
-                            // write failure degrades search, not the request.
-                            logError(
-                                cacheLogger,
-                                'form_data_cache_failed',
-                                err,
-                                {
-                                    event: 'CACHE_WRITE_FAILED',
-                                    formId,
-                                }
-                            );
-                        });
-                }
+            const form = await dbPromise;
+            if (!form) {
+                throw AppError.NotFound('Form not found');
             }
 
             res.status(StatusCodes.OK).json({
                 success: true,
                 message: 'Form retrieved successfully',
-                data: JSON.parse(formData),
+                data: form,
             });
         } catch (error) {
             next(error);

@@ -380,7 +380,7 @@ export const sanitizeError = (
     }
 
     // Preserve the fields that actually identify a failure in this codebase:
-    // `statusCode` from AppError, `code` from Mongo/Redis/Node, `errors` from
+    // `statusCode` from AppError, `code` from Mongo/Node, `errors` from
     // zod, and `path`/`value` from a mongoose CastError.
     const extraKeys = [
         'code',

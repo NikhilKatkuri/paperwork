@@ -63,9 +63,6 @@ export interface AppConfig {
         EXPIRATION: number;
     };
     WEB_URL: string;
-    redis: {
-        url: string;
-    };
     cloudinary: {
         cloud_name: string;
         api_key: string;

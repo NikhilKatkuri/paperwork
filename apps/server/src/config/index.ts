@@ -161,9 +161,6 @@ const config: AppConfig = {
         EXPIRATION: getEnvVar<number>('OTP_EXPIRATION', 300000),
     },
     WEB_URL: getEnvVar<string>('WEB_URL'),
-    redis: {
-        url: getEnvVar<string>('REDIS_URL'),
-    },
     cloudinary: {
         cloud_name: getEnvVar<string>('CLOUDINARY_CLOUD_NAME'),
         api_key: getEnvVar<string>('CLOUDINARY_API_KEY'),

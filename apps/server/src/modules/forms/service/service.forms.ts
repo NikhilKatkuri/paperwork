@@ -456,7 +456,8 @@ class FormsService {
      * "already published" error for an action the user considers valid.
      *
      * No cache invalidation here: the id/name index only holds `_id` and `name`,
-     * and neither changes here. The 5 minute Redis TTL is the safety net.
+     * and neither changes here. The short TTL on the in-memory index is the
+     * safety net.
      */
     private async toggleBoolean(
         userId: string,
