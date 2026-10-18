@@ -2,8 +2,8 @@ import app from './app';
 import config from '@/config';
 import { connectDB, disconnectDB } from '@/db/connection';
 import SubmissionWorker from './workers/SubmissionWorker';
-import { worker } from './workers';
 import { fatal, logger } from '@/utils/logger';
+import emailOutboxWorker from './modules/email/workers/emailOutbox.worker';
 
 const boot = async (): Promise<void> => {
     await connectDB().catch((error: unknown) => {
@@ -11,7 +11,7 @@ const boot = async (): Promise<void> => {
         process.exit(1);
     });
 
-    worker.initEmailWorker();
+    emailOutboxWorker.start();
 
     try {
         new SubmissionWorker();

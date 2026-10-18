@@ -12,10 +12,11 @@ import {
     PaginationOptions,
     SectionDoc,
 } from '@paperwork/types';
-import { emailQueue } from '@/queues';
 import fieldsValidator from '../validators/validator.feilds';
 import { formIndexCache } from '@/redis/formIndex';
 import { logger, logError } from '@/utils/logger';
+import { EmailPriority } from '@/modules/email/types/emailOutbox.type';
+import emailOutboxService from '@/modules/email/services/emailOutbox.service';
 
 class FormsService {
     /**
@@ -27,8 +28,12 @@ class FormsService {
     async create(props: CreateFormDoc, userId: string): Promise<FormDto> {
         // Never trust client-supplied ownership/counters.
         const { settings, section: s, questions, ...rest } = props as any;
-        const { responseCount: _rc, isPublished: _pub, userId: _uid, ...data } =
-            rest ?? {};
+        const {
+            responseCount: _rc,
+            isPublished: _pub,
+            userId: _uid,
+            ...data
+        } = rest ?? {};
 
         const session = await mongoose.startSession();
         let form: any;
@@ -49,14 +54,23 @@ class FormsService {
                     { session }
                 );
                 form = created[0];
-                if (!form) throw AppError.FormCreationFailed('Failed to create form');
+                if (!form)
+                    throw AppError.FormCreationFailed('Failed to create form');
 
                 const sectionDocs = await SectionModel.create(
-                    [{ ...fieldsValidator.getSafeSectionData(s ?? {}), formId: form._id }],
+                    [
+                        {
+                            ...fieldsValidator.getSafeSectionData(s ?? {}),
+                            formId: form._id,
+                        },
+                    ],
                     { session }
                 );
                 section = sectionDocs[0];
-                if (!section) throw AppError.SectionCreationFailed('Failed to create default section');
+                if (!section)
+                    throw AppError.SectionCreationFailed(
+                        'Failed to create default section'
+                    );
 
                 if (questions?.length) {
                     createdQuestions = await QuestionsModel.create(
@@ -79,37 +93,29 @@ class FormsService {
             const user = await UserModel.findById(userId).select('email');
 
             if (user?.email) {
-                emailQueue
-                    .add(
-                        'sendFormCreatedEmail',
-                        {
-                            formId: formIdForMail,
-                            formName: (formObj as any).name,
-                            email: user.email,
-                        },
-                        {
-                            attempts: 10,
-                            backoff: {
-                                type: 'exponential',
-                                delay: 60 * 1000,
-                            },
-                        }
-                    )
-                    .catch(() => undefined);
+                await emailOutboxService.addEmailToOutbox({
+                    type: 'sendFormCreatedEmail',
+                    payload: {
+                        formId: formIdForMail,
+                        formName: (formObj as any).name,
+                        email: user.email,
+                    },
+                    priority: EmailPriority.FORM_CREATED,
+                });
             }
 
-        const { formId: _sectionFormId, ...sectionData } = sectionObj;
+            const { formId: _sectionFormId, ...sectionData } = sectionObj;
 
-        return {
-            ...formObj,
-            sections: [sectionData],
-            questions: createdQuestions.map((question) => {
-                const { formId: _questionFormId, ...questionData } =
-                    question.toJSON();
+            return {
+                ...formObj,
+                sections: [sectionData],
+                questions: createdQuestions.map((question) => {
+                    const { formId: _questionFormId, ...questionData } =
+                        question.toJSON();
 
-                return questionData;
-            }),
-        } as unknown as FormDto;
+                    return questionData;
+                }),
+            } as unknown as FormDto;
         } catch (error) {
             // Never mask the cause: the generic message reaches the client,
             // but the real error (validation, duplicate key, transaction)
@@ -153,13 +159,11 @@ class FormsService {
         return {
             ...formData,
             sections: sections.map((section) => {
-                const { formId: _sFormId, ...rest } =
-                    section.toJSON() as any;
+                const { formId: _sFormId, ...rest } = section.toJSON() as any;
                 return rest;
             }),
             questions: questions.map((question) => {
-                const { formId: _qFormId, ...rest } =
-                    question.toJSON() as any;
+                const { formId: _qFormId, ...rest } = question.toJSON() as any;
                 return rest;
             }),
         } as unknown as FormDto;
@@ -503,8 +507,12 @@ class FormsService {
             }
 
             const { _id, ...cleanForm } = form.toJSON() as any;
-            const { responseCount: _dupRc, id: _dupId, v: _dupV, ...baseForm } =
-                cleanForm;
+            const {
+                responseCount: _dupRc,
+                id: _dupId,
+                v: _dupV,
+                ...baseForm
+            } = cleanForm;
 
             const [duplicatedForm] = await FormsModel.create(
                 [
@@ -534,10 +542,18 @@ class FormsService {
 
             if (sections.length) {
                 const newSections = await SectionModel.insertMany(
-                    sections.map(({ _id, createdAt, updatedAt, __v, ...section }: any) => ({
-                        ...section,
-                        formId: newFormId,
-                    })),
+                    sections.map(
+                        ({
+                            _id,
+                            createdAt,
+                            updatedAt,
+                            __v,
+                            ...section
+                        }: any) => ({
+                            ...section,
+                            formId: newFormId,
+                        })
+                    ),
                     { session }
                 );
 

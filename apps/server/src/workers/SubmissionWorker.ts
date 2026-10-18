@@ -1,10 +1,11 @@
 import { cacheRedis } from '@/redis';
 import FillService from '@/modules/forms/service/service.fill';
-import { emailQueue } from '@/queues';
 import { Job, UnrecoverableError } from 'bullmq';
 import { worker } from '@/workers/index';
 import { logError, workerLogger } from '@/utils/logger';
 import { AppError } from '@/utils/AppError';
+import emailOutboxService from '@/modules/email/services/emailOutbox.service';
+import { EmailPriority } from '@/modules/email/types/emailOutbox.type';
 
 interface SubmissionJob {
     submissionId: string;
@@ -137,21 +138,17 @@ class SubmissionWorker {
                 base
             );
 
-            // Trigger email
-            await emailQueue.add(
-                'submissionConfirmed',
-                {
+            await emailOutboxService.addEmailToOutbox({
+                type: 'sendFormSubmissionConfirmedEmail',
+                payload: {
                     submissionId,
                     responseId: response._id.toString(),
                     email,
                     formId,
                     formName: formId,
                 },
-                {
-                    attempts: 3,
-                    backoff: { type: 'exponential', delay: 5000 },
-                }
-            );
+                priority: EmailPriority.FORM_SUBMISSION_CONFIRMATION,
+            });
         } catch (error) {
             logError(workerLogger, 'submission_job.failed', error, {
                 event: 'QUEUE_JOB_FAILED',

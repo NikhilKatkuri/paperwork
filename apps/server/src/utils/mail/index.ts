@@ -15,6 +15,10 @@ import { Resend } from 'resend';
 import { SystemError } from '../AppError';
 import { logError, mailLogger } from '@/utils/logger';
 import { maskEmail } from '@/utils/sanitize';
+import {
+    EmailJobPayloads,
+    EmailJobType,
+} from '@/modules/email/types/emailOutbox.type';
 
 interface MailPayload {
     to: string;
@@ -253,6 +257,72 @@ class MailService {
             html: formSubmissionConfirmed(formName, submissionId),
         });
     }
+
+    async sendOutboxEmail<K extends EmailJobType>(
+        type: K,
+        payload: EmailJobPayloads[K]
+    ) {
+        switch (type) {
+            case 'sendOTPEmail': {
+                const p = payload as EmailJobPayloads['sendOTPEmail'];
+                return this.sendOTPEmail(p.email, p.otp, p.subject);
+            }
+
+            case 'sendWelcomeEmail': {
+                const p = payload as EmailJobPayloads['sendWelcomeEmail'];
+                return this.sendWelcomeEmail(p.email, p.name);
+            }
+
+            case 'sendFormCreatedEmail': {
+                const p = payload as EmailJobPayloads['sendFormCreatedEmail'];
+                return this.sendFormCreatedEmail(p.email, p.formName, p.formId);
+            }
+
+            case 'sendForgotPasswordEmail': {
+                const p =
+                    payload as EmailJobPayloads['sendForgotPasswordEmail'];
+                return this.sendForgotPasswordEmail(p.email, p.resetLink);
+            }
+
+            case 'sendPasswordResetSuccessEmail': {
+                const p =
+                    payload as EmailJobPayloads['sendPasswordResetSuccessEmail'];
+                return this.sendPasswordResetSuccessEmail(p.email);
+            }
+
+            case 'sendLoginAlertEmail': {
+                const p = payload as EmailJobPayloads['sendLoginAlertEmail'];
+                return this.sendLoginAlertEmail(
+                    p.email,
+                    p.device,
+                    p.location,
+                    p.time
+                );
+            }
+
+            case 'sendPasswordChangeAlertEmail': {
+                const p =
+                    payload as EmailJobPayloads['sendPasswordChangeAlertEmail'];
+                return this.sendPasswordChangeAlertEmail(p.email, p.time);
+            }
+
+            case 'sendFormSubmissionConfirmedEmail': {
+                const p =
+                    payload as EmailJobPayloads['sendFormSubmissionConfirmedEmail'];
+                return this.sendFormSubmissionConfirmedEmail(
+                    p.email,
+                    p.formName,
+                    p.submissionId
+                );
+            }
+
+            default: {
+                const unreachable: never = type;
+                throw new Error(`Unsupported email type: ${unreachable}`);
+            }
+        }
+    }
 }
 
-export default MailService;
+const mailService = new MailService();
+export default mailService;

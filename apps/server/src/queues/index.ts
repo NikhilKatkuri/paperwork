@@ -34,14 +34,6 @@ class QueueManager {
 
 const manager = new QueueManager();
 
-const emailQueue = manager.createQueue('email', {
-    defaultJobOptions: {
-        attempts: 5,
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: 1000,
-        removeOnFail: 5000,
-    },
-});
 const submissionQueue = manager.createQueue('submissions', {
     defaultJobOptions: {
         attempts: 3,
@@ -55,4 +47,4 @@ const submissionQueue = manager.createQueue('submissions', {
 });
 
 export default QueueManager;
-export { emailQueue, submissionQueue, manager as queueManager };
+export { submissionQueue, manager as queueManager };

@@ -11,7 +11,6 @@ import HashBoot from './hash.service';
 
 import { Request, Response } from 'express';
 import { AppError } from '@/utils/AppError';
-import { emailQueue } from '@/queues';
 import { AutoBoundController } from '@/utils/AutoBoundClass';
 
 import { generateHSL, HSLtoString } from '../utils/randomprofiepicture';
@@ -24,6 +23,8 @@ import {
     User,
 } from '@paperwork/types';
 import { MongooseDocument } from '@/types';
+import emailOutboxService from '@/modules/email/services/emailOutbox.service';
+import { EmailPriority } from '@/modules/email/types/emailOutbox.type';
 
 class AuthService extends AutoBoundController {
     constructor() {
@@ -63,35 +64,33 @@ class AuthService extends AutoBoundController {
             await session.endSession();
         }
 
-        // Side-effect outside the transaction: a rollback must not send mail,
-        // and a mail-queue failure must not roll back a committed user.
-        // Fire-and-forget with a logged catch so signup never 500s on Redis.
-        emailQueue
-            .add(
-                'sendWelcomeEmail',
-                { email, fullName },
-                {
-                    attempts: 10,
-                    backoff: { type: 'exponential', delay: 60 * 1000 },
-                }
-            )
-            .catch(() => undefined);
+        await emailOutboxService.addEmailToOutbox(
+            {
+                type: 'sendWelcomeEmail',
+                payload: {
+                    email,
+                    name: fullName,
+                },
+                priority: EmailPriority.WELCOME,
+            },
+            session
+        );
 
-            const tokens = {
-                accessToken: TokenBoot.generateToken({
+        const tokens = {
+            accessToken: TokenBoot.generateToken({
+                userId: newUser!._id.toString(),
+                email: newUser!.email,
+            }),
+            refreshToken: TokenBoot.generateToken(
+                {
                     userId: newUser!._id.toString(),
                     email: newUser!.email,
-                }),
-                refreshToken: TokenBoot.generateToken(
-                    {
-                        userId: newUser!._id.toString(),
-                        email: newUser!.email,
-                    },
-                    'refresh'
-                ),
-            };
+                },
+                'refresh'
+            ),
+        };
 
-            return tokens;
+        return tokens;
     };
 
     signIn = async ({
@@ -149,43 +148,22 @@ class AuthService extends AutoBoundController {
     private async otpFor2FA(userId: string, email: string, res: Response) {
         const { otp, expiresAt } = OTPBoot.generateOTP({ userId, email });
 
-        // Do not block sign-in on mail outage; queue with retries instead.
-        emailQueue
-            .add(
-                'sendOTPEmail',
-                { email, otp, expiresAt },
-                {
-                    attempts: 5,
-                    backoff: { type: 'exponential', delay: 5 * 1000 },
-                }
-            )
-            .catch(() => undefined);
+        await emailOutboxService.addEmailToOutbox({
+            type: 'sendOTPEmail',
+            payload: { email, otp, subject: 'Your 2FA OTP Code' },
+            priority: EmailPriority.OTP,
+        });
 
         const tempAccessToken = TokenBoot.generateToken(
             { userId, email },
             'temp'
         );
 
-        // Cookie lifetime matches OTP lifetime so a stale cookie cannot
-        // outlive the code (previously 15m vs 5m OTP).
-        const ttlMs = Math.max(
-            60 * 1000,
-            expiresAt - Date.now()
-        );
+        const ttlMs = Math.max(60 * 1000, expiresAt - Date.now());
 
-        this.cookieSetter(
-            res,
-            'Expiry2faAt',
-            expiresAt.toString(),
-            ttlMs
-        );
+        this.cookieSetter(res, 'Expiry2faAt', expiresAt.toString(), ttlMs);
 
-        this.cookieSetter(
-            res,
-            'tempAccessToken',
-            tempAccessToken,
-            ttlMs
-        );
+        this.cookieSetter(res, 'tempAccessToken', tempAccessToken, ttlMs);
 
         res.status(statusCodes.OK).json({
             success: true,
@@ -207,23 +185,16 @@ class AuthService extends AutoBoundController {
         geo: string;
         res: Response;
     }) {
-        // Fire-and-forget: login must not fail when Redis/mail is down.
-        emailQueue
-            .add(
-                'sendLoginAlertEmail',
-                {
-                    email,
-                    device,
-                    location: geo,
-                    time: new Date().toISOString(),
-                },
-                {
-                    attempts: 10,
-                    backoff: { type: 'exponential', delay: 20 * 1000 },
-                }
-            )
-            .catch(() => undefined);
-
+        await emailOutboxService.addEmailToOutbox({
+            type: 'sendLoginAlertEmail',
+            payload: {
+                email,
+                device,
+                location: geo,
+                time: new Date().toISOString(),
+            },
+            priority: EmailPriority.SECURITY_ALERT,
+        });
         const accessToken = TokenBoot.generateToken({ userId, email });
         const refreshToken = TokenBoot.generateToken(
             { userId, email },
@@ -383,13 +354,9 @@ class AuthService extends AutoBoundController {
             if (Object.keys(clean).length === 0) {
                 throw AppError.BadRequest('No update data provided');
             }
-            const profile = await ProfileRepoBoot.updateProfile(
-                userId,
-                clean,
-                {
-                    sensitiveData: 0,
-                }
-            );
+            const profile = await ProfileRepoBoot.updateProfile(userId, clean, {
+                sensitiveData: 0,
+            });
             if (!profile) {
                 throw AppError.NotFound('Profile not found');
             }
@@ -420,14 +387,11 @@ class AuthService extends AutoBoundController {
                 email,
             });
 
-            await emailQueue.add(
-                'sendVerificationEmail',
-                { email, otp, expiresAt },
-                {
-                    attempts: 2,
-                    backoff: { type: 'exponential', delay: 5 * 1000 },
-                }
-            );
+            await emailOutboxService.addEmailToOutbox({
+                type: 'sendOTPEmail',
+                payload: { email, otp, subject: 'Your Email Verification OTP' },
+                priority: EmailPriority.OTP,
+            });
 
             return expiresAt;
         } catch (error) {
@@ -505,15 +469,14 @@ class AuthService extends AutoBoundController {
             user.passwordHash = await HashBoot.hashed(newPassword);
             await user.save();
 
-            await emailQueue.add(
-                'sendPasswordChangeAlertEmail',
-                { email: user.email, time: new Date().toISOString() },
-                {
-                    attempts: 5,
-                    backoff: { type: 'exponential', delay: 20 * 1000 },
-                }
-            );
-
+            await emailOutboxService.addEmailToOutbox({
+                type: 'sendPasswordChangeAlertEmail',
+                payload: {
+                    email: user.email,
+                    time: new Date().toISOString(),
+                },
+                priority: EmailPriority.SECURITY_ALERT,
+            });
             return 'Password has been changed successfully.';
         } catch (error) {
             if (error instanceof AppError) throw error;
@@ -546,14 +509,11 @@ class AuthService extends AutoBoundController {
                 );
                 const resetLink = `${config.WEB_URL}/auth/reset-password/${jwtToken}`;
 
-                await emailQueue.add(
-                    'sendForgotPasswordEmail',
-                    { email, resetLink },
-                    {
-                        attempts: 5,
-                        backoff: { type: 'exponential', delay: 20 * 1000 },
-                    }
-                );
+                await emailOutboxService.addEmailToOutbox({
+                    type: 'sendForgotPasswordEmail',
+                    payload: { email, resetLink },
+                    priority: EmailPriority.PASSWORD_RESET,
+                });
             }
             return 'If an account with that email exists, a password reset link has been sent.';
         } catch (error) {
@@ -597,14 +557,11 @@ class AuthService extends AutoBoundController {
                 user.resetExpires = null as unknown as Date;
                 await user.save();
 
-                await emailQueue.add(
-                    'sendPasswordResetSuccessEmail',
-                    { email: user.email },
-                    {
-                        attempts: 5,
-                        backoff: { type: 'exponential', delay: 30 * 1000 },
-                    }
-                );
+                await emailOutboxService.addEmailToOutbox({
+                    type: 'sendPasswordResetSuccessEmail',
+                    payload: { email: user.email },
+                    priority: EmailPriority.PASSWORD_RESET,
+                });
             }
             return 'If the token is valid, your password has been reset successfully.';
         } catch (error) {
