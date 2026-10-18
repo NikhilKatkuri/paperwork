@@ -127,9 +127,10 @@ class FillService {
     /**
      * Availability checks shared by the fill read and submit paths.
      *
-     * The per-user submission limit is intentionally NOT checked here: this
-     * runs on every `GET /fill`, and counting the user's responses just to
-     * serve a form is wasted work. The limit is enforced on write (`post`).
+     * The per-user submission limit is deliberately not part of this sync
+     * block: `get` checks it separately via `assertUserResponseLimit` (a
+     * single indexed count, skipped entirely when no limit is configured),
+     * and the write path enforces it atomically.
      */
     verifier(form: FormDocument, userId: string, email?: string) {
         this.assertFormAvailability(form);
@@ -194,6 +195,33 @@ class FillService {
             if (form.responseCount >= maxResponses) {
                 throw AppError.FormClosed('Maximum response limit reached');
             }
+        }
+    }
+
+    /**
+     * Pre-fill check for `settings.maxResponsesPerUser`.
+     *
+     * Lets a respondent who already used up their quota see the closed state
+     * on load instead of filling the whole form only to be rejected on
+     * submit. One indexed count, and only when the limit is configured; the
+     * write path still enforces the limit atomically.
+     */
+    private async assertUserResponseLimit(
+        formId: string,
+        userId: string,
+        form: FormDocument
+    ): Promise<void> {
+        const limit = form.settings?.maxResponsesPerUser;
+
+        if (limit === undefined) return;
+
+        const submitted = await FormResponseModel.countDocuments({
+            formId,
+            userId,
+        });
+
+        if (submitted >= limit) {
+            throw AppError.FormClosed('User submission limit reached');
         }
     }
 
@@ -458,6 +486,11 @@ class FillService {
         ]);
 
         this.verifier(form as FormDocument, userId, email);
+        await this.assertUserResponseLimit(
+            formId,
+            userId,
+            form as FormDocument
+        );
 
         if (!sections.length)
             throw AppError.SectionNotFound('Form has no content');

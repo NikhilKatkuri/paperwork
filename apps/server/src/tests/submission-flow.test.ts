@@ -323,6 +323,40 @@ describe('FillService.post — persistence', () => {
     });
 });
 
+describe('FillService.get — pre-fill settings', () => {
+    it('rejects before loading when the per-user response limit is reached', async () => {
+        const service = new FillService();
+        const form = await createPublishedForm({
+            settings: { maxResponsesPerUser: 1 },
+        });
+        const question = await createQuestion(form._id);
+
+        await service.post(submission(form._id, question._id));
+
+        await assert.rejects(
+            () => service.get(String(form._id), OWNER),
+            /User submission limit reached/
+        );
+    });
+
+    it('loads the form while the respondent is still under the limit', async () => {
+        const service = new FillService();
+        const form = await createPublishedForm({
+            settings: { maxResponsesPerUser: 3 },
+        });
+        await SectionModel.create({
+            formId: String(form._id),
+            index: 0,
+            title: 'Section 1',
+        });
+
+        const fill = await service.get(String(form._id), OWNER);
+
+        assert.equal(String(fill.form._id), String(form._id));
+        assert.equal(fill.sections.length, 1);
+    });
+});
+
 describe('FillService.getSubmission — persisted status', () => {
     it('returns a done status for the owner after persistence', async () => {
         const service = new FillService();
