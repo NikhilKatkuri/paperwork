@@ -30,15 +30,13 @@ export const postFormSchema = z.object({
                 })
             )
             .min(1, 'At least one answer is required'),
-        metadata: z.object({
-            userAgent: z.string(),
-            ipAddress: z.string(),
-            browser: z.string().optional(),
-            os: z.string().optional(),
-            device: z.string().optional(),
-            country: z.string().optional(),
-            timeSpentSeconds: z.number().nonnegative().optional(),
-        }),
+        /**
+         * No `metadata` field on purpose. Submission metadata (UA, IP, geo,
+         * device) is derived from the request itself in the fill controller;
+         * requiring it here rejected clients that correctly stopped sending
+         * it, and any client-sent value would be stripped by the validate
+         * middleware anyway since it is not part of this schema.
+         */
         isCompleted: z.boolean().default(false),
         currentSectionId: zodObjectId.optional(),
     }),

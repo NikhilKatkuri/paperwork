@@ -415,4 +415,41 @@ describe('submission metadata is server-derived', () => {
         assert.match(String(content.metadata.browser), /Chrome/);
         assert.match(String(content.metadata.os), /Windows/);
     });
+
+    it('accepts a client body without metadata and strips forged metadata', async () => {
+        const { postFormSchema } =
+            await import('@/modules/forms/validators/validator.fill');
+
+        const body = {
+            idempotencyKey: 'key-1',
+            answers: [
+                {
+                    questionId: '507f1f77bcf86cd799439011',
+                    value: ['yes'],
+                },
+            ],
+        };
+
+        const parsed = postFormSchema.parse({
+            params: { formId: '507f1f77bcf86cd799439011' },
+            body,
+        });
+
+        assert.equal(
+            'metadata' in parsed.body,
+            false,
+            'the web client does not send metadata and must not be rejected'
+        );
+
+        const forged = postFormSchema.parse({
+            params: { formId: '507f1f77bcf86cd799439011' },
+            body: { ...body, metadata: { ipAddress: '6.6.6.6' } },
+        });
+
+        assert.equal(
+            'metadata' in forged.body,
+            false,
+            'client-supplied metadata must be stripped before the controller'
+        );
+    });
 });
