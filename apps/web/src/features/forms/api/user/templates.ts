@@ -5,6 +5,9 @@ import { toast } from 'sonner';
 import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
 import storageService from '@/providers/StorageService';
+import templateRepository, {
+    isTemplateCatalogFresh,
+} from '@/features/forms/repositories/templateRepository';
 import type { FormDto, Template } from '@paperwork/types';
 
 /** A template as returned by the API (`_id`) normalised to use `id`. */
@@ -45,7 +48,14 @@ export function rememberTemplate(templateId: string): void {
     storageService.set(RECENTS_KEY, next);
 }
 
-/** Fetch every template, normalised and ready to group by category. */
+/**
+ * Every template, normalised and ready to group by category.
+ *
+ * IndexedDB is the first paint: a stored catalogue renders immediately and is
+ * only re-fetched when it is older than a week (or on an explicit retry).
+ * A first visit has nothing to show, so the catalogue is fetched in the
+ * background and recorded for the next load.
+ */
 export function useTemplates() {
     const [templates, setTemplates] = useState<TemplateSummary[] | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -53,21 +63,29 @@ export function useTemplates() {
 
     useEffect(() => {
         const controller = new AbortController();
+        let cancelled = false;
 
-        http.get<RawTemplate[]>(endpoints.forms.allTemplates(), {
-            signal: controller.signal,
-        })
-            .then((res) => {
-                if (controller.signal.aborted) return;
+        async function fetchTemplates() {
+            try {
+                const res = await http.get<RawTemplate[]>(
+                    endpoints.forms.allTemplates(),
+                    { signal: controller.signal }
+                );
+
+                if (cancelled) return;
 
                 const list = (res.data ?? [])
                     .map(toSummary)
                     .filter((item): item is TemplateSummary => item !== null);
 
                 setTemplates(list);
-            })
-            .catch((cause: unknown) => {
-                if (controller.signal.aborted) return;
+                setError(null);
+
+                await templateRepository
+                    .saveCatalog(list)
+                    .catch(() => undefined);
+            } catch (cause: unknown) {
+                if (cancelled || controller.signal.aborted) return;
 
                 console.warn('[templates] could not load templates', cause);
                 setError(
@@ -75,9 +93,37 @@ export function useTemplates() {
                         ? cause.message
                         : 'Could not load templates'
                 );
-            });
+            }
+        }
 
-        return () => controller.abort();
+        async function load() {
+            try {
+                const catalog = await templateRepository.getCatalog();
+
+                if (cancelled) return;
+
+                if (catalog) {
+                    setTemplates(catalog.templates);
+
+                    // Stale catalogues keep rendering while the background
+                    // refresh runs; fresh ones skip the network entirely.
+                    if (reloadKey === 0 && isTemplateCatalogFresh(catalog)) {
+                        return;
+                    }
+                }
+            } catch {
+                // Cache unavailable (private mode); fall back to the network.
+            }
+
+            await fetchTemplates();
+        }
+
+        void load();
+
+        return () => {
+            cancelled = true;
+            controller.abort();
+        };
     }, [reloadKey]);
 
     const retry = useCallback(() => {

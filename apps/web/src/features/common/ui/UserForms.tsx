@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 
 import FormsView from '../../user/components/client/FormsView';
@@ -23,6 +24,13 @@ interface UserFormsProps {
 
 type SortMethod = 'plain' | 'alphabetical-forward' | 'alphabetical-reverse';
 
+/**
+ * How long a visitor must stay on the page before the server list is fetched.
+ * The IndexedDB snapshot renders immediately, so a quick bounce never costs a
+ * network round trip; a visitor who lingers gets a background refresh.
+ */
+const SERVER_REFRESH_DELAY_MS = 5000;
+
 function UserForms({ query = '' }: Readonly<UserFormsProps>) {
     const [viewAsRow, setViewAsRow] = useState(true);
     const [preferencesLoaded, setPreferencesLoaded] = useState(false);
@@ -31,11 +39,15 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
     const [fetchComplete, setFetchComplete] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [retryCount, setRetryCount] = useState(0);
+    // Bumped whenever the page resumes (bfcache restore, tab focus, or a
+    // client-side return to this route) so the local snapshot is re-read
+    // without waiting for a full reload.
+    const [resumeKey, setResumeKey] = useState(0);
 
     // 1. Memoize options to ensure `next` function reference remains stable across renders
     const getFormsOptions = useMemo(() => ({ page: 1, limit: 20 }), []);
 
-    const { loading, next } = useGetForms(getFormsOptions);
+    const { next } = useGetForms(getFormsOptions);
     const { ensureForm } = useEnsureForm();
     const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -145,8 +157,79 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
         [ensureForm]
     );
 
+    /**
+     * Creating a form navigates with a full document load, so coming back is
+     * a bfcache restore: mounted effects do not re-run and the list would
+     * show the pre-creation snapshot until a manual reload. Re-sync whenever
+     * the page becomes visible again.
+     */
+    const pathname = usePathname();
+    const isHome = pathname === '/user';
+    const wasHomeRef = useRef(isHome);
+
+    // A client-side return to this route must re-sync as well in case the
+    // router preserved the mounted tree instead of remounting it.
+    useEffect(() => {
+        if (isHome && !wasHomeRef.current) {
+            setResumeKey((k) => k + 1);
+        }
+
+        wasHomeRef.current = isHome;
+    }, [isHome]);
+
+    useEffect(() => {
+        function resume() {
+            setResumeKey((k) => k + 1);
+        }
+
+        function onPageShow(event: PageTransitionEvent) {
+            if (event.persisted) resume();
+        }
+
+        function onVisibilityChange() {
+            if (document.visibilityState === 'visible') resume();
+        }
+
+        window.addEventListener('pageshow', onPageShow);
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        return () => {
+            window.removeEventListener('pageshow', onPageShow);
+            document.removeEventListener(
+                'visibilitychange',
+                onVisibilityChange
+            );
+        };
+    }, []);
+
     useEffect(() => {
         let cancelled = false;
+
+        async function loadCachedForms() {
+            try {
+                const cached = await formRepository.getAll();
+
+                if (!cancelled && cached.length > 0) {
+                    setData(cached);
+                }
+            } catch {
+                // A cache miss must not block the server refresh below.
+            }
+        }
+
+        void loadCachedForms();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [resumeKey]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        // First paint is served from IndexedDB; only a visitor who stays long
+        // enough triggers the network. Explicit retries skip the delay.
+        const delay = retryCount === 0 ? SERVER_REFRESH_DELAY_MS : 0;
 
         async function fetchForms() {
             setLoadError(null);
@@ -166,6 +249,12 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
 
                 if (!cancelled) {
                     setData(allForms);
+
+                    // Record the server projection so the next cold load can
+                    // render without touching the network.
+                    await formRepository
+                        .seedMany(allForms)
+                        .catch(() => undefined);
                 }
             } catch (error: unknown) {
                 if (!cancelled) {
@@ -184,12 +273,13 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
             }
         }
 
-        void fetchForms();
+        const timer = setTimeout(() => void fetchForms(), delay);
 
         return () => {
             cancelled = true;
+            clearTimeout(timer);
         };
-    }, [next, retryCount]);
+    }, [next, retryCount, resumeKey]);
 
     const displayedForms = useMemo(() => {
         const term = query.trim().toLowerCase();
@@ -215,7 +305,9 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
     }, [data, query, sortMethod]);
 
     const isSearching = query.trim().length > 0;
-    const isLoading = loading || !fetchComplete;
+    // Cached rows stay visible while the delayed server refresh runs; the
+    // skeleton only covers the window where there is nothing to render.
+    const isLoading = data.length === 0 && !fetchComplete;
 
     return (
         <>

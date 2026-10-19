@@ -61,4 +61,9 @@ export async function clearClientCaches(): Promise<void> {
     } catch {
         /* IndexedDB unavailable (SSR/private mode) */
     }
+    try {
+        await db.templates.clear();
+    } catch {
+        /* IndexedDB unavailable (SSR/private mode) */
+    }
 }

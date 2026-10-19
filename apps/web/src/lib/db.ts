@@ -1,5 +1,6 @@
 import Dexie, { Table } from 'dexie';
 import { FormDB } from '@/types';
+import type { TemplateSummary } from '@/features/forms/api/user/templates';
 
 /**
  * Small key/value store for per-device preferences such as the form theme.
@@ -11,6 +12,16 @@ export interface PreferenceRecord {
     key: string;
     value: unknown;
     updatedAt: number;
+}
+
+/**
+ * Cached template catalogue. A single record (`id: 'catalog'`) holds the
+ * whole list plus the time it was fetched, which drives the weekly refresh.
+ */
+export interface TemplateCacheRecord {
+    id: string;
+    templates: TemplateSummary[];
+    fetchedAt: number;
 }
 
 export function generateObjectId(): string {
@@ -31,6 +42,7 @@ export function generateObjectId(): string {
 class PaperworkDB extends Dexie {
     forms!: Table<FormDB, string>;
     preferences!: Table<PreferenceRecord, string>;
+    templates!: Table<TemplateCacheRecord, string>;
 
     constructor() {
         super('PaperworkDB');
@@ -38,6 +50,10 @@ class PaperworkDB extends Dexie {
         this.version(1).stores({
             forms: 'id, updatedAt, isPublished',
             preferences: 'key, updatedAt',
+        });
+
+        this.version(2).stores({
+            templates: 'id, fetchedAt',
         });
     }
 }
