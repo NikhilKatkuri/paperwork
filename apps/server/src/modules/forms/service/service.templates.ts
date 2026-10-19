@@ -12,13 +12,22 @@ class TemplatesService extends AutoBoundClass {
     }
 
     async all(query: any) {
-        const { category, isFeatured } = query;
+        const { category, isFeatured, limit } = query;
         const filter: any = {};
 
-        if (category) filter.category = category;
+        // Only accept plain strings: query objects (`?category[$ne]=x`)
+        // must not reach the Mongo filter.
+        if (typeof category === 'string' && category) {
+            filter.category = category;
+        }
         if (isFeatured !== undefined) filter.isFeatured = isFeatured === 'true';
 
-        return await TemplateModel.find(filter);
+        const parsedLimit = Number.parseInt(String(limit ?? ''), 10);
+        const safeLimit = Number.isFinite(parsedLimit)
+            ? Math.min(Math.max(parsedLimit, 1), 100)
+            : 100;
+
+        return await TemplateModel.find(filter).limit(safeLimit);
     }
 
     async getByTemplateId(templateId: string) {

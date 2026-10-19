@@ -70,15 +70,6 @@ class TemplatesController extends AutoBoundClass {
             return next(error);
         }
     }
-
-    async seed(req: Request, res: Response, next: NextFunction) {
-        try {
-            const data = await this.service.seed(req.body);
-            return res.status(201).json({ success: true, data });
-        } catch (error) {
-            return next(error);
-        }
-    }
 }
 
 export default TemplatesController;
