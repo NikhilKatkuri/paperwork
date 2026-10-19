@@ -13,7 +13,7 @@ import {
     SectionDoc,
 } from '@paperwork/types';
 import fieldsValidator from '../validators/validator.feilds';
-import { formIndexCache } from '@/redis/formIndex';
+import { formIndexCache } from '@/cache/formIndex';
 import { logger, logError } from '@/utils/logger';
 import { EmailPriority } from '@/modules/email/types/emailOutbox.type';
 import emailOutboxService from '@/modules/email/services/emailOutbox.service';
