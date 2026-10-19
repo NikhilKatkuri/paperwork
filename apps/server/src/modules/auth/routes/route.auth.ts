@@ -17,8 +17,10 @@ import {
     SecuritySettingsSchema,
     signInSchema,
     signUpSchema,
+    twoFactorVerifySchema,
     UpdateSecuritySettingsSchema,
     validateEmailSchema,
+    verifyEmailSchema,
 } from '@/modules/auth/validation/validation.auth';
 import protect from '@/middleware/protect';
 import validateDomain from '../middleware/validateDomain';
@@ -35,7 +37,12 @@ authRouter.post(
     controller.signInController
 );
 
-authRouter.post('/sign-in/2fa/:otp', authLimiter, controller.verify2FA);
+authRouter.post(
+    '/sign-in/2fa/:otp',
+    authLimiter,
+    validate(twoFactorVerifySchema),
+    controller.verify2FA
+);
 
 authRouter.post(
     '/sign-up',
@@ -84,6 +91,7 @@ authRouter.post(
     '/verify-email',
     lowLimiter,
     protect,
+    validate(verifyEmailSchema),
     controller.verifyEmailController
 );
 

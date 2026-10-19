@@ -140,6 +140,14 @@ export const logMaskedSecurityEvent = (
 export class SuspiciousPayloadDetector {
     private readonly hits = new Map<string, number[]>();
 
+    /**
+     * Hard cap on retained timestamps per address. Only rejected requests
+     * are recorded, but one address can be rejected arbitrarily often; above
+     * the threshold the counter has already served its purpose, so old
+     * entries are dropped instead of growing the array without limit.
+     */
+    private readonly maxEntriesPerClient = 1000;
+
     constructor(
         private readonly threshold: number = config.logger
             .suspiciousPayloadThreshold,
@@ -163,6 +171,13 @@ export class SuspiciousPayloadDetector {
         );
 
         recent.push(now);
+
+        // Keep only the newest entries: the burst size is already way past
+        // the threshold at this point, and the array must stay bounded.
+        if (recent.length > this.maxEntriesPerClient) {
+            recent.splice(0, recent.length - this.maxEntriesPerClient);
+        }
+
         this.hits.set(ip, recent);
 
         return recent.length > this.threshold ? recent.length : undefined;

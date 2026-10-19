@@ -59,6 +59,11 @@ class MailService {
                     user: config.mail.hostUser,
                     pass: config.mail.hostPass,
                 },
+                // Defence in depth: never resolve local files or remote URLs
+                // from message content, even if a future template is fed
+                // user-supplied data.
+                disableFileAccess: true,
+                disableUrlAccess: true,
             });
         }
     }
@@ -72,7 +77,7 @@ class MailService {
             text?: string;
             html: string;
         }
-    ) {
+    ): Promise<unknown> {
         if (mode === 'resend') {
             try {
                 const response = await (this.transporter as Resend).emails.send(
@@ -93,7 +98,7 @@ class MailService {
                         {
                             event: 'MAIL_REJECTED',
                             provider: 'resend',
-                            recipient: props.to,
+                            recipient: maskEmail(props.to),
                             subject: props.subject,
                         }
                     );
@@ -152,6 +157,11 @@ class MailService {
                 throw error;
             }
         }
+
+        throw new SystemError(
+            `[mailService]`,
+            `Unsupported mail mode: ${String(mode)}`
+        );
     }
 
     private async send({ to, subject, text, html }: MailPayload) {
