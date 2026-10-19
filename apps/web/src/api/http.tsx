@@ -119,7 +119,11 @@ class HttpClient {
             };
         } catch (error) {
             if (isCancel(error)) {
-                throw new Error(`Request to ${path} was aborted`);
+                // No path in the message: credential-bearing endpoints
+                // (`/auth/reset-password/:token`, `/auth/sign-in/2fa/:otp`)
+                // put live secrets in the URL, and this message is surfaced
+                // and logged.
+                throw new Error('Request was aborted');
             }
 
             if (axios.isAxiosError(error)) {
@@ -180,7 +184,8 @@ class HttpClient {
             return response.data as Blob;
         } catch (error) {
             if (isCancel(error)) {
-                throw new Error(`Request to ${path} was aborted`);
+                // See `request`: never echo the URL, it may carry a token.
+                throw new Error('Request was aborted');
             }
             if (axios.isAxiosError(error)) {
                 throw new ApiError(

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { ApiError } from '@/api/http';
 
 export type ApiResponse<T> =
-    { ok: true; data: T } | { ok: false; error: string };
+    { ok: true; data: T } | { ok: false; error: string; status?: number };
 
 export function useApiAction<TArgs extends unknown[], TData>(
     apiCall: (...args: TArgs) => Promise<{ data: TData }>
@@ -25,7 +25,13 @@ export function useApiAction<TArgs extends unknown[], TData>(
                     e instanceof ApiError
                         ? e.message
                         : 'An unexpected error occurred.';
-                return { ok: false, error: message };
+                // Callers that need to distinguish "session is gone" (401/403)
+                // from a transient failure get the HTTP status here.
+                return {
+                    ok: false,
+                    error: message,
+                    status: e instanceof ApiError ? e.status : undefined,
+                };
             } finally {
                 setLoading(false);
             }

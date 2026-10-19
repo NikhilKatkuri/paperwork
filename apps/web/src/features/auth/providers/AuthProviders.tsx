@@ -24,6 +24,12 @@ import { PublicProfile } from '@/types';
 import jwtDecode, { DecodedTokenWithMeta } from '@/utils/jwtDecode';
 import useTwoFactorAuth from '../api/TwoFactorAuth';
 import { AuthContextType } from '../types';
+import { clearClientCaches } from '@/lib/clientCaches';
+
+/** Session definitively gone (cookie expired/revoked/password changed). */
+function isSessionRejected(status: number | undefined): boolean {
+    return status === 401 || status === 403;
+}
 
 export function useAuthLogic() {
     const signIn = useSignIn();
@@ -120,6 +126,12 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
                     scheduleRefreshRef.current(res.data.accessToken);
                 } else {
                     setAccessTokenState(null);
+                    // Caches are only wiped when the server rejected the
+                    // session — a network blip must not erase unsynced
+                    // local edits.
+                    if (isSessionRejected(res.status)) {
+                        void clearClientCaches();
+                    }
                 }
             },
             Math.max(delay, 0)
@@ -162,6 +174,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
                     updateAccessToken(res.data.accessToken);
                 } else {
                     updateAccessToken(null);
+                    if (res && !res.ok && isSessionRejected(res.status)) {
+                        void clearClientCaches();
+                    }
                 }
             } catch {
                 if (isMountedRef.current) {
