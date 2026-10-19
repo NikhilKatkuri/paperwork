@@ -8,6 +8,7 @@ import storageService from '@/providers/StorageService';
 import templateRepository, {
     isTemplateCatalogFresh,
 } from '@/features/forms/repositories/templateRepository';
+import { playFormCreatedSound } from '@/features/forms/utils/sound';
 import type { FormDto, Template } from '@paperwork/types';
 
 /** A template as returned by the API (`_id`) normalised to use `id`. */
@@ -155,6 +156,13 @@ export function useCloneTemplate() {
                     endpoints.forms.cloneTemplate(templateId),
                     { data: {} }
                 );
+
+                // Cloning creates a real form; confirm only once the server
+                // returned its id.
+                if (res.data?.id) {
+                    playFormCreatedSound();
+                }
+
                 return res.data;
             } catch (cause) {
                 console.error('[templates] clone failed', cause);
