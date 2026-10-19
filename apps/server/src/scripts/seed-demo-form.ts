@@ -12,6 +12,7 @@
 
 import mongoose from 'mongoose';
 
+import config from '@/config';
 import { connectDB, disconnectDB } from '@/db/connection';
 import FormsService from '@/modules/forms/service/service.forms';
 import FormsModel from '@/modules/forms/schemas/schemas.forms';
@@ -30,6 +31,15 @@ async function main() {
     await connectDB();
 
     try {
+        if (
+            config.env === 'production' &&
+            process.env.SEED_ALLOW_PRODUCTION !== 'true'
+        ) {
+            throw new Error(
+                'Refusing to seed demo data in production. Set SEED_ALLOW_PRODUCTION=true to override.'
+            );
+        }
+
         const rawUserId =
             process.env.SEED_USER_ID ??
             (await UserModel.findOne().select('_id').lean())?._id?.toString();
@@ -45,10 +55,13 @@ async function main() {
 
         console.log(`[seed] seeding for user ${userId}`);
 
-        // Keep repeat runs tidy - only forms this script created.
-        const previous = await FormsModel.find({ name: DEMO_NAME }).select(
-            '_id'
-        );
+        // Keep repeat runs tidy - only forms this script created for the
+        // targeted user. Unscoped, a run would delete same-named forms
+        // belonging to every other tenant.
+        const previous = await FormsModel.find({
+            name: DEMO_NAME,
+            userId,
+        }).select('_id');
 
         if (previous.length) {
             const ids = previous.map((f) => f._id);
