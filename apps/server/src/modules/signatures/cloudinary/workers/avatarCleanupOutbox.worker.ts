@@ -162,6 +162,28 @@ class AvatarCleanupOutboxWorker extends AutoBoundClass {
                 return true;
             }
 
+            // Same guard as the inline path: a delivery URL may be shared
+            // with (or reused by) another profile. Deleting a referenced
+            // asset breaks that profile, so the job is parked as done and
+            // the asset is left in storage.
+            if (await ProfileRepoBoot.isAvatarAssetReferenced(job.publicId)) {
+                workerLogger.warn('avatar_cleanup_job.skipped', {
+                    event: CLOUDINARY_EVENTS.AVATAR_CLEANUP_SKIPPED,
+                    reason: 'referenced_by_another_profile',
+                    workerId: this.workerId,
+                    jobId,
+                    userId: job.userId,
+                    publicId: job.publicId,
+                });
+
+                await avatarCleanupOutboxService.markAsDone(
+                    jobId,
+                    this.workerId
+                );
+
+                return true;
+            }
+
             await CloudinaryService.destroyAsset(job.publicId);
 
             await avatarCleanupOutboxService.markAsDone(jobId, this.workerId);

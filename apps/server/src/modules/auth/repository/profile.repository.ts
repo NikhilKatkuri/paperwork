@@ -20,6 +20,26 @@ class ProfileRepository<
         )) as T | null;
     }
 
+    /**
+     * True when any profile still references the given Cloudinary asset id
+     * in its avatar URL. The match targets the asset id (last path segment)
+     * rather than an exact URL, because `avatarUrl` stores delivery URLs and
+     * the same asset can be referenced with different transformations.
+     * Erring toward "referenced" only ever leaves an unused asset in
+     * storage; deleting a referenced one breaks a different user's profile.
+     */
+    async isAvatarAssetReferenced(publicId: string): Promise<boolean> {
+        const assetId = publicId.split('/').pop();
+        if (!assetId) return false;
+
+        const escaped = assetId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const found = await ProfileModel.exists({
+            avatarUrl: new RegExp(escaped),
+        });
+
+        return found !== null;
+    }
+
     async createProfile(userId: string): Promise<T> {
         const doc = new ProfileModel({ userId });
         await doc.save({ validateBeforeSave: true });

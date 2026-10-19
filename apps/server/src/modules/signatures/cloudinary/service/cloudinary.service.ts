@@ -2,6 +2,7 @@ import config from '@/config';
 import { AppError } from '@/utils/AppError';
 import { createServiceLogger, logError } from '@/utils/logger';
 import { v2 as cloudinary } from 'cloudinary';
+import ProfileRepoBoot from '@/modules/auth/repository/profile.repository';
 import { extractCloudinaryPublicId } from '../utils/cloudinary.asset';
 import avatarCleanupOutboxService from './avatarCleanupOutbox.service';
 
@@ -183,6 +184,19 @@ class CloudinaryService {
         }
 
         if (publicId === extractCloudinaryPublicId(currentUrl, scope)) return;
+
+        // A stored delivery URL may have been shared by another profile.
+        // Refusing to delete is the only safe direction: an orphaned asset
+        // costs storage, deleting a referenced one breaks someone's avatar.
+        if (await ProfileRepoBoot.isAvatarAssetReferenced(publicId)) {
+            cloudinaryLogger.warn('cloudinary: previous avatar skipped', {
+                event: CLOUDINARY_EVENTS.AVATAR_CLEANUP_SKIPPED,
+                reason: 'referenced_by_another_profile',
+                userId,
+                publicId,
+            });
+            return;
+        }
 
         try {
             await this.destroyAsset(publicId);
