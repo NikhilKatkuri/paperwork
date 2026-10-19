@@ -114,6 +114,12 @@ export const rateLimitConfig: Record<string, LimiterPreset> = {
         limit: scale(200),
         severity: 'low',
     },
+
+    healthCheck: {
+        windowMs: 15 * 60 * 1000,
+        limit: scale(30),
+        severity: 'low',
+    },
 } satisfies Record<string, LimiterPreset>;
 
 export const buildRateLimitMessage = (message?: string) => ({

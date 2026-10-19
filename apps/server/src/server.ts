@@ -33,6 +33,22 @@ const boot = async (): Promise<void> => {
                 port: config.port,
                 ...startupInfo,
             });
+
+            setInterval(async () => {
+                logger.info('server.still_alive', {
+                    event: 'SERVER_STILL_ALIVE',
+                    ...startupInfo,
+                });
+                const serverStatus = await fetch(
+                    `${process.env.HEALTH_CHECK_URL}`,
+                    { signal: AbortSignal.timeout(5000) }
+                );
+                logger.info('server.health_check', {
+                    event: 'SERVER_HEALTH_CHECK',
+                    status: serverStatus.status,
+                    ...startupInfo,
+                });
+            }, 60 * 1000);
         });
     } else {
         server = app.listen(config.port, config.host, () => {

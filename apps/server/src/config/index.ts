@@ -195,6 +195,8 @@ function resolveLoggerLevel(): LoggerLevel {
     return debugEnabled ? 'debug' : 'info';
 }
 
+const mailMode = resolveMailMode();
+
 const config: AppConfig = {
     env: getEnvVar<string>('NODE_ENV', 'development'),
     port: getEnvVar<number>('PORT', 5000),
@@ -242,13 +244,21 @@ const config: AppConfig = {
     },
     cookies: resolveCookiePolicy(),
     mail: {
-        mode: resolveMailMode(),
+        mode: mailMode,
         from: getEnvVar<string>('MAIL_FROM', ''),
         host: getEnvVar<string>('MAIL_HOST', 'smtp.gmail.com'),
         port: getEnvVar<number>('MAIL_PORT', 465),
         secure: getEnvVar<boolean>('MAIL_SECURE', true),
-        hostUser: getEnvVar<string>('MAIL_HOST_USER'),
-        hostPass: getEnvVar<string>('MAIL_HOST_PASS'),
+        // Credentials are only used by the SMTP transport; a Resend
+        // deployment must boot without them.
+        hostUser: getEnvVar<string>(
+            'MAIL_HOST_USER',
+            mailMode === 'nodemailer' ? undefined : ''
+        ),
+        hostPass: getEnvVar<string>(
+            'MAIL_HOST_PASS',
+            mailMode === 'nodemailer' ? undefined : ''
+        ),
     },
     otp: {
         SECRET: getEnvVar<string>('OTP_SECRET'),

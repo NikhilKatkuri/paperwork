@@ -54,7 +54,7 @@
         "@types/hpp": "^0.2.7",
         "@types/jsonwebtoken": "^9.0.10",
         "@types/morgan": "^1.9.10",
-        "@types/node": "^25.9.1",
+        "@types/node": "^25.9.9",
         "@types/nodemailer": "^8.0.2",
         "@types/sanitize-html": "^2.16.2",
         "@types/useragent": "^2.3.4",
