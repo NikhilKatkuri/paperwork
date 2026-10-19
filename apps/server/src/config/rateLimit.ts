@@ -73,7 +73,7 @@ export const rateLimitConfig: Record<string, LimiterPreset> = {
 
     refreshToken: {
         windowMs: 15 * 60 * 1000,
-        limit: scale(10),
+        limit: scale(30),
         message:
             'Abnormal token rotation detected. Please authenticate manually.',
         severity: 'high',
@@ -81,7 +81,7 @@ export const rateLimitConfig: Record<string, LimiterPreset> = {
 
     createForms: {
         windowMs: 15 * 60 * 1000,
-        limit: scale(10),
+        limit: scale(40),
         message:
             'Form generation limit exceeded. Please modify existing configurations.',
         severity: 'medium',
