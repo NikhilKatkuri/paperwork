@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const cloudinaryCloud = process.env.CLOUDINARY_CLOUD_NAME;
+const apiProxyOrigin = process.env.API_PROXY_ORIGIN?.trim().replace(/\/+$/, '');
 
 /**
  * Baseline response headers.
@@ -30,6 +31,16 @@ const nextConfig: NextConfig = {
                 headers: securityHeaders,
             },
         ];
+    },
+    async rewrites() {
+        return apiProxyOrigin
+            ? [
+                  {
+                      source: '/api/v1/:path*',
+                      destination: `${apiProxyOrigin}/api/v1/:path*`,
+                  },
+              ]
+            : [];
     },
     images: {
         remotePatterns: [

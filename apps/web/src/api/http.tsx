@@ -10,13 +10,7 @@ import { getErrorMessage } from './error';
 import { getClientMetadataHeaderValue } from '@/lib/requestMetadata';
 import { CLIENT_METADATA_HEADER } from '@paperwork/types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
-
-if (typeof window !== 'undefined' && !BASE_URL) {
-    // Defer the crash to request time so a missing env does not white-screen
-    // the whole bundle at import.
-    console.error('NEXT_PUBLIC_API_BASE_URL is not defined');
-}
+const API_BASE_PATH = '/api/v1';
 
 export type ApiResponse<T> = { data: T; status: number; raw?: unknown };
 
@@ -61,7 +55,7 @@ class HttpClient {
 
     constructor() {
         this.client = axios.create({
-            baseURL: BASE_URL || undefined,
+            baseURL: API_BASE_PATH,
             withCredentials: true,
             headers: { 'Content-Type': 'application/json' },
         });
@@ -110,13 +104,6 @@ class HttpClient {
         data?: unknown,
         config: RequestConfig = {}
     ): Promise<ApiResponse<T>> {
-        if (!BASE_URL) {
-            throw new ApiError(
-                'API is not configured. Please set NEXT_PUBLIC_API_BASE_URL.',
-                undefined
-            );
-        }
-
         const { skipSessionGate, ...requestConfig } = config;
 
         if (!skipSessionGate) {
@@ -201,12 +188,6 @@ class HttpClient {
 
     /** Raw binary download (CSV export). Auth header is attached. */
     public async getBlob(path: string, config?: RequestConfig): Promise<Blob> {
-        if (!BASE_URL) {
-            throw new ApiError(
-                'API is not configured. Please set NEXT_PUBLIC_API_BASE_URL.',
-                undefined
-            );
-        }
         const { skipSessionGate, ...requestConfig } = config ?? {};
 
         if (!skipSessionGate) {
