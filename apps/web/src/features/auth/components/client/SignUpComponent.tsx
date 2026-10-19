@@ -6,7 +6,7 @@ import {
     validatePassword,
     validateString,
 } from '@/utils/validations';
-import { redirect, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -16,6 +16,7 @@ const ToastOptions = {
 } as const;
 
 const SignUpClientComponent = () => {
+    const router = useRouter();
     const initialEmail = useSearchParams().get('email');
     const { signUp, setAccessToken } = useAuth();
     const { loading, handleSignUp } = signUp;
@@ -60,7 +61,7 @@ const SignUpClientComponent = () => {
             toast.loading('Redirecting to dashboard...', ToastOptions);
             setTimeout(() => {
                 toast.dismiss();
-                redirect('/user');
+                router.push('/user');
             }, 2000);
         } else {
             toast.error(res.error, ToastOptions);

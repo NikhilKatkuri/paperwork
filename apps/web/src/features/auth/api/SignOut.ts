@@ -4,11 +4,12 @@ import { endpoints } from '@/api/endpoints';
 import { http } from '@/api/http';
 import { useApiAction } from '@/hooks/useApiAction';
 import { SignOutResponse } from '@/auth/types/';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { clearClientCaches } from '@/lib/clientCaches';
 
 function useSignOut() {
+    const router = useRouter();
     const { loading, execute: handleSignOut } = useApiAction(async () => {
         try {
             const response = await http.post<SignOutResponse>(
@@ -21,7 +22,7 @@ function useSignOut() {
             );
             setTimeout(() => {
                 toast.dismiss();
-                redirect('/');
+                router.push('/');
             }, 500);
 
             return response;

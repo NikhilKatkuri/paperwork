@@ -5,8 +5,9 @@ import Link from 'next/link';
 import OTPInput from '../../ui/otp';
 import { useAuth } from '@/providers';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { resolveRedirectTarget } from '@/auth/utils/redirectTarget';
 
 const ToastOptions = {
     duration: 2000,
@@ -15,6 +16,7 @@ const ToastOptions = {
 
 function TwoFactorComponent() {
     const router = useRouter();
+    const redirectTo = resolveRedirectTarget(useSearchParams().get('from'));
     const { twoFactorAuth, setAccessToken } = useAuth();
     const { loading, handler } = twoFactorAuth;
     const [otpValues, setOtpValues] = useState<string[]>(Array(6).fill(''));
@@ -35,7 +37,7 @@ function TwoFactorComponent() {
                 toast.loading('Redirecting...', ToastOptions);
             }, 500);
             setTimeout(() => {
-                router.push('/user');
+                router.push(redirectTo);
             }, 3000);
         }
     };

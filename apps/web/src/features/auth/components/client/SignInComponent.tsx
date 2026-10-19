@@ -2,9 +2,10 @@
 
 import { useAuth } from '@/providers';
 import { validateEmail, validateSignInPassword } from '@/utils/validations';
-import { redirect, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { resolveRedirectTarget } from '@/auth/utils/redirectTarget';
 
 const ToastOptions = {
     duration: 2000,
@@ -12,7 +13,10 @@ const ToastOptions = {
 } as const;
 
 const SignInClientComponent = () => {
-    const initialEmail = useSearchParams().get('email');
+    const router = useRouter();
+    const params = useSearchParams();
+    const initialEmail = params.get('email');
+    const redirectTo = resolveRedirectTarget(params.get('from'));
     const { signIn, setAccessToken } = useAuth();
     const { loading, handleSignIn } = signIn;
 
@@ -60,7 +64,9 @@ const SignInClientComponent = () => {
 
                 setTimeout(() => {
                     toast.dismiss();
-                    redirect('/auth/signin/2fa');
+                    router.push(
+                        `/auth/signin/2fa?from=${encodeURIComponent(redirectTo)}`
+                    );
                 }, 2000);
             } else {
                 toast.success('Signed in successfully!', ToastOptions);
@@ -71,7 +77,7 @@ const SignInClientComponent = () => {
                 });
                 setTimeout(() => {
                     toast.dismiss();
-                    redirect('/user');
+                    router.push(redirectTo);
                 }, 1500);
             }
         } else {

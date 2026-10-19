@@ -1,7 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, usePathname, useRouter } from 'next/navigation';
+import {
+    useParams,
+    usePathname,
+    useRouter,
+    useSearchParams,
+} from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuthLogic } from '@/providers';
 import { EmailCheckResponse, ForgotPasswordResponse } from '@/auth/types';
@@ -29,6 +34,7 @@ export default function CheckEmailClientComponent() {
 
     const authLogic = useAuthLogic();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
@@ -48,7 +54,11 @@ export default function CheckEmailClientComponent() {
         setTimeout(() => {
             toast.dismiss();
             if (methods.next) {
-                router.push(methods.next(email));
+                const target = methods.next(email);
+                const from = searchParams.get('from');
+                router.push(
+                    from ? `${target}&from=${encodeURIComponent(from)}` : target
+                );
             }
         }, 2000);
     }
