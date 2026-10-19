@@ -82,7 +82,6 @@ class FillController {
             idempotencyKey: body.idempotencyKey,
             isCompleted: body.isCompleted,
             currentSectionId: body.currentSectionId,
-            responseEmail: body.email,
             metadata: {
                 userAgent: userAgent.raw ?? 'Unknown',
                 ipAddress: network.ip?.slice(0, 100) ?? 'Unknown',
@@ -142,9 +141,13 @@ class FillController {
         try {
             const { ...params } = this.getContent(req);
 
-            // Store the respondent's own email when provided; the
-            // authenticated email is only the fallback.
-            const email = params.responseEmail ?? params.email;
+            /**
+             * The authenticated email is the only email ever stored or
+             * checked against a form's allowed domains. A client-supplied
+             * `body.email` used to take precedence here, which let any
+             * authenticated user bypass domain restrictions by claiming an
+             * allowed address.
+             */
 
             /**
              * Persisted synchronously — there is no queue or background
@@ -156,7 +159,7 @@ class FillController {
             const response = await this.service.post({
                 formId: params.formId,
                 userId: params.userId,
-                email,
+                email: params.email,
                 answers: params.answers,
                 metadata: params.metadata,
                 idempotencyKey: params.idempotencyKey,

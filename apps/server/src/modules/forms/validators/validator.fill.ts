@@ -20,7 +20,6 @@ export const postFormSchema = z.object({
     }),
     body: z.object({
         idempotencyKey: z.string().min(1),
-        email: z.email().optional(),
         answers: z
             .array(
                 z.object({
