@@ -59,23 +59,26 @@ class AuthService extends AutoBoundController {
                     session,
                 });
 
+                // Enqueued inside the transaction: previously this ran after
+                // `endSession()`, so the outbox write used an ended session
+                // and the welcome email was silently dropped.
+                await emailOutboxService.addEmailToOutbox(
+                    {
+                        type: 'sendWelcomeEmail',
+                        payload: {
+                            email,
+                            name: fullName,
+                        },
+                        priority: EmailPriority.WELCOME,
+                    },
+                    session
+                );
+
                 return created[0]!;
             });
         } finally {
             await session.endSession();
         }
-
-        await emailOutboxService.addEmailToOutbox(
-            {
-                type: 'sendWelcomeEmail',
-                payload: {
-                    email,
-                    name: fullName,
-                },
-                priority: EmailPriority.WELCOME,
-            },
-            session
-        );
 
         const tokens = {
             accessToken: TokenBoot.generateToken({
@@ -314,11 +317,15 @@ class AuthService extends AutoBoundController {
     refreshTokenService = async ({
         userId,
         email,
+        tokenIssuedAt,
     }: {
         userId: string;
         email: string;
+        tokenIssuedAt?: number;
     }) => {
-        const user = await UserModel.findById(userId).lean();
+        const user = await UserModel.findById(userId)
+            .select('+passwordChangedAt')
+            .lean();
         if (!user) {
             throw AppError.Unauthorized('User no longer exists');
         }
@@ -327,6 +334,26 @@ class AuthService extends AutoBoundController {
             (user as any).accountDeletedStatus === 'DELETED'
         ) {
             throw AppError.Forbidden('Account is deactivated or deleted');
+        }
+
+        /**
+         * A password change/reset invalidates every session that predates
+         * it. JWTs are stateless, so instead of a session table the token's
+         * `iat` is compared against the stored change time. `iat` is in
+         * seconds; tokens issued in the same second as the change are
+         * treated as valid because they can only come from a sign-in that
+         * happened after the password was already updated.
+         */
+        const changedAt = (user as any).passwordChangedAt as
+            Date | null | undefined;
+        if (
+            changedAt &&
+            typeof tokenIssuedAt === 'number' &&
+            tokenIssuedAt * 1000 < new Date(changedAt).getTime()
+        ) {
+            throw AppError.Unauthorized(
+                'Session expired because the password was changed. Please sign in again.'
+            );
         }
 
         return {
@@ -508,6 +535,8 @@ class AuthService extends AutoBoundController {
             }
 
             user.passwordHash = await HashBoot.hashed(newPassword);
+            // Invalidates every refresh token issued before this moment.
+            user.passwordChangedAt = new Date();
             await user.save();
 
             await emailOutboxService.addEmailToOutbox({
@@ -594,6 +623,8 @@ class AuthService extends AutoBoundController {
 
             if (user) {
                 user.passwordHash = await HashBoot.hashed(newPassword);
+                // Invalidates every refresh token issued before this moment.
+                user.passwordChangedAt = new Date();
                 user.resetToken = null as unknown as string;
                 user.resetExpires = null as unknown as Date;
                 await user.save();

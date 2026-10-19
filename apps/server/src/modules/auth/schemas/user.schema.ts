@@ -18,6 +18,7 @@ export const userSchema = new Schema<MongooseDocument<User>>(
             index: true,
         },
         passwordHash: { type: String, required: true, select: false },
+        passwordChangedAt: { type: Date, default: null, select: false },
         isVerified: { type: Boolean, default: false },
         resetToken: { type: String, index: true, default: null, select: false },
         resetExpires: { type: Date, index: true, default: null, select: false },

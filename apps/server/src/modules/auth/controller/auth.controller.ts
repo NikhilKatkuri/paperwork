@@ -183,6 +183,7 @@ class AuthController extends AutoBoundController {
                 await AuthServiceBoot.refreshTokenService({
                     userId: decode.userId,
                     email: decode.email,
+                    tokenIssuedAt: decode.iat,
                 });
 
             this.cookieSetter(res, 'refreshToken', newRefreshToken);

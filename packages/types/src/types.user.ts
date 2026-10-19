@@ -17,4 +17,5 @@ export interface User extends Security {
     isVerified: boolean;
     resetToken?: string;
     resetExpires?: Date;
+    passwordChangedAt?: Date;
 }

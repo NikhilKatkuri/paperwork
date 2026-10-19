@@ -1,6 +1,7 @@
 interface TokenPayload {
     userId: string;
     email: string;
+    iat?: number;
 }
 
 type TokenType = 'access' | 'refresh' | 'temp' | 'resetPassword';
