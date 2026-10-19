@@ -128,14 +128,25 @@ const normalizeError = (error: unknown): NormalizedError => {
         };
     }
 
+    /**
+     * Fallback for everything unrecognised. A 5xx body must never carry the
+     * raw error message: driver/library errors routinely embed connection
+     * strings, collection names and file paths. The message is only echoed
+     * for client-side (4xx) failures — where the library has already decided
+     * the text is user-facing — and in development.
+     */
+    const explicitStatus =
+        typeof candidate.statusCode === 'number'
+            ? candidate.statusCode
+            : StatusCodes.INTERNAL_SERVER_ERROR;
+    const isClientError = explicitStatus >= 400 && explicitStatus < 500;
+
     return {
-        statusCode:
-            typeof candidate.statusCode === 'number'
-                ? candidate.statusCode
-                : StatusCodes.INTERNAL_SERVER_ERROR,
-        message: candidate.message
-            ? candidate.message
-            : 'Internal Server Error',
+        statusCode: explicitStatus,
+        message:
+            candidate.message && (config.env === 'development' || isClientError)
+                ? candidate.message
+                : 'Internal Server Error',
         operational: false,
     };
 };
