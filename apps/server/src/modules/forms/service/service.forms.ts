@@ -324,6 +324,31 @@ class FormsService {
             };
         });
 
+        /**
+         * A question may only point at a section in this same payload.
+         * Sections absent from the payload are deleted below, so an
+         * unchecked id would either orphan the question or attach it to a
+         * section that belongs to a different form.
+         */
+        const safeSectionIds = new Set(
+            safeSections.map((section) => String(section._id))
+        );
+        if (safeQuestions.length && safeSectionIds.size === 0) {
+            throw AppError.BadRequest(
+                'Questions must reference a section in the same update'
+            );
+        }
+        for (const question of safeQuestions) {
+            if (
+                !question.sectionId ||
+                !safeSectionIds.has(String(question.sectionId))
+            ) {
+                throw AppError.BadRequest(
+                    'Question references a section outside this form'
+                );
+            }
+        }
+
         const session = await mongoose.startSession();
 
         try {
