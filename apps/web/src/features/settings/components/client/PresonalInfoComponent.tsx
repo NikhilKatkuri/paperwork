@@ -14,6 +14,12 @@ export default function PersonalInfoComponent() {
 
     const [gender, setGender] = useState<sensitiveData['gender']>('non-binary');
     const [dob, setDob] = useState<string>('');
+    // Controlled: the form can stay mounted while the (cached) personal info
+    // loads, in which case `defaultValue` would never be applied.
+    const [country, setCountry] = useState<sensitiveData['country'] | ''>('');
+    const [language, setLanguage] = useState<sensitiveData['language'] | ''>(
+        ''
+    );
 
     const { saving, update } = useUserPersonalInfo();
 
@@ -35,6 +41,9 @@ export default function PersonalInfoComponent() {
             } else {
                 setDob('');
             }
+
+            setCountry(personalInfo?.country ?? '');
+            setLanguage(personalInfo?.language ?? '');
         }
         setInitialValues();
     }, [personalInfo]);
@@ -43,18 +52,8 @@ export default function PersonalInfoComponent() {
         e.preventDefault();
 
         try {
-            const formData = new FormData(e.currentTarget);
-
-            const rawDob = formData.get('dateOfBirth') as string;
-
-            const country = formData.get('country') as sensitiveData['country'];
-
-            const language = formData.get(
-                'language'
-            ) as sensitiveData['language'];
-
             const updatedData: Partial<sensitiveData> = {
-                dob: rawDob ? new Date(rawDob) : undefined,
+                dob: dob ? new Date(dob) : undefined,
                 gender,
                 country: country || undefined,
                 language: language || undefined,
@@ -87,6 +86,8 @@ export default function PersonalInfoComponent() {
                 ? new Date(personalInfo.dob).toISOString().split('T')[0]
                 : ''
         );
+        setCountry(personalInfo?.country ?? '');
+        setLanguage(personalInfo?.language ?? '');
     };
 
     if (loading) {
@@ -208,8 +209,13 @@ export default function PersonalInfoComponent() {
                                     <select
                                         id="country"
                                         name="country"
-                                        defaultValue={
-                                            personalInfo?.country ?? ''
+                                        value={country}
+                                        onChange={(e) =>
+                                            setCountry(
+                                                e.target.value as
+                                                    | sensitiveData['country']
+                                                    | ''
+                                            )
                                         }
                                         className="w-full border-none bg-transparent py-1 text-base font-medium outline-none"
                                     >
@@ -239,8 +245,13 @@ export default function PersonalInfoComponent() {
                                     <select
                                         id="language"
                                         name="language"
-                                        defaultValue={
-                                            personalInfo?.language ?? ''
+                                        value={language}
+                                        onChange={(e) =>
+                                            setLanguage(
+                                                e.target.value as
+                                                    | sensitiveData['language']
+                                                    | ''
+                                            )
                                         }
                                         className="w-full border-none bg-transparent py-1 text-base font-medium outline-none"
                                     >
