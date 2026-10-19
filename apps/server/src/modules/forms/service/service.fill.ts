@@ -517,7 +517,7 @@ class FillService {
     }
 
     async post(data: FormResponse): Promise<FormResponseDocument> {
-        const { formId, answers, idempotencyKey } = data;
+        const { formId, userId, answers, idempotencyKey } = data;
 
         // Basic shape validation: valid question IDs, no duplicates,
         // non-empty values. Full per-rule validation happens per question
@@ -540,9 +540,14 @@ class FillService {
          *   with jitter before surfacing an error.
          */
         for (let attempt = 1; ; attempt++) {
+            // Scoped by user: a replay must only ever return the caller's
+            // own response. The unique index is {formId, idempotencyKey},
+            // so another user's key collision is handled below as a
+            // conflict instead of leaking their stored response.
             if (idempotencyKey) {
                 const existing = await FormResponseModel.findOne({
                     formId,
+                    userId,
                     idempotencyKey,
                 }).lean();
                 if (existing) return existing as FormResponseDocument;
@@ -552,20 +557,25 @@ class FillService {
                 return await this.persistWithTransaction(data);
             } catch (error) {
                 // Concurrent duplicate: two submissions with the same key
-                // raced and the unique index rejected the loser. Return the
-                // stored one; if it is not visible yet the winning
-                // transaction may still be committing, so retry.
+                // raced and the unique index rejected the loser. If the
+                // winner is our own user the retry loop returns it; a
+                // winner tied to another user is reported as a conflict.
                 if (isDuplicateKeyError(error) && idempotencyKey) {
-                    const existing = await FormResponseModel.findOne({
-                        formId,
-                        idempotencyKey,
-                    }).lean();
-                    if (existing) return existing as FormResponseDocument;
                     if (attempt < TRANSACTION_MAX_ATTEMPTS) {
                         await sleep(
                             25 * attempt + Math.floor(Math.random() * 25)
                         );
                         continue;
+                    }
+                    const conflictsWithAnotherUser =
+                        await FormResponseModel.exists({
+                            formId,
+                            idempotencyKey,
+                        });
+                    if (conflictsWithAnotherUser) {
+                        throw AppError.Conflict(
+                            'This submission key is already in use for this form'
+                        );
                     }
                     throw error;
                 }
@@ -769,17 +779,9 @@ class FillService {
      * submit endpoint returns), so a replay with the same idempotency key
      * resolves to the same id. Ownership is verified against the form.
      */
-    async getSubmission(
-        formId: string,
-        submissionId: string,
-        ownerId?: string
-    ) {
+    async getSubmission(formId: string, submissionId: string, ownerId: string) {
         try {
-            if (ownerId) await this.assertOwner(formId, ownerId);
-            else {
-                const form = await FormsModel.findById(formId).lean();
-                if (!form) throw AppError.FormNotFound('Form not found');
-            }
+            await this.assertOwner(formId, ownerId);
 
             if (!mongoose.isValidObjectId(submissionId)) {
                 throw AppError.NotFound('Submission not found');
@@ -827,13 +829,9 @@ class FillService {
         page: number = 1,
         limit: number = 20,
         options: ResponseQuery = {},
-        ownerId?: string
+        ownerId: string
     ) {
-        if (ownerId) await this.assertOwner(formId, ownerId);
-        else {
-            const form = await FormsModel.findById(formId).lean();
-            if (!form) throw AppError.FormNotFound('Form not found');
-        }
+        await this.assertOwner(formId, ownerId);
 
         // Bounded again here so a caller bypassing validation cannot ask for
         // the whole collection in one page.
@@ -884,13 +882,9 @@ class FillService {
     async responsesSummary(
         formId: string,
         options: ResponseQuery = {},
-        ownerId?: string
+        ownerId: string
     ) {
-        if (ownerId) await this.assertOwner(formId, ownerId);
-        else {
-            const form = await FormsModel.findById(formId).lean();
-            if (!form) throw AppError.FormNotFound('Form not found');
-        }
+        await this.assertOwner(formId, ownerId);
 
         const match = buildResponseMatch(formId.toString(), options);
 
@@ -967,12 +961,8 @@ class FillService {
         return { totalResponses, questions };
     }
 
-    async getResponse(formId: string, responseId: string, ownerId?: string) {
-        if (ownerId) await this.assertOwner(formId, ownerId);
-        else {
-            const form = await FormsModel.findById(formId).lean();
-            if (!form) throw AppError.FormNotFound('Form not found');
-        }
+    async getResponse(formId: string, responseId: string, ownerId: string) {
+        await this.assertOwner(formId, ownerId);
 
         const response = await FormResponseModel.findOne({
             _id: responseId,
@@ -999,7 +989,7 @@ class FillService {
     async exportResponses(
         formId: string,
         exportType: string,
-        ownerId?: string,
+        ownerId: string,
         options: ResponseQuery = {}
     ): Promise<{
         cursor: AsyncIterable<Record<string, any>>;
@@ -1011,11 +1001,7 @@ class FillService {
         }
 
         try {
-            if (ownerId) await this.assertOwner(formId, ownerId);
-            else {
-                const form = await FormsModel.findById(formId).lean();
-                if (!form) throw AppError.FormNotFound('Form not found');
-            }
+            await this.assertOwner(formId, ownerId);
 
             const questions = await QuestionsModel.find({ formId })
                 .sort({ index: 1 })
