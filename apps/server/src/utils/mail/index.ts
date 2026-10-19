@@ -31,12 +31,11 @@ type Mode = 'resend' | 'nodemailer';
 
 class MailService {
     private readonly transporter: Transporter | Resend;
-    private readonly mode: Mode =
-        config.env === 'production' ? 'resend' : 'nodemailer';
+    private readonly mode: Mode = config.mail.mode;
     private number: number = 0;
 
     constructor() {
-        if (config.env === 'production') {
+        if (this.mode === 'resend') {
             if (!config.RESEND_API_KEY) {
                 throw new SystemError(
                     `[mailService]`,
@@ -166,9 +165,10 @@ class MailService {
 
     private async send({ to, subject, text, html }: MailPayload) {
         const sender =
-            config.env === 'production'
+            config.mail.from ||
+            (this.mode === 'resend'
                 ? `Paperwork <${config.mail.hostUser}>`
-                : `"Paperwork" <${config.mail.hostUser}>`;
+                : `"Paperwork" <${config.mail.hostUser}>`);
 
         return this.mailMode(this.mode, {
             from: sender,

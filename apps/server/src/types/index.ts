@@ -57,7 +57,30 @@ export interface AppConfig {
         refreshExpiresIn: number;
         resetPasswordExpiresIn: number;
     };
+    /**
+     * Auth cookie policy. `secure` must stay true behind HTTPS (any real
+     * deployment); it can be disabled only for production-mode runs over
+     * plain HTTP. `sameSite` must be `none` when the web app and API are on
+     * different sites, `lax` when they share a registrable domain.
+     */
+    cookies: {
+        secure: boolean;
+        sameSite: 'lax' | 'strict' | 'none';
+    };
     mail: {
+        /**
+         * Transport selection. Defaults to `resend` in production and
+         * `nodemailer` elsewhere; `MAIL_MODE` overrides so a production
+         * build can be exercised locally over SMTP without a verified
+         * Resend domain.
+         */
+        mode: 'resend' | 'nodemailer';
+        /**
+         * Full sender identity (e.g. `Paperwork <no-reply@example.com>`).
+         * Required in production when using Resend: its domain must be
+         * verified on resend.com. Falls back to `hostUser` when unset.
+         */
+        from: string;
         host: string;
         port: number;
         secure: boolean;

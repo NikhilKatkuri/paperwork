@@ -17,14 +17,21 @@ const boot = async (): Promise<void> => {
 
     let server: ReturnType<typeof app.listen>;
 
+    const startupInfo = {
+        env: config.env,
+        logLevel: config.logger.level,
+        requestBodyLogging: config.logger.requestBody,
+        cookieSecure: config.cookies.secure,
+        cookieSameSite: config.cookies.sameSite,
+        mailMode: config.mail.mode,
+    };
+
     if (config.env === 'production') {
         server = app.listen(config.port, () => {
             logger.info('server.listening', {
                 event: 'SERVER_LISTENING',
                 port: config.port,
-                env: config.env,
-                logLevel: config.logger.level,
-                requestBodyLogging: config.logger.requestBody,
+                ...startupInfo,
             });
         });
     } else {
@@ -32,9 +39,7 @@ const boot = async (): Promise<void> => {
             logger.info('server.listening', {
                 event: 'SERVER_LISTENING',
                 url: `http://${config.host}:${config.port}`,
-                env: config.env,
-                logLevel: config.logger.level,
-                requestBodyLogging: config.logger.requestBody,
+                ...startupInfo,
             });
         });
     }

@@ -29,8 +29,8 @@ class AutoBoundController extends AutoBoundClass {
     ) => {
         res.cookie(name, value, {
             httpOnly: true,
-            secure: config.env === 'production',
-            sameSite: 'lax',
+            secure: config.cookies.secure,
+            sameSite: config.cookies.sameSite,
             maxAge: maxAge,
         });
     };
@@ -38,8 +38,8 @@ class AutoBoundController extends AutoBoundClass {
     clearCookie = (res: Response, name: string) => {
         res.clearCookie(name, {
             httpOnly: true,
-            secure: config.env === 'production',
-            sameSite: 'lax',
+            secure: config.cookies.secure,
+            sameSite: config.cookies.sameSite,
         });
     };
 

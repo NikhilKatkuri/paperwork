@@ -117,6 +117,68 @@ function resolveTrustProxy(): boolean | number | string {
     return raw;
 }
 
+const MAIL_MODES = ['resend', 'nodemailer'] as const;
+type MailMode = (typeof MAIL_MODES)[number];
+
+/**
+ * Mail transport. Defaults to Resend in production and SMTP elsewhere, but
+ * `MAIL_MODE` decouples the two: production-mode runs over plain HTTP (LAN
+ * testing, staging) can use SMTP without a verified Resend domain.
+ */
+function resolveMailMode(): MailMode {
+    const raw = String(
+        getEnvVar<string>('MAIL_MODE', isProd ? 'resend' : 'nodemailer')
+    ).toLowerCase();
+
+    if (!MAIL_MODES.includes(raw as MailMode)) {
+        throw new SystemError(
+            '[MAIL_MODE]',
+            `MAIL_MODE must be one of: ${MAIL_MODES.join(', ')}.`
+        );
+    }
+
+    return raw as MailMode;
+}
+
+const SAME_SITE_VALUES = ['lax', 'strict', 'none'] as const;
+type SameSite = (typeof SAME_SITE_VALUES)[number];
+
+/**
+ * Resolves the auth cookie policy.
+ *
+ * `secure` defaults to on in production because every real deployment is
+ * HTTPS. The override exists for production-mode runs over plain HTTP
+ * (LAN/staging without TLS), where browsers drop `Secure` cookies and every
+ * refresh silently 401s.
+ *
+ * `sameSite: 'none'` requires `secure: true`; browsers reject the cookie
+ * combination otherwise, so this fails fast at startup.
+ */
+function resolveCookiePolicy(): {
+    secure: boolean;
+    sameSite: SameSite;
+} {
+    const secure = getEnvVar<boolean>('COOKIE_SECURE', isProd);
+    const raw = String(
+        getEnvVar<string>('COOKIE_SAME_SITE', 'lax')
+    ).toLowerCase();
+
+    if (!SAME_SITE_VALUES.includes(raw as SameSite)) {
+        throw new SystemError(
+            '[COOKIE_SAME_SITE]',
+            `COOKIE_SAME_SITE must be one of: ${SAME_SITE_VALUES.join(', ')}.`
+        );
+    }
+    if (raw === 'none' && !secure) {
+        throw new SystemError(
+            '[COOKIE_SAME_SITE]',
+            'COOKIE_SAME_SITE=none requires COOKIE_SECURE=true: browsers reject SameSite=None cookies without the Secure attribute.'
+        );
+    }
+
+    return { secure, sameSite: raw as SameSite };
+}
+
 /**
  * `LOG_LEVEL` wins when it is a level winston understands; otherwise fall
  * back to `debug` in development (so the default dev experience is verbose)
@@ -178,7 +240,10 @@ const config: AppConfig = {
             900
         ),
     },
+    cookies: resolveCookiePolicy(),
     mail: {
+        mode: resolveMailMode(),
+        from: getEnvVar<string>('MAIL_FROM', ''),
         host: getEnvVar<string>('MAIL_HOST', 'smtp.gmail.com'),
         port: getEnvVar<number>('MAIL_PORT', 465),
         secure: getEnvVar<boolean>('MAIL_SECURE', true),
