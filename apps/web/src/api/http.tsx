@@ -27,6 +27,12 @@ export interface RequestConfig extends Omit<
     'method' | 'url' | 'data'
 > {
     signal?: AbortSignal;
+    /**
+     * Bypass the session gate. Only the refresh call itself may do this:
+     * every other request waits until the session bootstrap has settled, so
+     * cached pages can render before the access token arrives.
+     */
+    skipSessionGate?: boolean;
 }
 
 export class ApiError extends Error {
@@ -43,6 +49,15 @@ export class ApiError extends Error {
 class HttpClient {
     private readonly client: AxiosInstance;
     private getToken: TokenGetter = () => null;
+    private releaseSessionGateFn: (() => void) | null = null;
+
+    /**
+     * Requests issued before the session bootstrap settles wait here, so
+     * cached pages can render immediately without racing the access token.
+     */
+    private readonly sessionGate = new Promise<void>((resolve) => {
+        this.releaseSessionGateFn = resolve;
+    });
 
     constructor() {
         this.client = axios.create({
@@ -76,6 +91,15 @@ class HttpClient {
         this.getToken = getter;
     }
 
+    /**
+     * Let queued requests through once the session bootstrap has settled,
+     * successfully or not.
+     */
+    public releaseSessionGate(): void {
+        this.releaseSessionGateFn?.();
+        this.releaseSessionGateFn = null;
+    }
+
     public createAbortController(): AbortController {
         return new AbortController();
     }
@@ -92,9 +116,16 @@ class HttpClient {
                 undefined
             );
         }
+
+        const { skipSessionGate, ...requestConfig } = config;
+
+        if (!skipSessionGate) {
+            await this.sessionGate;
+        }
+
         try {
             const response: AxiosResponse<T> = await this.client.request({
-                ...config,
+                ...requestConfig,
                 method,
                 url: path,
                 data,
@@ -176,9 +207,15 @@ class HttpClient {
                 undefined
             );
         }
+        const { skipSessionGate, ...requestConfig } = config ?? {};
+
+        if (!skipSessionGate) {
+            await this.sessionGate;
+        }
+
         try {
             const response = await this.client.get(path, {
-                ...config,
+                ...requestConfig,
                 responseType: 'blob',
             });
             return response.data as Blob;

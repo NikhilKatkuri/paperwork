@@ -186,6 +186,10 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
                 if (isMountedRef.current) {
                     setInitializing(false);
                 }
+
+                // Cached pages render before the bootstrap settles; let every
+                // request queued behind the session gate proceed now.
+                http.releaseSessionGate();
             }
         }
 
