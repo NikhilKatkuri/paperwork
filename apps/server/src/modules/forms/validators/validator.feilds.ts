@@ -5,6 +5,7 @@ import {
     Section,
     SectionRule,
 } from '@paperwork/types';
+import { sanitizeRichText } from '@/utils/sanitizeHtml';
 
 class FieldsValidator {
     readonly formFields = [
@@ -137,6 +138,10 @@ class FieldsValidator {
     getSafeSectionData(data: Partial<Section>) {
         const safeData = this.pickFields(data, this.sectionFields);
 
+        if (typeof safeData.description === 'string') {
+            safeData.description = sanitizeRichText(safeData.description);
+        }
+
         if (safeData.defaultAction) {
             const src = safeData.defaultAction as any;
             const cleaned: any = { type: src.type };
@@ -177,6 +182,12 @@ class FieldsValidator {
             normalized.optionsConfig = { options: (normalized as any).options };
         }
         const safeData: any = this.pickFields(normalized, this.questionKeys as any);
+
+        for (const key of ['question', 'helpText', 'placeholder'] as const) {
+            if (typeof safeData[key] === 'string') {
+                safeData[key] = sanitizeRichText(safeData[key]);
+            }
+        }
 
         if (safeData.optionsConfig) {
             safeData.optionsConfig = {

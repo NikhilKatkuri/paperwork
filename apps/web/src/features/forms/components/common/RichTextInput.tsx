@@ -14,34 +14,34 @@ function sanitizeRichHtml(dirty: string): string {
         const container = doc.body.firstElementChild;
         if (!container) return '';
         const clean = (node: Element) => {
-            for (const child of [...node.children]) {
-                if (!ALLOWED_TAGS.has(child.tagName)) {
-                    // Unwrap disallowed tags but keep text.
-                    child.replaceWith(...[...child.childNodes]);
-                    continue;
+            // Unwrap disallowed elements until stable: unwrapping promotes
+            // children that were never inspected, so a single pass can leave
+            // a banned element (e.g. nested script/iframe) inside a promoted
+            // subtree. Each pass removes at least one element, so it ends.
+            for (;;) {
+                const disallowed = [...node.querySelectorAll('*')].filter(
+                    (el) => !ALLOWED_TAGS.has(el.tagName)
+                );
+                if (disallowed.length === 0) break;
+                for (const el of disallowed) {
+                    el.replaceWith(...el.childNodes);
                 }
-                // Strip all attributes except safe href on links.
-                for (const attr of [...child.attributes]) {
+            }
+            // Strip every attribute except safe http(s) hrefs on links.
+            for (const el of [...node.querySelectorAll('*')]) {
+                for (const attr of [...el.attributes]) {
                     const name = attr.name.toLowerCase();
-                    if (child.tagName === 'A' && name === 'href') {
+                    if (el.tagName === 'A' && name === 'href') {
                         const href = attr.value.trim();
-                        if (!/^https?:\/\//i.test(href) && href !== '#') {
-                            child.removeAttribute(attr.name);
+                        if (/^https?:\/\//i.test(href) || href === '#') {
+                            continue;
                         }
+                        el.removeAttribute(attr.name);
                         continue;
                     }
-                    child.removeAttribute(attr.name);
+                    el.removeAttribute(attr.name);
                 }
-                // Remove javascript: even if allowlisted above.
-                if (child.tagName === 'A') {
-                    const href = child.getAttribute('href') ?? '';
-                    if (/^\s*javascript:/i.test(href)) {
-                        child.removeAttribute('href');
-                    }
-                }
-                clean(child);
             }
-            // Remove event-handler text artifacts is handled by attribute strip.
         };
         clean(container);
         return container.innerHTML;

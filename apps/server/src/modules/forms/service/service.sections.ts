@@ -4,6 +4,7 @@ import { AppError } from '@/utils/AppError';
 import SectionModel from '@/modules/forms/schemas/schemas.sections';
 import FormsModel from '@/modules/forms/schemas/schemas.forms';
 import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
+import fieldsValidator from '@/modules/forms/validators/validator.feilds';
 
 interface I {
     userId: string;
@@ -37,7 +38,7 @@ class SectionService {
 
         const createdSection = await SectionModel.create({
             formId,
-            ...data,
+            ...fieldsValidator.getSafeSectionData(data),
             index: (maxDoc?.index ?? -1) + 1,
         });
 
@@ -85,7 +86,7 @@ class SectionService {
 
         const updatedSection = await SectionModel.findOneAndUpdate(
             { _id: sectionId, formId },
-            data,
+            fieldsValidator.getSafeSectionData(data),
             { returnDocument: 'after', runValidators: true }
         );
         if (!updatedSection) {

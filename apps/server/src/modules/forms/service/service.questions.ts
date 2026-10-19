@@ -3,6 +3,7 @@ import { AppError } from '@/utils/AppError';
 import QuestionsModel from '@/modules/forms/schemas/schemas.questions';
 import FormsModel from '@/modules/forms/schemas/schemas.forms';
 import SectionModel from '@/modules/forms/schemas/schemas.sections';
+import fieldsValidator from '@/modules/forms/validators/validator.feilds';
 import { Question } from '@paperwork/types';
 
 interface I {
@@ -54,7 +55,7 @@ class QuestionService {
         const createdQuestion = await QuestionsModel.create({
             formId,
             sectionId,
-            ...questionData,
+            ...fieldsValidator.getSafeQuestionData(questionData),
             index: (maxDoc?.index ?? -1) + 1,
         });
 
@@ -97,7 +98,7 @@ class QuestionService {
 
         const updatedQuestion = await QuestionsModel.findOneAndUpdate(
             { _id: questionId, formId, sectionId },
-            { $set: data },
+            { $set: fieldsValidator.getSafeQuestionData(data) },
             { returnDocument: 'after', runValidators: true }
         );
 
@@ -202,7 +203,7 @@ class QuestionService {
         const questionsToCreate = questionsData.map((questionData, index) => ({
             formId,
             sectionId,
-            ...questionData,
+            ...fieldsValidator.getSafeQuestionData(questionData),
             index: base + index,
         }));
         const createdQuestions =
