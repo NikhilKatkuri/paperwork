@@ -1,36 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { RefObject, useEffect, useState } from 'react';
 import { cn } from '@/utils/cn';
 import type { ResponseFilters } from '../../../api/user/formResponses';
 import { QuestionDoc } from '@paperwork/types';
 
-const CONTROL =
-    'border-theme-form-container-border bg-theme-form-container text-theme-form-on-container rounded-lg border text-sm outline-none transition-colors placeholder:text-theme-form-on-surface/40 hover:border-theme-form-container-active focus:border-theme-form-container-active';
+const SELECT_CONTROL =
+    'border-theme-on-surface/15 bg-theme-surface text-theme-on-surface hover:bg-theme-surface-hover focus-visible:ring-brand rounded-md border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2';
 
 interface ResponseFiltersProps {
     filters: ResponseFilters;
     questions: QuestionDoc[];
     onChange: (next: ResponseFilters) => void;
+    searchRef?: RefObject<HTMLInputElement | null>;
 }
 
-/**
- * Search, sort and question filter.
- *
- * Typing is debounced so each keystroke does not fire a request. The search box
- * keeps local state and is reset by the parent remounting this component (via
- * its `key`) rather than by mirroring props into state inside an effect.
- */
 export default function ResponseFiltersBar({
     filters,
     questions,
     onChange,
+    searchRef,
 }: Readonly<ResponseFiltersProps>) {
     const [term, setTerm] = useState(filters.q ?? '');
 
     useEffect(() => {
         const next = term.trim();
-
         if ((filters.q ?? '') === next) return;
 
         const timer = setTimeout(() => {
@@ -43,73 +37,103 @@ export default function ResponseFiltersBar({
     const hasFilters = Boolean(filters.q || filters.questionId);
 
     return (
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            {/* Outlined search field with a leading icon. */}
-            <div className="relative flex-1 sm:min-w-60">
-                <span className="material-symbols-outlined pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-lg text-neutral-400">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+            {/* Pill search bar matching TemplateHeader */}
+            <div className="group focus-within:ring-brand-light relative flex h-11 flex-1 items-center overflow-hidden rounded-full bg-slate-100 px-4 transition-all focus-within:ring-2">
+                <span className="material-symbols-outlined text-[18px] text-slate-500 select-none">
                     search
                 </span>
                 <input
-                    type="search"
+                    ref={searchRef}
+                    type="text"
+                    inputMode="search"
                     value={term}
                     onChange={(e) => setTerm(e.target.value)}
-                    placeholder="Search answers or email"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                            setTerm('');
+                            e.currentTarget.blur();
+                        }
+                    }}
+                    placeholder="Search answers or respondent email"
                     aria-label="Search responses"
-                    className={cn(CONTROL, 'w-full py-2.5 pr-3 pl-10')}
+                    className="w-full bg-transparent px-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
                 />
+                {term ? (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setTerm('');
+                            searchRef?.current?.focus();
+                        }}
+                        aria-label="Clear search"
+                        className="shrink-0 text-slate-500 transition-colors hover:text-slate-800"
+                    >
+                        <span className="material-symbols-outlined text-lg">
+                            close
+                        </span>
+                    </button>
+                ) : (
+                    <kbd
+                        aria-hidden="true"
+                        className="pointer-events-none hidden shrink-0 font-sans text-xs text-slate-400 select-none sm:block"
+                    >
+                        /
+                    </kbd>
+                )}
             </div>
 
-            <select
-                value={filters.questionId ?? ''}
-                onChange={(e) =>
-                    onChange({
-                        ...filters,
-                        questionId: e.target.value || undefined,
-                    })
-                }
-                aria-label="Filter by question"
-                className={cn(CONTROL, 'px-4 py-2.5 sm:max-w-70')}
-            >
-                <option value="">All questions</option>
-                {questions.map((question) => (
-                    <option key={question.id} value={question.id}>
-                        {question.question.replace(/<[^>]*>/g, ' ').trim()}
-                    </option>
-                ))}
-            </select>
-
-            <select
-                value={filters.sort ?? 'newest'}
-                onChange={(e) =>
-                    onChange({
-                        ...filters,
-                        sort: e.target.value as 'newest' | 'oldest',
-                    })
-                }
-                aria-label="Sort responses"
-                className={cn(CONTROL, 'px-4 py-2.5')}
-            >
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-            </select>
-
-            {hasFilters ? (
-                <button
-                    type="button"
-                    // `filters` is the source of truth; clearing remounts this
-                    // component via the parent's reset key.
-                    onClick={() => {
-                        setTerm('');
-                        onChange({ sort: 'newest' });
-                    }}
-                    className="flex shrink-0 items-center gap-1 self-start rounded-lg px-2.5 py-2 text-xs text-neutral-600 transition-colors hover:bg-neutral-100 sm:self-auto"
+            <div className="flex flex-wrap items-center gap-2">
+                <select
+                    value={filters.questionId ?? ''}
+                    onChange={(e) =>
+                        onChange({
+                            ...filters,
+                            questionId: e.target.value || undefined,
+                        })
+                    }
+                    aria-label="Filter by question"
+                    className={cn(SELECT_CONTROL, 'h-10 max-w-56 px-3')}
                 >
-                    <span className="material-symbols-outlined text-base">
-                        close
-                    </span>
-                    Clear
-                </button>
-            ) : null}
+                    <option value="">All questions</option>
+                    {questions.map((question) => (
+                        <option key={question.id} value={question.id}>
+                            {question.question.replace(/<[^>]*>/g, ' ').trim()}
+                        </option>
+                    ))}
+                </select>
+
+                <select
+                    value={filters.sort ?? 'newest'}
+                    onChange={(e) =>
+                        onChange({
+                            ...filters,
+                            sort: e.target.value as 'newest' | 'oldest',
+                        })
+                    }
+                    aria-label="Sort responses"
+                    className={cn(SELECT_CONTROL, 'h-10 px-3')}
+                >
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                </select>
+
+                {hasFilters ? (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setTerm('');
+                            onChange({ sort: 'newest' });
+                        }}
+                        className="text-theme-on-surface/65 hover:bg-theme-surface-hover hover:text-theme-on-surface flex h-10 shrink-0 cursor-pointer items-center gap-1 rounded-md px-2.5 text-xs font-medium transition-colors"
+                    >
+                        <span className="material-symbols-outlined text-base">
+                            close
+                        </span>
+                        Reset
+                    </button>
+                ) : null}
+            </div>
         </div>
     );
 }

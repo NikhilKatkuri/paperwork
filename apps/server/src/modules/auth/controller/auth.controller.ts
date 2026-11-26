@@ -65,7 +65,7 @@ class AuthController extends AutoBoundController {
 
     async verify2FA(req: Request, res: Response, next: NextFunction) {
         try {
-            const { otp } = req.params;
+            const { otp } = req.body as { otp?: string };
             if (!otp) {
                 throw AppError.BadRequest('OTP is required');
             }
@@ -285,21 +285,7 @@ class AuthController extends AutoBoundController {
                 );
             }
 
-            let verificationData;
-            try {
-                verificationData = JSON.parse(emailVerificationCookie);
-            } catch {
-                throw AppError.BadRequest(
-                    'Invalid OTP data. Please request a new one.'
-                );
-            }
-
-            await AuthServiceBoot.verifyEmailService(
-                userId,
-                email,
-                otp,
-                verificationData.expiresAt
-            );
+            await AuthServiceBoot.verifyEmailService(userId, email, otp);
 
             this.clearCookie(res, 'emailVerification');
 

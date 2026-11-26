@@ -83,8 +83,8 @@ export const faqCategories: FaqCategory[] = [
                 id: 'share-a-form',
                 question: 'How do I share a form?',
                 paragraphs: [
-                    'Published forms are served at /forms/v/<form-id>. You can find the form id in the editor URL, which looks like /forms/c/<form-id>.',
-                    'Respondents need a Paperwork account: opening a form link requires signing in, and submissions are stored against that account (plus any email address the form asks for). The current version does not include a built-in share or copy-link button, so share the URL directly.',
+                    'Use the link button in the editor toolbar (or “Copy share link” in the forms list) to copy a short link. Opening it takes respondents to the fill page at /forms/v/<form-id>.',
+                    'Respondents need a Paperwork account: opening a form link requires signing in, and submissions are stored against that account (plus any email address the form asks for). Publish the form first; unpublished forms cannot be filled.',
                 ],
             },
         ],

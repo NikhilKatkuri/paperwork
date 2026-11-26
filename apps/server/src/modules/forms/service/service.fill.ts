@@ -713,6 +713,13 @@ class FillService {
                     );
                 }
 
+                // Re-applied here because the controller also accepts the
+                // legacy `{data}` body shape, which bypasses the Zod answer
+                // schema. Bounds work done by any validation rule below.
+                if (vals.some((v: string) => v.length > 2000)) {
+                    throw AppError.BadRequest('Answer value is too long');
+                }
+
                 this.assertAnswerValid(questionById.get(qid)!, vals);
             }
 
@@ -973,6 +980,28 @@ class FillService {
         if (!response) throw AppError.ResponseNotFound('Response not found');
 
         return response;
+    }
+
+    async deleteResponse(
+        formId: string,
+        responseId: string,
+        ownerId: string
+    ) {
+        await this.assertOwner(formId, ownerId);
+
+        const deleted = await FormResponseModel.findOneAndDelete({
+            _id: responseId,
+            formId,
+        }).lean();
+        if (!deleted) throw AppError.ResponseNotFound('Response not found');
+
+        // Floor the response counter at zero so it never goes negative.
+        await FormsModel.updateOne(
+            { _id: formId, responseCount: { $gt: 0 } },
+            { $inc: { responseCount: -1 } }
+        );
+
+        return deleted;
     }
 
     /**

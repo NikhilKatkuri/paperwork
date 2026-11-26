@@ -4,7 +4,12 @@
         "build": {
             "dependsOn": ["^build"],
             "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-            "env": ["NEXT_PUBLIC_*", "NODE_ENV"]
+            "env": [
+                "NEXT_PUBLIC_*",
+                "NODE_ENV",
+                "API_PROXY_ORIGIN",
+                "CLOUDINARY_CLOUD_NAME"
+            ]
         },
         "check-types": {
             "dependsOn": ["^build"],

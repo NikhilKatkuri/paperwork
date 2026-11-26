@@ -273,6 +273,24 @@ class FillController {
         }
     }
 
+    async deleteResponse(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { formId, responseId, userId } = this.getContent(req);
+            const deleted = await this.service.deleteResponse(
+                formId,
+                responseId,
+                userId
+            );
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Response deleted successfully',
+                data: deleted,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async exportResponses(req: Request, res: Response, next: NextFunction) {
         try {
             const { formId, exportType, userId } = this.getContent(req);
@@ -297,7 +315,12 @@ class FillController {
             res.setHeader('Cache-Control', 'no-store');
 
             // BOM so Excel opens UTF-8 content (e.g. Hindi answers) correctly.
-            const stringifier = stringify({ header: true, columns, bom: true });
+            const stringifier = stringify({
+                header: true,
+                columns,
+                bom: true,
+                escape_formulas: true,
+            });
             stringifier.on('error', (streamError) => {
                 res.destroy(streamError as Error);
             });

@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     title: `${siteConfig.name} | About the Project`,
     description:
         'What Paperwork does, why it exists, its project disclaimer, and the limitations to review before relying on it.',
+    alternates: { canonical: '/about' },
 };
 
 const toc: TocItem[] = [

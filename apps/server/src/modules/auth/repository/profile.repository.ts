@@ -32,9 +32,16 @@ class ProfileRepository<
         const assetId = publicId.split('/').pop();
         if (!assetId) return false;
 
-        const escaped = assetId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escape = (value: string) =>
+            value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Match both the bare asset id (tolerates delivery transformations)
+        // and the full folder-qualified id. Erring toward "referenced" keeps
+        // an asset that another profile may still be using.
         const found = await ProfileModel.exists({
-            avatarUrl: new RegExp(escaped),
+            $or: [
+                { avatarUrl: new RegExp(escape(assetId)) },
+                { avatarUrl: new RegExp(escape(publicId)) },
+            ],
         });
 
         return found !== null;

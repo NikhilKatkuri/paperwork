@@ -52,8 +52,7 @@ export const endpoints = {
         sensitiveInfo: '/auth/account/personal',
         resetPassword: (token: string): string =>
             `/auth/reset-password/${encodeURIComponent(token)}`,
-        verifyTwoFactor: (otp: string): string =>
-            `/auth/sign-in/2fa/${encodeURIComponent(otp)}`,
+        verifyTwoFactor: '/auth/sign-in/2fa',
     },
     signature: {
         cloudinary: '/cloudinary/signature',
@@ -65,12 +64,21 @@ export const endpoints = {
         createForm: '/forms',
         updateForm: (formId: string): string => `/forms/${formId}`,
         bulkUpdateForm: (formId: string): string => `/forms/${formId}/bulk`,
+        /** Default delete: soft-delete into the bin. */
         deleteForm: (formId: string): string => `/forms/${formId}`,
+        /** Irreversible removal, only reachable from the bin. */
+        deleteFormPermanent: (formId: string): string =>
+            `/forms/${formId}/permanent`,
+        restoreForm: (formId: string): string => `/forms/${formId}/restore`,
+        binForms: (page: number = 1, limit: number = 20): string =>
+            `/forms/bin${toQuery({ page, limit })}`,
+        emptyBin: '/forms/bin',
         duplicateForm: (formId: string): string => `/forms/${formId}/duplicate`,
         fill: (formId: string): string => `/forms/${formId}/fill`,
         submitFill: (formId: string): string => `/forms/${formId}/fill`,
         submissionStatus: (formId: string, submissionId: string): string =>
             `/forms/${formId}/fill/submissions/${submissionId}/status`,
+        shareLink: (formId: string): string => `/forms/${formId}/share`,
         publishForm: (formId: string): string => `/forms/${formId}/publish`,
         unpublishForm: (formId: string): string => `/forms/${formId}/unpublish`,
         searchForms: (q: string, limit: number = 10): string =>
@@ -113,5 +121,7 @@ export const endpoints = {
                 q: query?.q,
                 questionId: query?.questionId,
             })}`,
+        deleteFormResponse: (formId: string, responseId: string): string =>
+            `/forms/${formId}/fill/responses/${responseId}`,
     },
 } as const;

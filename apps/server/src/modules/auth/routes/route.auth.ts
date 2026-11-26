@@ -38,7 +38,7 @@ authRouter.post(
 );
 
 authRouter.post(
-    '/sign-in/2fa/:otp',
+    '/sign-in/2fa',
     authLimiter,
     validate(twoFactorVerifySchema),
     controller.verify2FA

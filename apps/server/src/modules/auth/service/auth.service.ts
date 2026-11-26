@@ -4,7 +4,7 @@ import ProfileModel from '@/modules/auth/schemas/profile.schema';
 import crypto from 'node:crypto';
 import TokenBoot from './token.service';
 import UserRepoBoot from '../repository/user.repository';
-import OTPBoot from './otp.service';
+import otpChallengeService from './otpChallenge.service';
 import ProfileRepoBoot from '../repository/profile.repository';
 import statusCodes from 'http-status-codes';
 import HashBoot from './hash.service';
@@ -21,6 +21,8 @@ import {
     SignUpService,
     TokenPayload,
     User,
+    userAccountDeletedStatus,
+    userAccountDeactivationStatus,
 } from '@paperwork/types';
 import { MongooseDocument } from '@/types';
 import emailOutboxService from '@/modules/email/services/emailOutbox.service';
@@ -117,12 +119,13 @@ class AuthService extends AutoBoundController {
         if (!user) {
             throw AppError.Unauthorized('Invalid email or password');
         }
-        // Block deactivated / soft-deleted accounts. Pending-deletion alone
-        // does not block — it is cleared below on successful password check
-        // only if the grace period has not expired.
+        // Block deactivated / soft-deleted accounts. Compare against the
+        // persisted enum values ('deactivated' / 'deleted'), not their keys.
         if (
-            (user as any).accountDeactivationStatus === 'DEACTIVATED' ||
-            (user as any).accountDeletedStatus === 'DELETED'
+            (user as any).accountDeactivationStatus ===
+                userAccountDeactivationStatus.DEACTIVATED ||
+            (user as any).accountDeletedStatus ===
+                userAccountDeletedStatus.DELETED
         ) {
             throw AppError.Forbidden('Account is deactivated or deleted');
         }
@@ -159,7 +162,11 @@ class AuthService extends AutoBoundController {
     };
 
     private async otpFor2FA(userId: string, email: string, res: Response) {
-        const { otp, expiresAt } = OTPBoot.generateOTP({ userId, email });
+        const { otp, expiresAt } = await otpChallengeService.issue(
+            userId,
+            email,
+            '2fa'
+        );
 
         await emailOutboxService.addEmailToOutbox({
             type: 'sendOTPEmail',
@@ -273,26 +280,14 @@ class AuthService extends AutoBoundController {
             );
         }
 
-        // Never trust the client-supplied expiry blindly: clamp it to the
-        // server OTP window so an attacker cannot extend brute-force time
-        // by forging a far-future cookie.
-        const parsedExpiry = Number.parseInt(String(twoFAExpireAt), 10);
-        if (!Number.isFinite(parsedExpiry)) {
-            throw AppError.BadRequest(
-                '2FA session has expired or is invalid. Please sign in again.'
-            );
-        }
-        const maxAllowed = Date.now() + config.otp.EXPIRATION + 60_000;
-        if (parsedExpiry > maxAllowed) {
-            throw AppError.BadRequest(
-                '2FA session has expired or is invalid. Please sign in again.'
-            );
-        }
-
-        const isValid = OTPBoot.verifyOTP(
-            { userId: decodedTempToken.userId, email: decodedTempToken.email },
+        // Expiry, single-use and attempt limits are enforced server-side by
+        // the challenge record. The expiry cookie is only a display hint and
+        // is never trusted as an input to verification.
+        const isValid = await otpChallengeService.verify(
+            decodedTempToken.userId,
+            decodedTempToken.email,
             otp,
-            parsedExpiry
+            '2fa'
         );
 
         if (!isValid) {
@@ -330,8 +325,10 @@ class AuthService extends AutoBoundController {
             throw AppError.Unauthorized('User no longer exists');
         }
         if (
-            (user as any).accountDeactivationStatus === 'DEACTIVATED' ||
-            (user as any).accountDeletedStatus === 'DELETED'
+            (user as any).accountDeactivationStatus ===
+                userAccountDeactivationStatus.DEACTIVATED ||
+            (user as any).accountDeletedStatus ===
+                userAccountDeletedStatus.DELETED
         ) {
             throw AppError.Forbidden('Account is deactivated or deleted');
         }
@@ -450,10 +447,11 @@ class AuthService extends AutoBoundController {
                 throw AppError.BadRequest('Email is already verified');
             }
 
-            const { otp, expiresAt } = OTPBoot.generateOTP({
+            const { otp, expiresAt } = await otpChallengeService.issue(
                 userId,
                 email,
-            });
+                'email-verify'
+            );
 
             await emailOutboxService.addEmailToOutbox({
                 type: 'sendOTPEmail',
@@ -473,22 +471,14 @@ class AuthService extends AutoBoundController {
     verifyEmailService = async (
         userId: string,
         email: string,
-        otp: string,
-        expiresAt: number
+        otp: string
     ) => {
-        const parsed = Number(expiresAt);
-        if (!Number.isFinite(parsed)) {
-            throw AppError.BadRequest(
-                'Invalid or expired OTP. Please request a new one.'
-            );
-        }
-        // Clamp client-supplied expiry to the server window.
-        if (parsed > Date.now() + config.otp.EXPIRATION + 60_000) {
-            throw AppError.BadRequest(
-                'Invalid or expired OTP. Please request a new one.'
-            );
-        }
-        const isValid = OTPBoot.verifyOTP({ email, userId }, otp, parsed);
+        const isValid = await otpChallengeService.verify(
+            userId,
+            email,
+            otp,
+            'email-verify'
+        );
         if (!isValid) {
             throw AppError.BadRequest(
                 'Invalid or expired OTP. Please request a new one.'

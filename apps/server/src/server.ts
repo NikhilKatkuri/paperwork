@@ -4,6 +4,8 @@ import { connectDB, disconnectDB } from '@/db/connection';
 import { fatal, logger } from '@/utils/logger';
 import emailOutboxWorker from './modules/email/workers/emailOutbox.worker';
 import avatarCleanupOutboxWorker from './modules/signatures/cloudinary/workers/avatarCleanupOutbox.worker';
+import formBinCleanupWorker from './modules/forms/workers/formBinCleanup.worker';
+import pendingDeleteWorker from './modules/forms/workers/pendingDelete.worker';
 
 const boot = async (): Promise<void> => {
     await connectDB().catch((error: unknown) => {
@@ -14,6 +16,10 @@ const boot = async (): Promise<void> => {
     emailOutboxWorker.start();
 
     avatarCleanupOutboxWorker.start();
+
+    formBinCleanupWorker.start();
+
+    pendingDeleteWorker.start();
 
     let server: ReturnType<typeof app.listen>;
 
@@ -34,21 +40,39 @@ const boot = async (): Promise<void> => {
                 ...startupInfo,
             });
 
-            setInterval(async () => {
-                logger.info('server.still_alive', {
-                    event: 'SERVER_STILL_ALIVE',
+            const healthCheckUrl = process.env.HEALTH_CHECK_URL?.trim();
+            if (!healthCheckUrl) {
+                logger.warn('server.health_check_disabled', {
+                    event: 'SERVER_HEALTH_CHECK_DISABLED',
+                    reason: 'HEALTH_CHECK_URL_not_set',
                     ...startupInfo,
                 });
-                const serverStatus = await fetch(
-                    `${process.env.HEALTH_CHECK_URL}`,
-                    { signal: AbortSignal.timeout(5000) }
-                );
-                logger.info('server.health_check', {
-                    event: 'SERVER_HEALTH_CHECK',
-                    status: serverStatus.status,
-                    ...startupInfo,
-                });
-            }, 60 * 1000);
+            } else {
+                setInterval(async () => {
+                    logger.info('server.still_alive', {
+                        event: 'SERVER_STILL_ALIVE',
+                        ...startupInfo,
+                    });
+                    try {
+                        const serverStatus = await fetch(healthCheckUrl, {
+                            signal: AbortSignal.timeout(5000),
+                        });
+                        logger.info('server.health_check', {
+                            event: 'SERVER_HEALTH_CHECK',
+                            status: serverStatus.status,
+                            ...startupInfo,
+                        });
+                    } catch (error) {
+                        // A failed self-check must never take the process down:
+                        // an unhandled rejection here is fatal by design.
+                        logger.error('server.health_check_failed', {
+                            event: 'SERVER_HEALTH_CHECK_FAILED',
+                            reason: error instanceof Error ? error.message : String(error),
+                            ...startupInfo,
+                        });
+                    }
+                }, 60 * 1000).unref();
+            }
         });
     } else {
         server = app.listen(config.port, config.host, () => {
@@ -65,6 +89,10 @@ const boot = async (): Promise<void> => {
             event: 'SERVER_SHUTDOWN_STARTED',
             signal,
         });
+
+        formBinCleanupWorker.stop();
+
+        pendingDeleteWorker.stop();
 
         server.close(async () => {
             try {

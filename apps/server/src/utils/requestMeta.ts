@@ -132,7 +132,7 @@ export const captureNetworkInfo = (req: Request): NetworkInfo => {
  * route shape rather than the secret.
  *
  * Applies to both `path` and `url`: `POST /auth/reset-password/:token` and
- * `POST /auth/sign-in/2fa/:otp` put live credentials in the request target,
+ * `POST /auth/reset-password/:token` puts live credentials in the request target,
  * so logging the raw URL would be a credential leak in the log store.
  */
 export const scrubPath = (path: string): string => {

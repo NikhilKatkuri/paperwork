@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import SyncStatus from './SyncStatus';
 import PublishButton from './PublishButton';
+import ShareButton from './ShareButton';
 import FormThemePicker from './FormThemePicker';
 import { Tabs } from '@/types';
 import { useForm } from '../../providers/form';
@@ -106,6 +107,7 @@ function Navbar({ setMode }: Readonly<NavbarProps>) {
             <div className="order-2 ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
                 <SyncStatus />
                 <FormThemePicker />
+                <ShareButton />
                 <PublishButton />
             </div>
         </div>

@@ -37,9 +37,20 @@ export const getFormSchema = z.object({
     params: z.object({ formId: zodObjectId }),
 });
 
+export const resolveShareSchema = z.object({
+    params: z.object({ code: z.string().regex(/^[A-Za-z0-9_-]{8}$/) }),
+});
+
 export const searchFormsSchema = z.object({
     query: z.object({
         q: z.string().trim().min(1).max(120),
         limit: z.coerce.number().int().min(1).max(25).default(10),
+    }),
+});
+
+export const binFormsSchema = z.object({
+    query: z.object({
+        limit: z.coerce.number().int().min(1).max(100).default(20),
+        page: z.coerce.number().int().min(1).default(1),
     }),
 });

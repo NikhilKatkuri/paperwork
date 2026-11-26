@@ -13,9 +13,10 @@
         "update:disposable": "tsx src/scripts/update-disposable-domains.ts",
         "seed:demo": "tsx src/scripts/seed-demo-form.ts",
         "seed:party-template": "tsx src/scripts/seed-party-template.ts",
+        "seed:new-templates": "tsx src/scripts/seed-new-templates.ts",
         "lint": "eslint src",
         "check-types": "tsc --noEmit",
-        "test": "tsx src/tests/submission-flow.test.ts && tsx src/tests/request-metadata.test.ts && tsx src/tests/avatar-cleanup.test.ts && tsx src/tests/security-hardening.test.ts"
+        "test": "tsx src/tests/share-link.test.ts && tsx src/tests/request-metadata.test.ts && tsx src/tests/avatar-cleanup.test.ts && tsx src/tests/security-fixes.test.ts"
     },
     "keywords": [],
     "author": "",

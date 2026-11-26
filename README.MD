@@ -312,6 +312,18 @@ Body logging is the intersection of the caller asking for it **and** the environ
 
 ---
 
+## Deployment Checklist
+
+- **MongoDB must be a replica set.** The auth, form and submission flows use multi-document transactions. After starting the mongo service once, initialise it: `mongosh --eval 'rs.initiate()'`. A standalone `mongod` builds but fails at runtime.
+- **Build:** `pnpm build` (emits `apps/server/dist` and `apps/web/.next`).
+- **Start API:** `node apps/server/dist/server.js`. The process fails fast at startup if a required variable is missing; see `apps/server/.env.example` for the full list (`MONGO_URI`, all four `JWT_*` secrets, `OTP_SECRET`, `ARGON_SECRET`, `RESEND_API_KEY`, `CLOUDINARY_*`, `WEB_URL`, `PROD_ORIGINS`).
+- **`TRUST_PROXY` is mandatory in production.** Use `false` if Node is directly reachable, a hop count (e.g. `1`) behind exactly one proxy, or an explicit proxy CIDR list. Never `true`.
+- **Start web:** `next start` from `apps/web`. It needs `API_PROXY_ORIGIN`, `CLOUDINARY_CLOUD_NAME`, `NEXT_PUBLIC_SITE_URL`, and `JWT_REFRESH_SECRET` — the last one must be **identical** to the server's value (the middleware verifies the refresh cookie). See `apps/web/.env.example`.
+- **`HEALTH_CHECK_URL` is optional.** When set, the production process self-fetches it every 60 s; a failure is logged, not fatal.
+- No Redis is required. Rate-limit counters, the OTP challenge store and both outboxes live in MongoDB.
+
+---
+
 ## Architecture Decisions
 
 **Why MongoDB instead of PostgreSQL?**

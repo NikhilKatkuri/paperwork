@@ -127,6 +127,21 @@ class TemplatesService extends AutoBoundClass {
                     );
                 }
 
+                // Defensive: templates persisted before `scaleConfig` was
+                // declared on the question schema may carry LINEAR_SCALE
+                // questions without one, which fails question validation on
+                // clone. Fall back to a default scale.
+                if (
+                    questionFields.type === 'LINEAR_SCALE' &&
+                    !questionFields.scaleConfig &&
+                    !questionFields.ratingConfig
+                ) {
+                    questionFields.scaleConfig = {
+                        lowerBound: 1,
+                        upperBound: 5,
+                    };
+                }
+
                 return QuestionsModel.create({
                     ...questionFields,
                     formId: newFormId,

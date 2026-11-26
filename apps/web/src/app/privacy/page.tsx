@@ -13,6 +13,7 @@ export const metadata: Metadata = {
     title: `${siteConfig.name} | Privacy Policy`,
     description:
         'How Paperwork collects, uses, stores and deletes data, including cookies, browser storage, email delivery and third-party services.',
+    alternates: { canonical: '/privacy' },
 };
 
 const toc: TocItem[] = [
