@@ -116,8 +116,8 @@ export const rateLimitConfig: Record<string, LimiterPreset> = {
     },
 
     healthCheck: {
-        windowMs: 15 * 60 * 1000,
-        limit: scale(30),
+        windowMs: 60 * 1000,
+        limit: scale(300),
         severity: 'low',
     },
 } satisfies Record<string, LimiterPreset>;
@@ -166,6 +166,13 @@ export const baseRateLimitOptions: Partial<Options> = {
     // Without this, a single IPv6 client can rotate addresses within its
     // allocated prefix and get a fresh bucket for every request.
     ipv6Subnet: 64,
+    skip: (req) => {
+        const bypassSecret = process.env.LOAD_TEST_BYPASS_KEY;
+        if (bypassSecret && req.get('x-load-test-key') === bypassSecret) {
+            return true;
+        }
+        return false;
+    },
 };
 
 export type ConfigKey = keyof typeof rateLimitConfig;

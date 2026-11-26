@@ -16,7 +16,9 @@
         "seed:new-templates": "tsx src/scripts/seed-new-templates.ts",
         "lint": "eslint src",
         "check-types": "tsc --noEmit",
-        "test": "tsx src/tests/share-link.test.ts && tsx src/tests/request-metadata.test.ts && tsx src/tests/avatar-cleanup.test.ts && tsx src/tests/security-fixes.test.ts"
+        "test": "tsx src/tests/share-link.test.ts && tsx src/tests/request-metadata.test.ts && tsx src/tests/avatar-cleanup.test.ts && tsx src/tests/security-fixes.test.ts",
+        "test:load": "k6 run tests/load/k6.js",
+        "test:load:auth": "k6 run tests/load/k6.js -e TARGET=auth"
     },
     "keywords": [],
     "author": "",
