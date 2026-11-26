@@ -15,9 +15,9 @@ export function Hero() {
                 aria-hidden
                 className="pointer-events-none absolute inset-0 -z-10"
             >
-                <div className="bg-brand-light/40 absolute -top-32 left-1/2 h-[320px] w-[560px] -translate-x-1/2 rounded-full blur-3xl sm:h-[420px] sm:w-[760px]" />
+                <div className="bg-brand-light/40 absolute -top-32 left-1/2 h-80 w-140 -translate-x-1/2 rounded-full blur-3xl sm:h-105 sm:w-190" />
                 <div
-                    className="h-full w-full [mask-image:linear-gradient(to_bottom,black,transparent_85%)] opacity-[0.035] dark:opacity-[0.06]"
+                    className="h-full w-full mask-[linear-gradient(to_bottom,black,transparent_85%)] opacity-[0.035] dark:opacity-[0.06]"
                     style={{
                         backgroundImage:
                             'radial-gradient(currentColor 1px, transparent 1px)',
@@ -32,7 +32,7 @@ export function Hero() {
                     <div className="border-theme-on-surface/10 bg-theme-form-container/90 inline-flex max-w-full items-center gap-2 rounded-full border py-1 pr-3 pl-1.5 text-xs font-semibold shadow-xs backdrop-blur-sm sm:pr-3.5">
                         <span className="bg-brand-depth text-on-brand-depth inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px]">
                             <span
-                                className="material-symbols-outlined !text-xs"
+                                className="material-symbols-outlined text-xs!"
                                 aria-hidden
                             >
                                 code
@@ -65,7 +65,7 @@ export function Hero() {
                         >
                             Start building free
                             <span
-                                className="material-symbols-outlined !text-lg transition-transform duration-200 group-hover:translate-x-0.5"
+                                className="material-symbols-outlined text-lg! transition-transform duration-200 group-hover:translate-x-0.5"
                                 aria-hidden
                             >
                                 arrow_forward
@@ -80,7 +80,7 @@ export function Hero() {
                         >
                             See how it works
                             <span
-                                className="material-symbols-outlined !text-lg"
+                                className="material-symbols-outlined text-lg!"
                                 aria-hidden
                             >
                                 arrow_downward
@@ -99,7 +99,7 @@ export function Hero() {
                     >
                         View the source on GitHub
                         <span
-                            className="material-symbols-outlined !text-base"
+                            className="material-symbols-outlined text-base!"
                             aria-hidden
                         >
                             arrow_outward

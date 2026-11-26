@@ -6,7 +6,7 @@ export function HeroPreview() {
             {/* Soft ambient glow */}
             <div
                 aria-hidden
-                className="pointer-events-none absolute inset-x-6 top-10 -bottom-6 -z-10 rounded-[3rem] bg-black/10 blur-3xl sm:inset-x-12 dark:bg-white/[0.06]"
+                className="pointer-events-none absolute inset-x-6 top-10 -bottom-6 -z-10 rounded-[3rem] bg-black/10 blur-3xl sm:inset-x-12 dark:bg-white/6"
             />
 
             {/* Browser window: edge-to-edge on mobile, rounded card from sm up */}
@@ -22,7 +22,7 @@ export function HeroPreview() {
                         <span className="h-2.5 w-2.5 rounded-full bg-[#27C93F] ring-1 ring-black/10 ring-inset sm:h-3 sm:w-3" />
                     </div>
 
-                    <div className="bg-theme-on-surface/[0.05] text-theme-on-surface/60 absolute left-1/2 -translate-x-1/2 rounded-md px-3 py-1 text-[10px] font-medium tracking-tight sm:text-xs">
+                    <div className="bg-theme-on-surface/5 text-theme-on-surface/60 absolute left-1/2 -translate-x-1/2 rounded-md px-3 py-1 text-[10px] font-medium tracking-tight sm:text-xs">
                         paperwork.app
                     </div>
                 </div>

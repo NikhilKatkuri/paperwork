@@ -44,7 +44,7 @@ export function LandingNavbar() {
             className={cn(
                 'sticky top-0 z-40 transition-all duration-300',
                 scrolled
-                    ? 'border-theme-on-surface/10 bg-theme-surface/85 border-b shadow-sm shadow-black/[0.03] backdrop-blur-xl'
+                    ? 'border-theme-on-surface/10 bg-theme-surface/85 border-b shadow-sm shadow-black/3 backdrop-blur-xl'
                     : 'bg-theme-surface/60 border-b border-transparent backdrop-blur-md'
             )}
         >
@@ -105,7 +105,7 @@ export function LandingNavbar() {
                         <Link href="/user" className={primaryClass}>
                             Go to Dashboard
                             <span
-                                className="material-symbols-outlined !text-base transition-transform duration-200 group-hover:translate-x-0.5"
+                                className="material-symbols-outlined text-base! transition-transform duration-200 group-hover:translate-x-0.5"
                                 aria-hidden
                             >
                                 arrow_forward
@@ -122,7 +122,7 @@ export function LandingNavbar() {
                             >
                                 Get Started
                                 <span
-                                    className="material-symbols-outlined !text-base transition-transform duration-200 group-hover:translate-x-0.5"
+                                    className="material-symbols-outlined text-base! transition-transform duration-200 group-hover:translate-x-0.5"
                                     aria-hidden
                                 >
                                     arrow_forward
