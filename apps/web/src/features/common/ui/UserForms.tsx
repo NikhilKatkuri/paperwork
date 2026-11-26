@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -11,10 +12,12 @@ import useGetForms from '@/features/forms/api/user/getAllForms';
 import { useEnsureForm } from '@/features/forms/api/user/formSearch';
 import { uiPreferencesDB } from '@/features/user/components/lib/UiPreferences';
 import formRepository from '@/features/forms/repositories/formRepository';
-import { cancelFlush } from '@/features/forms/lib/sync-engine';
-import { syncQueueRepository } from '@/features/forms/lib/sync-queue.repository';
 import { endpoints } from '@/api/endpoints';
 import { ApiError, http } from '@/api/http';
+import {
+    moveFormsToBin,
+    unpublishForms,
+} from '@/features/forms/api/user/formBin';
 import type { FormDB } from '@/types';
 
 interface UserFormsProps {
@@ -39,6 +42,9 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
     const [fetchComplete, setFetchComplete] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [retryCount, setRetryCount] = useState(0);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [bulkBusy, setBulkBusy] = useState(false);
     // Bumped whenever the page resumes (bfcache restore, tab focus, or a
     // client-side return to this route) so the local snapshot is re-read
     // without waiting for a full reload.
@@ -50,6 +56,22 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
     const { next } = useGetForms(getFormsOptions);
     const { ensureForm } = useEnsureForm();
     const [busyId, setBusyId] = useState<string | null>(null);
+    const [binCount, setBinCount] = useState(0);
+
+    useEffect(() => {
+        let alive = true;
+
+        void Promise.resolve()
+            .then(() => formRepository.getTrashed())
+            .then((trashed) => {
+                if (alive) setBinCount(trashed.length);
+            })
+            .catch(() => undefined);
+
+        return () => {
+            alive = false;
+        };
+    }, [resumeKey]);
 
     useEffect(() => {
         let cancelled = false;
@@ -108,22 +130,121 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
     const handleDelete = useCallback(async (formId: string) => {
         setBusyId(formId);
         try {
-            cancelFlush(formId);
-            await http.delete(endpoints.forms.deleteForm(formId));
-            await syncQueueRepository.deleteForForm(formId);
-            await formRepository.delete(formId);
+            const result = await moveFormsToBin([formId]);
+            if (result.errors.length) throw new Error(result.errors[0]);
             setData((prev) => prev.filter((f) => f.id !== formId));
-            toast.success('Form deleted');
+            setSelectedIds((prev) => {
+                const next = new Set(prev);
+                next.delete(formId);
+                return next;
+            });
+            setBinCount((count) => count + 1);
+            toast.success('Form moved to bin');
         } catch (error) {
             toast.error(
                 error instanceof ApiError || error instanceof Error
                     ? error.message
-                    : 'Failed to delete form'
+                    : 'Failed to move form to bin'
             );
         } finally {
             setBusyId(null);
         }
     }, []);
+
+    const handleUnpublish = useCallback(async (formId: string) => {
+        setBusyId(formId);
+        try {
+            const result = await unpublishForms([formId]);
+            if (result.errors.length) throw new Error(result.errors[0]);
+            setData((prev) =>
+                prev.map((form) =>
+                    form.id === formId ? { ...form, isPublished: false } : form
+                )
+            );
+            toast.success('Form unpublished');
+        } catch (error) {
+            toast.error(
+                error instanceof ApiError || error instanceof Error
+                    ? error.message
+                    : 'Failed to unpublish form'
+            );
+        } finally {
+            setBusyId(null);
+        }
+    }, []);
+
+    const toggleSelected = useCallback((formId: string) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(formId)) next.delete(formId);
+            else next.add(formId);
+            return next;
+        });
+    }, []);
+
+    const activateSelection = useCallback((formId: string) => {
+        setSelectionMode(true);
+        setSelectedIds(new Set([formId]));
+    }, []);
+
+    const exitSelection = useCallback(() => {
+        setSelectionMode(false);
+        setSelectedIds(new Set());
+    }, []);
+
+    const handleBulkMoveToBin = useCallback(async () => {
+        const ids = [...selectedIds];
+        if (!ids.length) return;
+
+        setBulkBusy(true);
+        try {
+            const result = await moveFormsToBin(ids);
+            if (result.changed.length) {
+                const changed = new Set(result.changed);
+                setData((prev) => prev.filter((form) => !changed.has(form.id)));
+                setSelectedIds(new Set());
+                setBinCount((count) => count + result.changed.length);
+                toast.success(
+                    `${result.changed.length} form${result.changed.length === 1 ? '' : 's'} moved to bin`
+                );
+            }
+            if (result.errors.length) {
+                toast.error(result.errors[0]);
+            }
+        } finally {
+            setBulkBusy(false);
+            setSelectionMode(false);
+        }
+    }, [selectedIds]);
+
+    const handleBulkUnpublish = useCallback(async () => {
+        const ids = [...selectedIds];
+        if (!ids.length) return;
+
+        setBulkBusy(true);
+        try {
+            const result = await unpublishForms(ids);
+            if (result.changed.length) {
+                const changed = new Set(result.changed);
+                setData((prev) =>
+                    prev.map((form) =>
+                        changed.has(form.id)
+                            ? { ...form, isPublished: false }
+                            : form
+                    )
+                );
+                toast.success(
+                    `${result.changed.length} form${result.changed.length === 1 ? '' : 's'} unpublished`
+                );
+            }
+            if (result.errors.length) {
+                toast.error(result.errors[0]);
+            }
+        } finally {
+            setBulkBusy(false);
+            setSelectionMode(false);
+        }
+    }, [selectedIds]);
 
     const handleDuplicate = useCallback(
         async (formId: string) => {
@@ -164,7 +285,7 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
      * the page becomes visible again.
      */
     const pathname = usePathname();
-    const isHome = pathname === '/user';
+    const isHome = pathname === '/user' || pathname === '/forms';
     const wasHomeRef = useRef(isHome);
 
     // A client-side return to this route must re-sync as well in case the
@@ -304,6 +425,23 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
         });
     }, [data, query, sortMethod]);
 
+    const allDisplayedSelected =
+        displayedForms.length > 0 &&
+        displayedForms.every((form) => selectedIds.has(form.id));
+
+    const toggleSelectAll = useCallback(() => {
+        setSelectionMode(true);
+        setSelectedIds((prev) => {
+            if (
+                displayedForms.length > 0 &&
+                displayedForms.every((form) => prev.has(form.id))
+            ) {
+                return new Set();
+            }
+            return new Set(displayedForms.map((form) => form.id));
+        });
+    }, [displayedForms]);
+
     const isSearching = query.trim().length > 0;
     // Cached rows stay visible while the delayed server refresh runs; the
     // skeleton only covers the window where there is nothing to render.
@@ -316,6 +454,75 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
                 setViewAsRow={toggleView}
                 sort={sort}
             />
+
+            <div className="mt-2 flex min-h-10 items-center justify-between gap-2 px-1">
+                <p className="text-theme-on-surface/60 text-xs">
+                    Long press a form to select it
+                </p>
+                <div className="flex items-center gap-1">
+                    <button
+                        type="button"
+                        onClick={toggleSelectAll}
+                        disabled={displayedForms.length === 0}
+                        className="text-theme-on-surface/70 hover:bg-brand-light/60 hover:text-theme-on-surface rounded-full px-3 py-2 text-xs disabled:opacity-50"
+                    >
+                        {allDisplayedSelected ? 'Deselect all' : 'Select all'}
+                    </button>
+                    <Link
+                        href="/user/bin"
+                        title="Open bin"
+                        aria-label={`Open bin${binCount > 0 ? `, ${binCount} form${binCount === 1 ? '' : 's'}` : ''}`}
+                        className="hover:bg-brand-light/60 text-theme-on-surface/70 hover:text-theme-on-surface relative flex aspect-square h-10 w-10 items-center justify-center rounded-full transition-all duration-150 ease-in-out"
+                    >
+                        <span className="material-symbols-outlined text-xl">
+                            delete
+                        </span>
+                        {binCount > 0 && (
+                            <span className="bg-brand-depth text-on-brand-depth absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-semibold">
+                                {binCount > 9 ? '9+' : binCount}
+                            </span>
+                        )}
+                    </Link>
+                </div>
+            </div>
+
+            {selectionMode && (
+                <div className="bg-theme-surface mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
+                    <p className="text-sm font-medium">
+                        {selectedIds.size} form
+                        {selectedIds.size === 1 ? '' : 's'} selected
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => void handleBulkUnpublish()}
+                            disabled={bulkBusy}
+                            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-50"
+                        >
+                            Unpublish
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void handleBulkMoveToBin()}
+                            disabled={bulkBusy}
+                            className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        >
+                            {bulkBusy ? 'Working…' : 'Move to bin'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={exitSelection}
+                            disabled={bulkBusy}
+                            className="text-theme-on-surface/70 flex items-center gap-1 px-2 py-1.5 text-sm disabled:opacity-50"
+                        >
+                            <span className="material-symbols-outlined text-base">
+                                close
+                            </span>
+                            Done
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {isSearching && data.length > 0 && (
                 <p className="text-theme-on-surface/60 mt-4 text-xs">
@@ -373,9 +580,16 @@ function UserForms({ query = '' }: Readonly<UserFormsProps>) {
                                 viewAsRow={viewAsRow}
                                 form={form}
                                 busy={busyId === form.id}
+                                selected={selectedIds.has(form.id)}
+                                selectionMode={selectionMode}
+                                onLongPress={activateSelection}
+                                onSelect={() => toggleSelected(form.id)}
                                 onDelete={() => void handleDelete(form.id)}
                                 onDuplicate={() =>
                                     void handleDuplicate(form.id)
+                                }
+                                onUnpublish={() =>
+                                    void handleUnpublish(form.id)
                                 }
                             />
                         ))

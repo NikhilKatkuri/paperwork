@@ -24,6 +24,7 @@
  */
 export const siteConfig = {
     name: 'Paperwork',
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
     repositoryUrl: 'https://github.com/NikhilKatkuri/paperwork',
     issuesUrl: 'https://github.com/NikhilKatkuri/paperwork/issues',
     maintainerProfileUrl: 'https://github.com/NikhilKatkuri',

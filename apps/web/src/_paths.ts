@@ -7,6 +7,12 @@ export const PUBLIC_FILL_PREFIX = '/forms/v';
  */
 export const INFO_PATHS = ['/about', '/privacy', '/terms', '/help', '/contact'];
 
+/** Fully public pages that render before the auth bootstrap settles. */
+export const PUBLIC_PATHS = ['/'];
+
+export const isPublicPath = (path: string) =>
+    PUBLIC_PATHS.some((p) => path === p);
+
 export const AUTH_PATHS = [
     '/auth/signin',
     '/auth/signup',

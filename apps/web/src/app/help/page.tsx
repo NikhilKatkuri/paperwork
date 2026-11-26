@@ -11,6 +11,7 @@ export const metadata: Metadata = {
     title: `${siteConfig.name} | Help Center`,
     description:
         'Answers to common questions about creating forms, collecting responses, privacy, security and troubleshooting in Paperwork.',
+    alternates: { canonical: '/help' },
 };
 
 const toc: TocItem[] = faqCategories.map((category) => ({

@@ -13,7 +13,6 @@ const RATING_ICONS: Record<string, string> = {
     THUMB_UP: 'thumb_up',
 };
 
-/** Long free text is clamped until expanded. */
 function Clamped({ text }: Readonly<{ text: string }>) {
     const [open, setOpen] = useState(false);
     const isLong = text.length > 140;
@@ -26,7 +25,7 @@ function Clamped({ text }: Readonly<{ text: string }>) {
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="font-medium text-neutral-900 hover:underline"
+                className="text-on-brand-light font-medium hover:underline"
             >
                 {open ? 'Show less' : 'Show more'}
             </button>
@@ -36,19 +35,12 @@ function Clamped({ text }: Readonly<{ text: string }>) {
 
 function Chip({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <span className="inline-block max-w-full rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-800">
+        <span className="bg-brand-light text-on-brand-light inline-block max-w-full rounded-xl px-2.5 py-0.5 text-xs font-medium">
             {children}
         </span>
     );
 }
 
-/**
- * Renders a stored answer using the question's own type.
- *
- * Stored values are always plain strings, so the question is needed to know
- * that "5" is a rating rather than a number, or that a value is one choice out
- * of a known set.
- */
 export default function AnswerValue({
     values,
     question,
@@ -61,7 +53,9 @@ export default function AnswerValue({
         .filter((v) => v.trim());
 
     if (!answers.length) {
-        return <span className="text-xs text-neutral-400">No answer</span>;
+        return (
+            <span className="text-theme-on-surface/40 text-xs">No answer</span>
+        );
     }
 
     switch (question?.type) {
@@ -75,14 +69,14 @@ export default function AnswerValue({
 
             return (
                 <span
-                    className="inline-flex items-center gap-0.5 text-neutral-900"
+                    className="text-on-brand-light inline-flex items-center gap-0.5"
                     aria-label={`${answers[0]} out of ${scale}`}
                 >
                     {Array.from({ length: scale }, (_, i) => i + 1).map((n) => (
                         <span
                             key={n}
                             className={`material-symbols-outlined text-base ${
-                                n <= picked ? '' : 'opacity-25'
+                                n <= picked ? '' : 'opacity-20'
                             }`}
                         >
                             {icon}
@@ -94,8 +88,6 @@ export default function AnswerValue({
 
         case QuestionTypeEnum.LINEAR_SCALE: {
             const value = Number(answers[0]);
-            // Linear scales carry their own bounds; fall back to the legacy
-            // rating scale only for responses stored before scaleConfig.
             const lower = Number(question.scaleConfig?.lowerBound ?? 1);
             const upper = Number(
                 question.scaleConfig?.upperBound ??
@@ -109,16 +101,18 @@ export default function AnswerValue({
             );
 
             return (
-                <span className="inline-flex items-center gap-2">
-                    <span className="relative inline-block h-1.5 w-24 overflow-hidden rounded-full bg-neutral-200">
+                <span className="inline-flex items-center gap-2.5">
+                    <span className="bg-theme-on-surface/10 relative inline-block h-1.5 w-24 overflow-hidden rounded-full">
                         <span
-                            className="absolute inset-y-0 left-0 rounded-full bg-neutral-900"
+                            className="bg-brand absolute inset-y-0 left-0 rounded-full"
                             style={{ width: `${pct}%` }}
                         />
                     </span>
-                    <span className="text-xs font-medium text-neutral-900">
+                    <span className="text-theme-on-surface text-xs font-medium tabular-nums">
                         {answers[0]}
-                        <span className="text-neutral-400">/{upper}</span>
+                        <span className="text-theme-on-surface/45">
+                            /{upper}
+                        </span>
                     </span>
                 </span>
             );
@@ -126,7 +120,7 @@ export default function AnswerValue({
 
         case QuestionTypeEnum.CHOICE:
             return (
-                <span className="flex flex-wrap gap-1">
+                <span className="flex flex-wrap gap-1.5">
                     {answers.map((value) => (
                         <Chip key={value}>{value}</Chip>
                     ))}
@@ -140,7 +134,7 @@ export default function AnswerValue({
         case QuestionTypeEnum.DATE: {
             const parsed = new Date(answers[0]);
             return (
-                <span className="text-xs text-neutral-900">
+                <span className="text-theme-on-surface text-xs">
                     {Number.isNaN(parsed.getTime())
                         ? answers[0]
                         : parsed.toLocaleDateString(undefined, {
@@ -154,7 +148,7 @@ export default function AnswerValue({
 
         case QuestionTypeEnum.TIME:
             return (
-                <span className="text-xs tabular-nums text-neutral-900">
+                <span className="text-theme-on-surface text-xs tabular-nums">
                     {answers[0]}
                 </span>
             );
@@ -163,7 +157,7 @@ export default function AnswerValue({
         case QuestionTypeEnum.TEXT:
         default:
             return (
-                <span className="text-xs whitespace-pre-wrap text-neutral-900">
+                <span className="text-theme-on-surface text-xs whitespace-pre-wrap">
                     <Clamped text={answers.join(', ')} />
                 </span>
             );

@@ -69,6 +69,13 @@ const formsSchema = new Schema<FormDocument>(
          */
         responseCount: { type: Number, default: 0, min: 0 },
 
+        /**
+         * Soft-delete marker. An absent field means the form is active; a
+         * Date means it sits in the bin and is eligible for the 7-day purge.
+         * Must be declared under `strict: true` to be stored at all.
+         */
+        deletedAt: { type: Date, default: undefined },
+
         settings: { type: FormsSettingSchema, default: () => ({}) },
     },
     {
@@ -93,6 +100,7 @@ formsSchema.pre('save', function () {
 });
 
 formsSchema.index({ userId: 1, createdAt: -1 });
+formsSchema.index({ deletedAt: 1 });
 
 formsSchema.set('toObject', { transform });
 formsSchema.set('toJSON', { transform });

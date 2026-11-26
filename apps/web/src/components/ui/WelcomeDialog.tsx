@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 /**
  * localStorage key remembering that the visitor acknowledged the intro. The
@@ -67,12 +67,13 @@ const FOCUSABLE_SELECTOR =
  */
 export default function WelcomeDialog() {
     const router = useRouter();
+    const pathname = usePathname();
     const acknowledged = useSyncExternalStore(
         subscribe,
         readAcknowledged,
         getServerSnapshot
     );
-    const open = !acknowledged;
+    const open = !acknowledged && pathname !== '/';
     const dialogRef = useRef<HTMLDivElement>(null);
     const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 

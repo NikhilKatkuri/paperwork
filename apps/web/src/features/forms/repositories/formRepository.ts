@@ -5,7 +5,8 @@ import {
     toVersion,
 } from '@/features/forms/types/db.types';
 import { FormDB } from '@/types';
-import { FormDto } from '@paperwork/types';
+import { FORM_BIN_RETENTION_DAYS, FormDto } from '@paperwork/types';
+import { syncQueueRepository } from '../lib/sync-queue.repository';
 
 /**
  * Project a server record onto the local cache.
@@ -51,7 +52,8 @@ class FormRepository {
     }
 
     async getAll(): Promise<FormDB[]> {
-        return db.forms.orderBy('updatedAt').reverse().toArray();
+        const forms = await db.forms.orderBy('updatedAt').reverse().toArray();
+        return forms.filter((form) => !form.deletedAt);
     }
 
     async save(form: FormDto, opts?: { dirty?: boolean }): Promise<void> {
@@ -149,6 +151,7 @@ class FormRepository {
             [];
 
         for (const form of await this.getAll()) {
+            if (form.deletedAt) continue;
             const name = form.name ?? '';
             const haystack = name.toLowerCase();
 
@@ -175,6 +178,52 @@ class FormRepository {
      */
     async setPublished(uid: string, isPublished: boolean): Promise<void> {
         await db.forms.update(uid, { isPublished, isDirty: false });
+    }
+
+    /** Mirror a server-confirmed move to bin without queueing a sync. */
+    async moveToBin(uid: string, deletedAt: string): Promise<void> {
+        await db.forms.update(uid, {
+            deletedAt,
+            isDirty: false,
+        });
+        await syncQueueRepository.deleteForForm(uid);
+    }
+
+    /** Mirror a server-confirmed restore without queueing a sync. */
+    async restore(uid: string): Promise<void> {
+        await db.forms.update(uid, {
+            deletedAt: undefined,
+            isDirty: false,
+        });
+    }
+
+    async getTrashed(): Promise<FormDB[]> {
+        const trashed = await db.forms
+            .filter((form) => Boolean(form.deletedAt))
+            .toArray();
+
+        return trashed.sort(
+            (a, b) => toTimestamp(b.deletedAt) - toTimestamp(a.deletedAt)
+        );
+    }
+
+    /**
+     * Drop locally cached forms that have already passed the retention window.
+     * The server worker is authoritative; this only keeps this device's
+     * snapshot from showing rows the server has already purged.
+     */
+    async purgeExpiredLocally(): Promise<string[]> {
+        const cutoff = Date.now() - FORM_BIN_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+        const expired = await db.forms
+            .filter((form) => {
+                const at = toTimestamp(form.deletedAt);
+                return at > 0 && at <= cutoff;
+            })
+            .primaryKeys();
+
+        if (expired.length) await db.forms.bulkDelete(expired);
+
+        return expired.map(String);
     }
 
     async clear(): Promise<void> {

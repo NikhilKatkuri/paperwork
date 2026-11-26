@@ -12,6 +12,7 @@ import {
     lowLimiter,
 } from '@/middleware/limiter';
 import {
+    binFormsSchema,
     bulkPutFormSchema,
     createRequestFormSchema,
     getFormSchema,
@@ -43,6 +44,17 @@ formsRouter.get(
     validate(searchFormsSchema),
     controller.search
 );
+
+// Bin routes must precede `/:formId`: otherwise "bin" is parsed as an id and
+// fails ObjectId validation before the handler ever runs.
+formsRouter.get(
+    '/bin',
+    limiter,
+    protect,
+    validate(binFormsSchema),
+    controller.bin
+);
+formsRouter.delete('/bin', createFormsLimiter, protect, controller.emptyBin);
 
 formsRouter.put(
     '/:formId',
@@ -76,12 +88,28 @@ formsRouter.get(
     controller.get
 );
 
+// Default delete = move to bin. Permanent removal is an explicit, separate
+// route used by the bin screen once the user has confirmed the loss.
 formsRouter.delete(
     '/:formId',
     createFormsLimiter,
     protect,
     validate(getFormSchema),
     controller.delete
+);
+formsRouter.delete(
+    '/:formId/permanent',
+    createFormsLimiter,
+    protect,
+    validate(getFormSchema),
+    controller.deletePermanent
+);
+formsRouter.post(
+    '/:formId/restore',
+    lowLimiter,
+    protect,
+    validate(getFormSchema),
+    controller.restore
 );
 
 formsRouter.post(

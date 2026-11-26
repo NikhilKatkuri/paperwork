@@ -4,6 +4,8 @@ import { connectDB, disconnectDB } from '@/db/connection';
 import { fatal, logger } from '@/utils/logger';
 import emailOutboxWorker from './modules/email/workers/emailOutbox.worker';
 import avatarCleanupOutboxWorker from './modules/signatures/cloudinary/workers/avatarCleanupOutbox.worker';
+import formBinCleanupWorker from './modules/forms/workers/formBinCleanup.worker';
+import pendingDeleteWorker from './modules/forms/workers/pendingDelete.worker';
 
 const boot = async (): Promise<void> => {
     await connectDB().catch((error: unknown) => {
@@ -14,6 +16,10 @@ const boot = async (): Promise<void> => {
     emailOutboxWorker.start();
 
     avatarCleanupOutboxWorker.start();
+
+    formBinCleanupWorker.start();
+
+    pendingDeleteWorker.start();
 
     let server: ReturnType<typeof app.listen>;
 
@@ -65,6 +71,10 @@ const boot = async (): Promise<void> => {
             event: 'SERVER_SHUTDOWN_STARTED',
             signal,
         });
+
+        formBinCleanupWorker.stop();
+
+        pendingDeleteWorker.stop();
 
         server.close(async () => {
             try {

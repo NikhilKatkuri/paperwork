@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     title: `${siteConfig.name} | Terms & Conditions`,
     description:
         'The terms that govern using the Paperwork application and any hosted deployment of it, including accounts, content, licensing and disclaimers.',
+    alternates: { canonical: '/terms' },
 };
 
 const toc: TocItem[] = [

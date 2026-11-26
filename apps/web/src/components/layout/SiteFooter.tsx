@@ -16,7 +16,9 @@ const linkClass =
  * Shared footer for the public information pages. Deliberately not mounted in
  * the authenticated dashboard shell, which manages its own full-height layout.
  */
-export default function SiteFooter() {
+export default function SiteFooter({
+    showSignIn = false,
+}: Readonly<{ showSignIn?: boolean }>) {
     return (
         <footer className="border-theme-on-surface/10 mt-16 border-t">
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-6">
@@ -35,6 +37,13 @@ export default function SiteFooter() {
                                 </Link>
                             </li>
                         ))}
+                        {showSignIn && (
+                            <li>
+                                <Link href="/auth" className={linkClass}>
+                                    Sign In
+                                </Link>
+                            </li>
+                        )}
                         <li>
                             <a
                                 href={siteConfig.repositoryUrl}

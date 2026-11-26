@@ -13,12 +13,6 @@ function labelOf(question: QuestionDoc | undefined): string {
         .trim();
 }
 
-/**
- * Per-question totals: each distinct answer with how many people gave it.
- *
- * Driven by the summary endpoint, so the figures cover every matching response
- * rather than the page currently on screen.
- */
 export default function SummaryView({
     summary,
     questions,
@@ -37,13 +31,20 @@ export default function SummaryView({
             <div
                 role="status"
                 aria-label="Loading summary"
-                className="flex flex-col gap-3"
+                className="grid grid-cols-1 gap-4 md:grid-cols-2"
             >
                 {Array.from({ length: 4 }, (_, i) => (
                     <div
                         key={i}
-                        className="bg-theme-form-container-border/50 h-28 animate-pulse rounded-xl"
-                    />
+                        className="border-theme-on-surface/10 space-y-3 rounded-md border p-5"
+                    >
+                        <div className="bg-theme-skeletion-surface h-4 w-2/3 rounded-sm motion-safe:animate-pulse" />
+                        <div className="bg-theme-skeletion-surface h-3 w-1/4 rounded-sm motion-safe:animate-pulse" />
+                        <div className="space-y-2 pt-2">
+                            <div className="bg-theme-skeletion-surface h-2.5 w-full rounded-full motion-safe:animate-pulse" />
+                            <div className="bg-theme-skeletion-surface h-2.5 w-4/5 rounded-full motion-safe:animate-pulse" />
+                        </div>
+                    </div>
                 ))}
             </div>
         );
@@ -51,21 +52,23 @@ export default function SummaryView({
 
     if (!summary || summary.questions.length === 0) {
         return (
-            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-neutral-300 bg-white py-16 text-center">
-                <span className="text-theme-form-on-surface/30 material-symbols-outlined text-3xl">
-                    query_stats
+            <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+                <span className="bg-brand-light text-on-brand-light flex h-14 w-14 items-center justify-center rounded-lg">
+                    <span className="material-symbols-outlined text-3xl">
+                        query_stats
+                    </span>
                 </span>
-                <p className="text-theme-form-on-container text-sm font-medium">
+                <p className="text-theme-on-surface text-sm font-medium">
                     Nothing to summarise yet
                 </p>
-                <p className="text-theme-form-on-surface/60 max-w-xs text-xs">
-                    Once responses come in, each question is totalled here.
+                <p className="text-theme-on-surface/55 max-w-xs text-xs">
+                    Once responses come in, each question breakdown will appear
+                    here.
                 </p>
             </div>
         );
     }
 
-    // Form order, like the respondent saw the questions.
     const position = new Map(questions.map((q, i) => [q.id, i]));
     const ordered = [...summary.questions].sort(
         (a, b) =>
@@ -74,93 +77,102 @@ export default function SummaryView({
     );
 
     return (
-        <div className="flex flex-col gap-3">
-            {ordered.map((entry) => {
-                const question = byId.get(entry.questionId);
-                const share =
-                    totalResponses > 0
-                        ? Math.round((entry.answered / totalResponses) * 100)
-                        : 0;
+        <div className="flex flex-col gap-5">
+            {/* Template-style Section Heading */}
+            <div className="flex items-center gap-3">
+                <h2 className="text-theme-on-surface text-sm font-semibold tracking-tight">
+                    Question breakdown
+                </h2>
+                <span className="text-theme-on-surface/50 text-xs font-medium tabular-nums">
+                    {ordered.length}
+                </span>
+                <span className="bg-theme-on-surface/10 h-px flex-1" />
+            </div>
 
-                return (
-                    <section
-                        key={entry.questionId}
-                        aria-label={labelOf(question)}
-                        className="border-theme-form-container-border bg-theme-form-container rounded-xl border p-4 shadow-sm sm:p-5"
-                    >
-                        <header className="mb-3">
-                            <h3 className="text-theme-form-on-container text-sm font-semibold">
-                                {labelOf(question)}
-                            </h3>
-                            <p className="text-theme-form-on-surface/60 mt-0.5 text-xs">
-                                {entry.answered} of{' '}
-                                {totalResponses || entry.answered} answered
-                            </p>
-                        </header>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {ordered.map((entry, idx) => {
+                    const question = byId.get(entry.questionId);
+                    const share =
+                        totalResponses > 0
+                            ? Math.round(
+                                  (entry.answered / totalResponses) * 100
+                              )
+                            : 0;
 
-                        {/* How much of the cohort answered this at all. */}
-                        <div
-                            role="progressbar"
-                            aria-valuenow={share}
-                            aria-valuemin={0}
-                            aria-valuemax={100}
-                            aria-label={`${share}% answered`}
-                            className="bg-theme-form-container-border/50 mb-4 h-1 overflow-hidden rounded-full"
+                    return (
+                        <section
+                            key={entry.questionId}
+                            aria-label={labelOf(question)}
+                            className="border-theme-skeletion-surface hover:border-theme-on-surface/20 flex flex-col justify-between rounded-md border p-5 transition-colors"
                         >
-                            <div
-                                className="bg-theme-form-container-active h-full rounded-full transition-all"
-                                style={{ width: `${share}%` }}
-                            />
-                        </div>
-
-                        <ul className="flex flex-col gap-2.5">
-                            {entry.values.map((item) => {
-                                const percent =
-                                    entry.answered > 0
-                                        ? Math.round(
-                                              (item.count / entry.answered) *
-                                                  100
-                                          )
-                                        : 0;
-
-                                return (
-                                    <li
-                                        key={item.value}
-                                        className="flex items-center gap-3"
-                                    >
-                                        <span className="text-theme-form-on-container/80 w-40 shrink-0 truncate text-xs">
-                                            <AnswerValue
-                                                values={[item.value]}
-                                                question={question}
-                                            />
+                            <div>
+                                <header className="mb-3 flex items-start justify-between gap-3">
+                                    <div className="flex min-w-0 items-start gap-2.5">
+                                        <span className="bg-brand-light text-on-brand-light mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-sm text-[11px] font-semibold tabular-nums">
+                                            {idx + 1}
                                         </span>
+                                        <h3 className="text-theme-on-surface text-sm leading-snug font-medium">
+                                            {labelOf(question)}
+                                        </h3>
+                                    </div>
+                                    <span className="text-theme-on-surface/50 shrink-0 text-[11px] tabular-nums">
+                                        {entry.answered}/
+                                        {totalResponses || entry.answered} (
+                                        {share}%)
+                                    </span>
+                                </header>
 
-                                        <span className="bg-theme-form-container-border/50 h-1.5 flex-1 overflow-hidden rounded-full">
-                                            <span
-                                                className="bg-theme-form-container-active/80 block h-full rounded-full"
-                                                style={{
-                                                    width: `${Math.max(
-                                                        percent,
-                                                        2
-                                                    )}%`,
-                                                }}
-                                            />
-                                        </span>
+                                <ul className="mt-4 flex flex-col gap-2.5">
+                                    {entry.values.map((item) => {
+                                        const percent =
+                                            entry.answered > 0
+                                                ? Math.round(
+                                                      (item.count /
+                                                          entry.answered) *
+                                                          100
+                                                  )
+                                                : 0;
 
-                                        <span className="text-theme-form-on-surface/60 w-16 shrink-0 text-right text-xs tabular-nums">
-                                            {item.count}
-                                            <span className="opacity-60">
-                                                {' · '}
-                                                {percent}%
-                                            </span>
-                                        </span>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    </section>
-                );
-            })}
+                                        return (
+                                            <li
+                                                key={item.value}
+                                                className="flex flex-col gap-1"
+                                            >
+                                                <div className="flex items-center justify-between gap-2 text-xs">
+                                                    <span className="text-theme-on-surface/85 truncate">
+                                                        <AnswerValue
+                                                            values={[
+                                                                item.value,
+                                                            ]}
+                                                            question={question}
+                                                        />
+                                                    </span>
+                                                    <span className="text-theme-on-surface/55 shrink-0 tabular-nums">
+                                                        {item.count} · {percent}
+                                                        %
+                                                    </span>
+                                                </div>
+
+                                                <div className="bg-theme-on-surface/8 h-1.5 w-full overflow-hidden rounded-full">
+                                                    <div
+                                                        className="bg-brand h-full rounded-full transition-all duration-300"
+                                                        style={{
+                                                            width: `${Math.max(
+                                                                percent,
+                                                                2
+                                                            )}%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </div>
+                        </section>
+                    );
+                })}
+            </div>
         </div>
     );
 }

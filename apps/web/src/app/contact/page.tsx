@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     title: `${siteConfig.name} | Contact & Support`,
     description:
         'How to reach the Paperwork maintainers for bugs, feature requests, privacy questions and security reports.',
+    alternates: { canonical: '/contact' },
 };
 
 const toc: TocItem[] = [

@@ -92,18 +92,94 @@ class FormsController extends AutoBoundClass {
     }
 
     /**
-     * @description Deletes a form and all its sections and questions in a single transaction.
-     * @param req expects @user userId, @form formId
-     * @param res returns a 204 No Content response if the form is deleted successfully, or an error response if the deletion fails.
+     * @description Default delete: move the form into the bin. A 200 with the
+     * trashed form confirms the transition; the bin keeps the body intact so
+     * the user can restore it within the retention window.
      */
     async delete(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId, formId } = this.getRequestData(req);
-            await this.service.delete(formId, userId);
-            res.status(StatusCodes.NO_CONTENT).send();
+            const form = await this.service.moveToBin(formId, userId);
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Form moved to bin',
+                data: { form },
+            });
         } catch (error) {
             next(error);
         }
+    }
+
+    async bin(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { userId } = this.getRequestData(req);
+            const { limit, page } = this.getPagination(req);
+            const forms = await this.service.listBin(userId, { limit, page });
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Bin retrieved successfully',
+                data: { forms },
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async restore(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { userId, formId } = this.getRequestData(req);
+            const form = await this.service.restoreFromBin(formId, userId);
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Form restored successfully',
+                data: { form },
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async deletePermanent(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { userId, formId } = this.getRequestData(req);
+            await this.service.deletePermanent(formId, userId);
+            res.status(StatusCodes.ACCEPTED).json({
+                success: true,
+                message: 'Permanent deletion scheduled',
+                data: { formId },
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async emptyBin(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { userId } = this.getRequestData(req);
+            const scheduled = await this.service.emptyBin(userId);
+            res.status(StatusCodes.ACCEPTED).json({
+                success: true,
+                message: 'Bin emptying scheduled',
+                data: { scheduled },
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    private getPagination(req: Request) {
+        const limit = Math.min(
+            Math.max(
+                Number.parseInt(req.query.limit as string, 10) || 10,
+                1
+            ),
+            100
+        );
+        const page = Math.max(
+            Number.parseInt(req.query.page as string, 10) || 1,
+            1
+        );
+        return { limit, page };
     }
 
     /**
@@ -234,18 +310,7 @@ class FormsController extends AutoBoundClass {
     async getAll(req: Request, res: Response, next: NextFunction) {
         try {
             const { userId } = this.getRequestData(req);
-            const limit = Math.min(
-                Math.max(
-                    Number.parseInt(req.query.limit as string, 10) || 10,
-                    1
-                ),
-                100
-            );
-
-            const page = Math.max(
-                Number.parseInt(req.query.page as string, 10) || 1,
-                1
-            );
+            const { limit, page } = this.getPagination(req);
 
             let lastUpdated: Date | undefined;
             if (req.query.lastUpdated) {
