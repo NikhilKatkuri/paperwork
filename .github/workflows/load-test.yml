@@ -1,0 +1,73 @@
+name: k6 Load Test
+
+on:
+    workflow_dispatch:
+        inputs:
+            base_url:
+                description: "Optional override URL (defaults to LOAD_TEST_BASE_URL secret)"
+                required: false
+                default: ""
+            vus:
+                description: "Peak virtual users"
+                required: true
+                default: "20"
+            ramp_up:
+                description: "Ramp-up duration"
+                required: true
+                default: "10s"
+            hold:
+                description: "Hold duration"
+                required: true
+                default: "30s"
+            ramp_down:
+                description: "Ramp-down duration"
+                required: true
+                default: "10s"
+            target:
+                description: "Test target (health or auth)"
+                required: true
+                default: "health"
+            req_path:
+                description: "Request path when target is not auth"
+                required: true
+                default: "/health"
+jobs:
+    k6:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Build k6 Docker image
+              run: docker build -t paperwork-k6:local apps/server/tests/load
+
+            - name: Run k6 container
+              env:
+                  BASE_URL: ${{ inputs.base_url || secrets.LOAD_TEST_BASE_URL }}
+                  VUS: ${{ inputs.vus }}
+                  RAMP_UP: ${{ inputs.ramp_up }}
+                  HOLD: ${{ inputs.hold }}
+                  RAMP_DOWN: ${{ inputs.ramp_down }}
+                  TARGET: ${{ inputs.target }}
+                  REQ_PATH: ${{ inputs.req_path }}
+                  LOAD_TEST_BYPASS_KEY: ${{ secrets.LOAD_TEST_BYPASS_KEY }}
+                  EMAIL: ${{ secrets.LOAD_TEST_EMAIL }}
+                  PASSWORD: ${{ secrets.LOAD_TEST_PASSWORD }}
+              run: |
+                  if [ -z "$BASE_URL" ]; then
+                    echo "Error: Set LOAD_TEST_BASE_URL secret or provide base_url input."
+                    exit 1
+                  fi
+
+                  docker run --rm \
+                    -e BASE_URL \
+                    -e VUS \
+                    -e RAMP_UP \
+                    -e HOLD \
+                    -e RAMP_DOWN \
+                    -e TARGET \
+                    -e REQ_PATH \
+                    -e LOAD_TEST_BYPASS_KEY \
+                    -e EMAIL \
+                    -e PASSWORD \
+                    paperwork-k6:local
