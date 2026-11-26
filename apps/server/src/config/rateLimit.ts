@@ -163,6 +163,9 @@ export const baseRateLimitOptions: Partial<Options> = {
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     skipSuccessfulRequests: false,
+    // Without this, a single IPv6 client can rotate addresses within its
+    // allocated prefix and get a fresh bucket for every request.
+    ipv6Subnet: 64,
 };
 
 export type ConfigKey = keyof typeof rateLimitConfig;

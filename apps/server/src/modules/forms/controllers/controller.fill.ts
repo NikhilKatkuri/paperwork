@@ -315,7 +315,12 @@ class FillController {
             res.setHeader('Cache-Control', 'no-store');
 
             // BOM so Excel opens UTF-8 content (e.g. Hindi answers) correctly.
-            const stringifier = stringify({ header: true, columns, bom: true });
+            const stringifier = stringify({
+                header: true,
+                columns,
+                bom: true,
+                escape_formulas: true,
+            });
             stringifier.on('error', (streamError) => {
                 res.destroy(streamError as Error);
             });

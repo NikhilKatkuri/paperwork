@@ -8,7 +8,7 @@ Bearer-protected routes use `Authorization: Bearer <access_token>`. Refresh, 2FA
 | --- | --- | --- | --- | --- |
 | POST | `/api/v1/auth/sign-up` | Public | `{ email, password, fullName }` | `201`, access token and refresh cookie |
 | POST | `/api/v1/auth/sign-in` | Public | `{ email, password }` | `200`, access token or 2FA challenge |
-| POST | `/api/v1/auth/sign-in/2fa/:otp` | Temporary 2FA cookies | `otp` path parameter | `200`, access token |
+| POST | `/api/v1/auth/sign-in/2fa` | Temporary 2FA cookies | `{ otp }` | `200`, access token |
 | POST | `/api/v1/auth/sign-out` | Bearer + refresh cookie | None | `200` |
 | POST | `/api/v1/auth/refresh-token` | Refresh cookie | None | `200`, rotated access/refresh tokens |
 | GET | `/api/v1/auth/me` | Bearer | None | `200`, profile |

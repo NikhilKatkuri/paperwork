@@ -9,6 +9,20 @@ export const zodObjectId = z
     .string()
     .regex(/^[0-9a-fA-F]{24}$/, 'Invalid Database ID format');
 
+/**
+ * Reject regular expressions whose repetition is nested, since they can
+ * backtrack exponentially against the free-text answers submitted to a form.
+ * `(a+)+`, `(\d*)*` and repeated unbounded wildcards all match these shapes.
+ */
+const UNSAFE_REGEX_SHAPES: readonly RegExp[] = [
+    /\([^)]*[+*][^)]*\)\s*[+*{]/,
+    /\([^)]*\([^)]*[+*][^)]*\)[^)]*\)\s*[+*{]/,
+    /(\.\*){2,}/,
+];
+
+const isSafeRegexPattern = (pattern: string): boolean =>
+    !UNSAFE_REGEX_SHAPES.some((shape) => shape.test(pattern));
+
 export const formSettingsSchema = z
     .object({
         maxResponses: z.number().int().positive().nullable().optional(),
@@ -178,6 +192,17 @@ export const validationRuleSchema = z
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: 'REGEX_MATCH requires pattern',
+            });
+        }
+        if (
+            rule.ruleType === 'REGEX_MATCH' &&
+            rule.pattern &&
+            !isSafeRegexPattern(rule.pattern)
+        ) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Pattern is too complex and may cause excessive backtracking',
+                path: ['pattern'],
             });
         }
         if (

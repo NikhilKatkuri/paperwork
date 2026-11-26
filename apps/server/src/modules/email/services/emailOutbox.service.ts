@@ -2,8 +2,29 @@ import AutoBoundClass from '@/utils/AutoBoundClass';
 import { EmailOutboxJob } from '../types/emailOutbox.type';
 import { ClientSession } from 'mongoose';
 import { EmailOutboxModel } from '../schema/emailOutbox.model';
+import { isSensitiveKey, REDACTED } from '@/utils/sanitize';
 
-const SECRET_PAYLOAD_KEYS = new Set(['otp', 'resetLink', 'token']);
+const MAX_SCRUB_DEPTH = 6;
+
+const scrubValue = (value: unknown, depth = 0): unknown => {
+    if (depth > MAX_SCRUB_DEPTH) return REDACTED;
+    if (typeof value === 'string') {
+        return /^\d{6}$/.test(value) || /reset[-_]?link/i.test(value)
+            ? REDACTED
+            : value;
+    }
+    if (value === null || typeof value !== 'object') return value;
+    if (Array.isArray(value)) {
+        return value.map((item) => scrubValue(item, depth + 1));
+    }
+    const output: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value)) {
+        output[key] = isSensitiveKey(key)
+            ? REDACTED
+            : scrubValue(child, depth + 1);
+    }
+    return output;
+};
 
 class EmailOutboxService extends AutoBoundClass {
     /**
@@ -20,11 +41,10 @@ class EmailOutboxService extends AutoBoundClass {
         if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
             return null;
         }
-        const entries = Object.entries(payload as Record<string, unknown>);
-        if (!entries.some(([key]) => SECRET_PAYLOAD_KEYS.has(key))) return null;
-        return Object.fromEntries(
-            entries.filter(([key]) => !SECRET_PAYLOAD_KEYS.has(key))
-        );
+        const scrubbed = scrubValue(payload) as Record<string, unknown>;
+        return JSON.stringify(scrubbed) === JSON.stringify(payload)
+            ? null
+            : scrubbed;
     }
 
     async addEmailToOutbox(job: EmailOutboxJob, session?: ClientSession) {

@@ -52,8 +52,7 @@ export const endpoints = {
         sensitiveInfo: '/auth/account/personal',
         resetPassword: (token: string): string =>
             `/auth/reset-password/${encodeURIComponent(token)}`,
-        verifyTwoFactor: (otp: string): string =>
-            `/auth/sign-in/2fa/${encodeURIComponent(otp)}`,
+        verifyTwoFactor: '/auth/sign-in/2fa',
     },
     signature: {
         cloudinary: '/cloudinary/signature',

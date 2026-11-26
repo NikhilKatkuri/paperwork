@@ -138,7 +138,7 @@ class HttpClient {
         } catch (error) {
             if (isCancel(error)) {
                 // No path in the message: credential-bearing endpoints
-                // (`/auth/reset-password/:token`, `/auth/sign-in/2fa/:otp`)
+                // (`/auth/reset-password/:token`)
                 // put live secrets in the URL, and this message is surfaced
                 // and logged.
                 throw new Error('Request was aborted');

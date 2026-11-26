@@ -31,7 +31,12 @@ export const isOwnedPublicId = (
 ): publicId is string =>
     folder.length > 0 &&
     typeof publicId === 'string' &&
-    publicId.startsWith(`${folder}/`);
+    publicId.startsWith(`${folder}/`) &&
+    // Encoded separators are decoded after URL parsing, so check the decoded
+    // id for traversal/empty segments before it reaches `uploader.destroy`.
+    publicId
+        .split('/')
+        .every((segment) => segment.length > 0 && segment !== '.' && segment !== '..');
 
 /**
  * Extracts the public id of an upload-delivery URL, or `null` when the URL

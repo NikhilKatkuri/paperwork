@@ -103,6 +103,17 @@ const debugEnabled = getEnvVar<boolean>('DEBUG', false);
  * its own address with a forged `X-Forwarded-For` header.
  */
 function resolveTrustProxy(): boolean | number | string {
+    // In production the value must be an explicit deployment decision. The
+    // old implicit default of one trusted hop is unsafe when Node is directly
+    // reachable: a forged X-Forwarded-For then controls req.ip, which is the
+    // key for every rate limiter and the source of IP spoofing signals.
+    if (isProd && (process.env.TRUST_PROXY ?? '').trim() === '') {
+        throw new SystemError(
+            '[TRUST_PROXY]',
+            'TRUST_PROXY must be set explicitly in production (e.g. "false", "1", or a proxy CIDR list).'
+        );
+    }
+
     // `getEnvVar` may coerce numeric-looking values; stringify before parsing.
     const raw = String(getEnvVar<string>('TRUST_PROXY', '1')).trim();
 

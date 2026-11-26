@@ -7,7 +7,7 @@ import { SignInResponse } from '../types';
 
 export default function useTwoFactorAuth() {
     const { loading, execute: handler } = useApiAction(async (otp: string) =>
-        http.post<SignInResponse>(endpoints.auth.verifyTwoFactor(otp))
+        http.post<SignInResponse>(endpoints.auth.verifyTwoFactor, { otp })
     );
 
     return {

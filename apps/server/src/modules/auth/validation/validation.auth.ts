@@ -76,7 +76,7 @@ export const verifyEmailSchema = z.object({
 });
 
 export const twoFactorVerifySchema = z.object({
-    params: z.object({
+    body: z.object({
         otp: otpSchema,
     }),
 });

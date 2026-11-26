@@ -7,11 +7,13 @@ export const fillFormSchema = z.object({
     }),
 });
 
+const boundedAnswerString = z.string().max(2000);
+
 export const answerValueSchema = z.union([
-    z.string(),
+    boundedAnswerString,
     z.number(),
     z.boolean(),
-    z.array(z.string()),
+    z.array(boundedAnswerString),
 ]);
 
 export const postFormSchema = z.object({
@@ -19,7 +21,11 @@ export const postFormSchema = z.object({
         formId: zodObjectId,
     }),
     body: z.object({
-        idempotencyKey: z.string().min(1),
+        idempotencyKey: z
+            .string()
+            .min(1)
+            .max(128)
+            .regex(/^[A-Za-z0-9_-]+$/, 'Invalid idempotency key'),
         answers: z
             .array(
                 z.object({
