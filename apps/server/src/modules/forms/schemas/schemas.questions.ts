@@ -80,6 +80,16 @@ const ratingConfigSchema = new Schema(
     { _id: false }
 );
 
+const scaleConfigSchema = new Schema(
+    {
+        lowerBound: { type: Number, required: true },
+        upperBound: { type: Number, required: true },
+        lowerLabel: { type: String, maxlength: 50 },
+        upperLabel: { type: String, maxlength: 50 },
+    },
+    { _id: false }
+);
+
 const matrixRowSchema = new Schema(
     {
         id: { type: String, required: true },
@@ -137,6 +147,7 @@ export const QuestionTemplateSchema = new Schema<
         optionsConfig: { type: optionConfigSchema, default: undefined },
         dependsOn: { type: questionDependsOnSchema, default: undefined },
         ratingConfig: { type: ratingConfigSchema, default: undefined },
+        scaleConfig: { type: scaleConfigSchema, default: undefined },
         matrixConfig: { type: matrixConfigSchema, default: undefined },
         validationRule: { type: fieldValidationRuleSchema, default: undefined },
 
@@ -161,6 +172,7 @@ const questionsSchema = new Schema<QuestionDocument>(
         optionsConfig: { type: optionConfigSchema, default: undefined },
         dependsOn: { type: questionDependsOnSchema, default: undefined },
         ratingConfig: { type: ratingConfigSchema, default: undefined },
+        scaleConfig: { type: scaleConfigSchema, default: undefined },
         matrixConfig: { type: matrixConfigSchema, default: undefined },
         validationRule: { type: fieldValidationRuleSchema, default: undefined },
 

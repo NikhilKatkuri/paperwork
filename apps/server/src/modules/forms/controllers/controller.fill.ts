@@ -273,6 +273,24 @@ class FillController {
         }
     }
 
+    async deleteResponse(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { formId, responseId, userId } = this.getContent(req);
+            const deleted = await this.service.deleteResponse(
+                formId,
+                responseId,
+                userId
+            );
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Response deleted successfully',
+                data: deleted,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async exportResponses(req: Request, res: Response, next: NextFunction) {
         try {
             const { formId, exportType, userId } = this.getContent(req);

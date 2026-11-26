@@ -975,6 +975,28 @@ class FillService {
         return response;
     }
 
+    async deleteResponse(
+        formId: string,
+        responseId: string,
+        ownerId: string
+    ) {
+        await this.assertOwner(formId, ownerId);
+
+        const deleted = await FormResponseModel.findOneAndDelete({
+            _id: responseId,
+            formId,
+        }).lean();
+        if (!deleted) throw AppError.ResponseNotFound('Response not found');
+
+        // Floor the response counter at zero so it never goes negative.
+        await FormsModel.updateOne(
+            { _id: formId, responseCount: { $gt: 0 } },
+            { $inc: { responseCount: -1 } }
+        );
+
+        return deleted;
+    }
+
     /**
      * Streaming export.
      *

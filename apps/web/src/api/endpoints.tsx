@@ -65,7 +65,15 @@ export const endpoints = {
         createForm: '/forms',
         updateForm: (formId: string): string => `/forms/${formId}`,
         bulkUpdateForm: (formId: string): string => `/forms/${formId}/bulk`,
+        /** Default delete: soft-delete into the bin. */
         deleteForm: (formId: string): string => `/forms/${formId}`,
+        /** Irreversible removal, only reachable from the bin. */
+        deleteFormPermanent: (formId: string): string =>
+            `/forms/${formId}/permanent`,
+        restoreForm: (formId: string): string => `/forms/${formId}/restore`,
+        binForms: (page: number = 1, limit: number = 20): string =>
+            `/forms/bin${toQuery({ page, limit })}`,
+        emptyBin: '/forms/bin',
         duplicateForm: (formId: string): string => `/forms/${formId}/duplicate`,
         fill: (formId: string): string => `/forms/${formId}/fill`,
         submitFill: (formId: string): string => `/forms/${formId}/fill`,
@@ -113,5 +121,7 @@ export const endpoints = {
                 q: query?.q,
                 questionId: query?.questionId,
             })}`,
+        deleteFormResponse: (formId: string, responseId: string): string =>
+            `/forms/${formId}/fill/responses/${responseId}`,
     },
 } as const;

@@ -313,4 +313,14 @@ export async function downloadResponsesCsv(
     }
 }
 
+/** Delete a single response. */
+export async function deleteResponse(
+    formId: string,
+    responseId: string
+): Promise<void> {
+    await http.delete<void>(
+        endpoints.forms.deleteFormResponse(formId, responseId)
+    );
+}
+
 export const RESPONSE_PAGE_SIZES = [10, 20, 50] as const;

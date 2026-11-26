@@ -62,6 +62,13 @@ fillRouter.get(
     validate(responseIdSchema),
     fillController.getResponse
 );
+fillRouter.delete(
+    '/responses/:responseId',
+    lowLimiter,
+    protect,
+    validate(responseIdSchema),
+    fillController.deleteResponse
+);
 
 fillRouter.get(
     '/submissions/:submissionId/status',
