@@ -9,28 +9,28 @@ const focusClass =
 
 export function Hero() {
     return (
-        <section className="relative overflow-hidden pt-16 sm:pt-24">
+        <section className="relative overflow-hidden pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pt-24">
+            {/* Background: glow + dot grid that fades out toward the bottom */}
             <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 -z-10"
             >
-                <div className="bg-brand-light/40 absolute -top-32 left-1/2 h-[420px] w-[760px] -translate-x-1/2 rounded-full blur-3xl" />
+                <div className="bg-brand-light/40 absolute -top-32 left-1/2 h-[320px] w-[560px] -translate-x-1/2 rounded-full blur-3xl sm:h-[420px] sm:w-[760px]" />
                 <div
-                    className="opacity-[0.035] dark:opacity-[0.06]"
+                    className="h-full w-full [mask-image:linear-gradient(to_bottom,black,transparent_85%)] opacity-[0.035] dark:opacity-[0.06]"
                     style={{
                         backgroundImage:
                             'radial-gradient(currentColor 1px, transparent 1px)',
                         backgroundSize: '24px 24px',
-                        height: '100%',
-                        width: '100%',
                     }}
                 />
             </div>
 
+            {/* Copy */}
             <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
                 <Reveal className="mx-auto max-w-4xl text-center">
-                    <div className="border-theme-on-surface/10 bg-theme-form-container/90 inline-flex items-center gap-2 rounded-full border py-1 pr-3.5 pl-1.5 text-xs font-semibold shadow-xs backdrop-blur-sm">
-                        <span className="bg-brand-depth text-on-brand-depth inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px]">
+                    <div className="border-theme-on-surface/10 bg-theme-form-container/90 inline-flex max-w-full items-center gap-2 rounded-full border py-1 pr-3 pl-1.5 text-xs font-semibold shadow-xs backdrop-blur-sm sm:pr-3.5">
+                        <span className="bg-brand-depth text-on-brand-depth inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px]">
                             <span
                                 className="material-symbols-outlined !text-xs"
                                 aria-hidden
@@ -39,23 +39,23 @@ export function Hero() {
                             </span>
                             Open source
                         </span>
-                        <span className="text-theme-on-surface/80">
+                        <span className="text-theme-on-surface/80 truncate">
                             Build forms, collect responses, export CSV
                         </span>
                     </div>
 
-                    <h1 className="text-theme-on-surface mt-8 text-4xl leading-[1.1] font-bold tracking-tight sm:text-5xl lg:text-[3.5rem]">
+                    <h1 className="text-theme-on-surface mt-6 text-[2.25rem] leading-[1.1] font-bold tracking-tight text-balance sm:mt-8 sm:text-5xl lg:text-6xl">
                         A simpler way to build forms and collect responses.
                     </h1>
 
-                    <p className="text-theme-on-surface/70 mx-auto mt-6 max-w-2xl text-base leading-relaxed sm:text-lg">
+                    <p className="text-theme-on-surface/70 mx-auto mt-5 max-w-2xl text-base leading-relaxed text-pretty sm:mt-6 sm:text-lg">
                         Paperwork is an open-source form builder and response
                         collection app. Create forms from scratch or from a
                         template, publish a shareable link, review submissions,
                         and export them as CSV.
                     </p>
 
-                    <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                    <div className="mx-auto mt-8 flex w-full max-w-sm flex-col items-stretch justify-center gap-3 sm:mt-9 sm:max-w-none sm:flex-row sm:items-center">
                         <Link
                             href="/auth?mode=signup"
                             className={cn(
@@ -63,7 +63,7 @@ export function Hero() {
                                 'group bg-brand-depth text-on-brand-depth hover:bg-brand-depth/90 inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0'
                             )}
                         >
-                            Start Building Free
+                            Start building free
                             <span
                                 className="material-symbols-outlined !text-lg transition-transform duration-200 group-hover:translate-x-0.5"
                                 aria-hidden
@@ -78,7 +78,7 @@ export function Hero() {
                                 'border-theme-on-surface/15 bg-theme-form-container/70 hover:bg-theme-surface-hover hover:border-theme-on-surface/30 inline-flex items-center justify-center gap-2 border px-6 py-3.5 text-sm font-semibold transition-all duration-200'
                             )}
                         >
-                            See How It Works
+                            See how it works
                             <span
                                 className="material-symbols-outlined !text-lg"
                                 aria-hidden
@@ -94,30 +94,28 @@ export function Hero() {
                         rel="noopener noreferrer"
                         className={cn(
                             focusClass,
-                            'text-brand-depth mt-6 inline-flex items-center gap-1.5 text-sm font-medium'
+                            'text-brand-depth mt-6 inline-flex items-center gap-1.5 text-sm font-medium hover:underline'
                         )}
                     >
-                        Open source and self-hostable
+                        View the source on GitHub
                         <span
                             className="material-symbols-outlined !text-base"
                             aria-hidden
                         >
-                            arrow_forward
+                            arrow_outward
                         </span>
                         <span className="sr-only">(opens in a new tab)</span>
                     </a>
                 </Reveal>
-
-                <Reveal delay={140} yOffset={28} className="mt-14 sm:mt-20">
-                    <HeroPreview />
-                </Reveal>
-
-                <Reveal delay={180}>
-                    <p className="text-theme-on-surface/55 mt-8 text-center font-mono text-xs font-semibold tracking-widest uppercase">
-                        A focused workspace for forms and responses
-                    </p>
-                </Reveal>
             </div>
+
+            <Reveal
+                delay={140}
+                yOffset={28}
+                className="mx-auto mt-12 w-full max-w-310 sm:mt-16 sm:px-6 lg:mt-20"
+            >
+                <HeroPreview />
+            </Reveal>
         </section>
     );
 }
