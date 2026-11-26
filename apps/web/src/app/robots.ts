@@ -12,6 +12,7 @@ export default function robots(): MetadataRoute.Robots {
                     '/user',
                     '/forms/c',
                     '/forms/v',
+                    '/s',
                     '/auth/reset-password/',
                 ],
             },

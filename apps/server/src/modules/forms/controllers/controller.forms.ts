@@ -60,6 +60,36 @@ class FormsController extends AutoBoundClass {
         }
     }
 
+    async createShareLink(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { userId, formId } = this.getRequestData(req);
+            const code = await this.service.ensureShareCode(userId, formId);
+
+            res.status(StatusCodes.OK).json({
+                success: true,
+                message: 'Share link ready',
+                data: { code },
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async resolveShareLink(req: Request, res: Response, next: NextFunction) {
+        try {
+            const formId = await this.service.resolveShareCode(
+                req.params.code as string
+            );
+
+            res.status(StatusCodes.OK).json({
+                success: true,
+                data: { formId },
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     /**
      * @description Search for forms by name.
      * @param req expects query parameters `q` (search query) and `limit` (number of results to return, default 10)

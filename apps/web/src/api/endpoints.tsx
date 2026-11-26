@@ -78,6 +78,7 @@ export const endpoints = {
         submitFill: (formId: string): string => `/forms/${formId}/fill`,
         submissionStatus: (formId: string, submissionId: string): string =>
             `/forms/${formId}/fill/submissions/${submissionId}/status`,
+        shareLink: (formId: string): string => `/forms/${formId}/share`,
         publishForm: (formId: string): string => `/forms/${formId}/publish`,
         unpublishForm: (formId: string): string => `/forms/${formId}/unpublish`,
         searchForms: (q: string, limit: number = 10): string =>

@@ -2,14 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { cn } from '@/utils/cn';
 import { FormDB } from '@/types';
 import { toDate } from '@/features/forms/types/db.types';
+import {
+    buildShortUrl,
+    copyToClipboard,
+    getOrCreateShareCode,
+} from '@/features/forms/lib/shareLink';
 
 const LONG_PRESS_MS = 500;
 
 interface MenuButtonProps {
     ref: React.RefObject<HTMLDivElement | null>;
+    onClickShare?: () => void;
     onClickDuplicate?: () => void;
     onClickDelete?: () => void;
     onClickUnpublish?: () => void;
@@ -21,6 +28,7 @@ interface MenuButtonProps {
 
 const MenuButton = ({
     ref,
+    onClickShare,
     onClickDuplicate,
     onClickDelete,
     onClickUnpublish,
@@ -49,6 +57,17 @@ const MenuButton = ({
                 role="menu"
                 className="absolute top-12 right-0 z-50 w-44 rounded-md border border-gray-200 bg-white py-1 shadow-lg *:text-sm"
             >
+                <button
+                    onClick={(e) => {
+                        e.preventDefault();
+                        onClickShare?.();
+                        setShowMenu(false);
+                    }}
+                    disabled={busy}
+                    className="flex w-full items-center px-4 py-2 text-left text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                >
+                    Copy share link
+                </button>
                 <button
                     onClick={(e) => {
                         e.preventDefault();
@@ -147,9 +166,27 @@ export default function FormsView({
 
     const title = form?.name || 'Untitled Form';
     const dateText = toDate(form?.createdAt);
-    const formUrl = `/forms/c/${form?.id}`;
+    const formId = form?.id;
+    const formUrl = `/forms/c/${formId}`;
     const published = Boolean(form?.isPublished);
     const selecting = Boolean(selectionMode);
+
+    const handleShare = useCallback(async () => {
+        if (!formId) return;
+        try {
+            const code = await getOrCreateShareCode(formId);
+            await copyToClipboard(buildShortUrl(code));
+            toast.success('Short link copied');
+            if (!published)
+                toast.info('Publish the form so others can fill it');
+        } catch (error) {
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : 'Could not copy the link'
+            );
+        }
+    }, [formId, published]);
 
     const cancelPress = useCallback(() => {
         if (pressTimer.current) clearTimeout(pressTimer.current);
@@ -257,6 +294,7 @@ export default function FormsView({
                                 setShowMenu={setShowMenu}
                                 busy={busy}
                                 published={published}
+                                onClickShare={() => void handleShare()}
                                 onClickDelete={onDelete}
                                 onClickDuplicate={onDuplicate}
                                 onClickUnpublish={onUnpublish}

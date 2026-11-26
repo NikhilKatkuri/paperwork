@@ -37,6 +37,10 @@ export const getFormSchema = z.object({
     params: z.object({ formId: zodObjectId }),
 });
 
+export const resolveShareSchema = z.object({
+    params: z.object({ code: z.string().regex(/^[A-Za-z0-9_-]{8}$/) }),
+});
+
 export const searchFormsSchema = z.object({
     query: z.object({
         q: z.string().trim().min(1).max(120),

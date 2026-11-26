@@ -33,4 +33,6 @@ export interface Form {
     theme?: FormTheme;
     /** Set when the form is in the bin. Cleared on restore. Server-owned. */
     deletedAt?: string;
+    /** Short, server-generated code used by /s/<code> share links. */
+    shareCode?: string;
 }

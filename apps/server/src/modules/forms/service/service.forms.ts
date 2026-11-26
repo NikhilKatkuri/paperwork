@@ -19,6 +19,7 @@ import { formIndexCache } from '@/cache/formIndex';
 import { logger, logError } from '@/utils/logger';
 import { EmailPriority } from '@/modules/email/types/emailOutbox.type';
 import emailOutboxService from '@/modules/email/services/emailOutbox.service';
+import { generateShareCode, isDuplicateKeyError } from '@/utils/shareCode';
 
 /**
  * Only forms without a `deletedAt` are visible to the normal form routes.
@@ -177,6 +178,63 @@ class FormsService {
                 return rest;
             }),
         } as unknown as FormDto;
+    }
+
+    async ensureShareCode(userId: string, formId: string): Promise<string> {
+        const form = await FormsModel.findOne({
+            _id: formId,
+            userId,
+            ...ACTIVE,
+        })
+            .select('shareCode')
+            .lean();
+        if (!form) throw AppError.FormNotFound('Form not found');
+        if (form.shareCode) return form.shareCode;
+
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const code = generateShareCode();
+            try {
+                const updated = await FormsModel.findOneAndUpdate(
+                    {
+                        _id: formId,
+                        userId,
+                        ...ACTIVE,
+                        shareCode: { $exists: false },
+                    },
+                    { $set: { shareCode: code } },
+                    { new: true }
+                )
+                    .select('shareCode')
+                    .lean();
+
+                if (updated?.shareCode) return updated.shareCode;
+
+                const raced = await FormsModel.findOne({
+                    _id: formId,
+                    userId,
+                    ...ACTIVE,
+                })
+                    .select('shareCode')
+                    .lean();
+                if (raced?.shareCode) return raced.shareCode;
+            } catch (error) {
+                if (!isDuplicateKeyError(error) || attempt === 2) throw error;
+            }
+        }
+
+        throw AppError.FormCreationFailed('Failed to create share link');
+    }
+
+    async resolveShareCode(code: string): Promise<string> {
+        const form = await FormsModel.findOne({
+            shareCode: code,
+            isPublished: true,
+            ...ACTIVE,
+        })
+            .select('_id')
+            .lean();
+        if (!form) throw AppError.FormNotFound('Share link not found');
+        return form._id.toString();
     }
 
     /**
@@ -737,6 +795,7 @@ class FormsService {
                 responseCount: _dupRc,
                 id: _dupId,
                 v: _dupV,
+                shareCode: _shareCode,
                 ...baseForm
             } = cleanForm;
 

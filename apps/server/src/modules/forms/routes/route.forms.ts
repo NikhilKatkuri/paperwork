@@ -16,6 +16,7 @@ import {
     bulkPutFormSchema,
     createRequestFormSchema,
     getFormSchema,
+    resolveShareSchema,
     patchRequestFormSchema,
     putRequestFormSchema,
     searchFormsSchema,
@@ -43,6 +44,13 @@ formsRouter.get(
     protect,
     validate(searchFormsSchema),
     controller.search
+);
+
+formsRouter.get(
+    '/share/:code',
+    lowLimiter,
+    validate(resolveShareSchema),
+    controller.resolveShareLink
 );
 
 // Bin routes must precede `/:formId`: otherwise "bin" is parsed as an id and
@@ -132,6 +140,14 @@ formsRouter.post(
     protect,
     validate(getFormSchema),
     controller.duplicate
+);
+
+formsRouter.post(
+    '/:formId/share',
+    lowLimiter,
+    protect,
+    validate(getFormSchema),
+    controller.createShareLink
 );
 
 formsRouter.use(

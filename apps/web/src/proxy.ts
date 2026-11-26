@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import { isAuthPath, isExcludedPath, isProtectedPath } from './_paths';
+import { publicOrigin } from './utils/requestOrigin';
 
 const REFRESH_TOKEN_COOKIE = 'refreshToken';
 
@@ -27,10 +28,11 @@ export async function proxy(req: NextRequest) {
         return NextResponse.next();
     }
 
+    const isHomeRoute = pathname === '/';
     const isAuthRoute = isAuthPath(pathname);
     const isProtectedRoute = isProtectedPath(pathname);
 
-    if (!isAuthRoute && !isProtectedRoute) {
+    if (!isHomeRoute && !isAuthRoute && !isProtectedRoute) {
         return NextResponse.next();
     }
 
@@ -48,12 +50,12 @@ export async function proxy(req: NextRequest) {
         }
     }
 
-    if (isAuthenticated && isAuthRoute) {
-        return NextResponse.redirect(new URL('/user', req.url));
+    if (isAuthenticated && (isHomeRoute || isAuthRoute)) {
+        return NextResponse.redirect(new URL('/user', publicOrigin(req)));
     }
 
     if (!isAuthenticated && isProtectedRoute) {
-        const redirectUrl = new URL('/auth/signin', req.url);
+        const redirectUrl = new URL('/auth/signin', publicOrigin(req));
         redirectUrl.searchParams.set('from', pathname);
         return NextResponse.redirect(redirectUrl);
     }

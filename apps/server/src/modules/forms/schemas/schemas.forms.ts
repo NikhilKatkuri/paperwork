@@ -76,6 +76,13 @@ const formsSchema = new Schema<FormDocument>(
          */
         deletedAt: { type: Date, default: undefined },
 
+        shareCode: {
+            type: String,
+            unique: true,
+            sparse: true,
+            default: undefined,
+        },
+
         settings: { type: FormsSettingSchema, default: () => ({}) },
     },
     {
